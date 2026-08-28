@@ -1,0 +1,59 @@
+{
+  "label": {
+    "accordion": "Content Types",
+    "noTypes": "No editorial content type is available on this site.",
+    "typesError": "The content types could not be loaded.",
+    "noContent": "No content of this type was found on this site.",
+    "noSearchResults": "No content of this type matches “{{terms}}”.",
+    "contentError": "The content could not be loaded.",
+    "publication": {
+      "published": "Published",
+      "modified": "Modified",
+      "notPublished": "Never published"
+    },
+    "toolbar": {
+      "searchPlaceholder": "Search",
+      "advancedSearch": "Advanced search",
+      "filter": "Filter",
+      "columns": "Columns"
+    },
+    "settings": {
+      "title": "Content Types",
+      "description": "Choose which content types are listed in the Content Types accordion. This applies to everyone working on this site. Selecting all of them keeps the default, so types added later appear on their own.",
+      "selectedCount": "{{count}} of {{total}} selected",
+      "save": "Save",
+      "saved": "Saved. The accordion now lists the types you selected.",
+      "saveError": "The list could not be saved. Check that you may edit this site, then try again.",
+      "editorial": "editorial",
+      "otherCategory": "Other content types"
+    },
+    "table": {
+      "name": "Name"
+    },
+    "field": {
+      "type": "Content Type",
+      "createdBy": "Created by",
+      "createdDate": "Created date",
+      "lastModified": "Last modification",
+      "lastModifiedBy": "Modified by",
+      "publicationStatus": "Publication",
+      "publishedOn": "Published on",
+      "publishedBy": "Published by",
+      "path": "Path",
+      "systemName": "System name",
+      "id": "ID"
+    },
+    "columns": {
+      "searchPlaceholder": "Find a field",
+      "visible": "Visible fields",
+      "available": "Available fields",
+      "noMatch": "No field matches.",
+      "saveAsDefault": "Save as default",
+      "saved": "Saved",
+      "moveUp": "Move up",
+      "moveDown": "Move down"
+    },
+    "yes": "Yes",
+    "no": "No"
+  }
+}

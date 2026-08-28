@@ -1,0 +1,8 @@
+/.settings
+.idea
+*.iml
+target
+node
+node_modules
+yarn-error.log
+/src/main/resources/javascript/apps

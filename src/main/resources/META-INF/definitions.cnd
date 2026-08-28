@@ -1,0 +1,13 @@
+<jnt = 'http://www.jahia.org/jahia/nt/1.0'>
+<jmix = 'http://www.jahia.org/jahia/mix/1.0'>
+<ct = 'http://www.jahia.org/jahia/content-types/1.0'>
+
+/**
+ * Site level configuration for the Content Types accordion.
+ *
+ * Applied to the site node, so the choice belongs to the site rather than to a user, and everyone
+ * working on that site sees the same list. An absent mixin, or an empty property, means no choice
+ * has been made and every editorial type is listed: the configuration only ever narrows.
+ */
+[ct:contentTypesListing] mixin
+ - ct:listedTypes (string) multiple

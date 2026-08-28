@@ -1,0 +1,232 @@
+.mainPane {
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    min-height: 0;
+    padding: 16px 24px;
+
+    background-color: var(--color-light);
+}
+
+.header {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    gap: 2px;
+    padding-bottom: 16px;
+}
+
+/*
+ * The table area owns the remaining height so its own content scrolls, not the whole pane -
+ * split into a scrolling part and a fixed one below it, the way jContent's own content list
+ * separates its Table from its TablePagination. Letting DataTable's bundled pagination render
+ * inside the same unbounded flow as the rows left it with no scroll boundary of its own to anchor
+ * to, and it drew over the last rows instead of staying pinned below them.
+ */
+.tableArea {
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.tableScroll {
+    flex: 1 1 0;
+    min-height: 0;
+
+    overflow-y: auto;
+}
+
+.table {
+    width: 100%;
+}
+
+.tablePagination {
+    flex: 0 0 auto;
+    min-height: 64px;
+    padding-top: 8px;
+
+    border-top: 1px solid var(--color-gray_light40);
+}
+
+.toolBar {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 12px;
+}
+
+.search {
+    flex: 0 1 280px;
+}
+
+.toolBarSpacer {
+    flex: 1 1 auto;
+}
+
+.subtitle {
+    color: var(--color-gray_dark40);
+}
+
+.message {
+    padding: 16px;
+
+    color: var(--color-gray_dark40);
+}
+
+.centered {
+    display: flex;
+    justify-content: center;
+    padding: 24px;
+}
+
+.dialogBody {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.category {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.categoryHeader {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* One type per line: the list is long on purpose, and scanning a single column beats reading
+   across columns to find a type. */
+.categoryTypes {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-left: 28px;
+}
+
+.dialogFooter {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.settingsPanel {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* No height cap here on purpose: a fixed inner scroller inside an already scrollable page gives
+   two scrollbars and hides how much is left. The page scrolls, this just grows. */
+.settingsCategories {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.settingsPage {
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    gap: 16px;
+    min-height: 0;
+    padding: 24px;
+
+    overflow-y: auto;
+}
+
+.success {
+    color: var(--color-success);
+}
+
+.error {
+    color: var(--color-danger);
+}
+
+/* This one is a real popover, unlike .settingsPage: it is bounded by the viewport, so a bounded
+   height with its own scroll is correct here rather than the mistake it would be on a full page. */
+.columnsPicker {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 300px;
+    padding: 12px;
+}
+
+.columnsSearch {
+    flex: 0 0 auto;
+}
+
+.columnsList {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    max-height: 340px;
+
+    overflow-y: auto;
+}
+
+/*
+ * One block per section (Visible fields / Available fields), each spacing its own rows. The gap
+ * on .columnsList is what separates the two sections from each other; a border is added too so
+ * the boundary reads clearly even before any spacing renders. Without a section boundary of its
+ * own, the heading before a section fell back on the same small gap used between rows inside a
+ * section, and read as sitting behind the row above it rather than starting a new group.
+ */
+.columnsSection {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-top: 12px;
+
+    border-top: 1px solid var(--color-gray_light40);
+}
+
+/*
+ * A visible field's checkbox and its reorder arrows, side by side. Wrapping them together is what
+ * moved every row out of being CheckboxItem's own direct sibling, which is also why the gap
+ * between rows is set here on .columnsSection rather than left to Moonstone's built-in spacing
+ * between two adjacent CheckboxItems - there no longer are any, by design.
+ */
+.columnsRow {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.columnsRow > :first-child {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.columnsOrderButtons {
+    display: flex;
+    flex: 0 0 auto;
+    gap: 0;
+}
+
+.columnsSection:first-child {
+    padding-top: 0;
+    border-top: none;
+}
+
+.columnsSectionLabel {
+    padding: 0 4px 4px;
+
+    color: var(--color-gray_dark40);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.columnsFooter {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-top: 8px;
+
+    border-top: 1px solid var(--color-gray_light40);
+}

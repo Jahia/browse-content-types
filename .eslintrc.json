@@ -1,0 +1,18 @@
+{
+  "extends": "@jahia",
+  "plugins": [
+    "react",
+    "import"
+  ],
+  "parserOptions": {
+    "requireConfigFile": false,
+    "babelOptions": {
+      "presets": [
+        "@babel/preset-react"
+      ]
+    }
+  },
+  "rules": {
+    "import/named": "error"
+  }
+}

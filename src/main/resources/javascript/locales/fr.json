@@ -1,0 +1,59 @@
+{
+  "label": {
+    "accordion": "Types de contenu",
+    "noTypes": "Aucun type de contenu éditorial n'est disponible sur ce site.",
+    "typesError": "Les types de contenu n'ont pas pu être chargés.",
+    "noContent": "Aucun contenu de ce type n'a été trouvé sur ce site.",
+    "noSearchResults": "Aucun contenu de ce type ne correspond à « {{terms}} ».",
+    "contentError": "Le contenu n'a pas pu être chargé.",
+    "publication": {
+      "published": "Publié",
+      "modified": "Modifié",
+      "notPublished": "Jamais publié"
+    },
+    "toolbar": {
+      "searchPlaceholder": "Rechercher",
+      "advancedSearch": "Recherche avancée",
+      "filter": "Filtrer",
+      "columns": "Colonnes"
+    },
+    "settings": {
+      "title": "Types de contenu",
+      "description": "Choisissez les types de contenu listés dans l'accordéon Types de contenu. Ce réglage s'applique à tous ceux qui travaillent sur ce site. Tout sélectionner conserve le comportement par défaut : les types ajoutés plus tard apparaissent d'eux-mêmes.",
+      "selectedCount": "{{count}} sur {{total}} sélectionnés",
+      "save": "Enregistrer",
+      "saved": "Enregistré. L’accordéon liste désormais les types sélectionnés.",
+      "saveError": "La liste n’a pas pu être enregistrée. Vérifiez que vous pouvez modifier ce site, puis réessayez.",
+      "editorial": "éditorial",
+      "otherCategory": "Autres types de contenu"
+    },
+    "table": {
+      "name": "Nom"
+    },
+    "field": {
+      "type": "Type de contenu",
+      "createdBy": "Créé par",
+      "createdDate": "Date de création",
+      "lastModified": "Dernière modification",
+      "lastModifiedBy": "Modifié par",
+      "publicationStatus": "Publication",
+      "publishedOn": "Publié le",
+      "publishedBy": "Publié par",
+      "path": "Chemin",
+      "systemName": "Nom système",
+      "id": "ID"
+    },
+    "columns": {
+      "searchPlaceholder": "Rechercher un champ",
+      "visible": "Champs visibles",
+      "available": "Champs disponibles",
+      "noMatch": "Aucun champ ne correspond.",
+      "saveAsDefault": "Enregistrer par défaut",
+      "saved": "Enregistré",
+      "moveUp": "Monter",
+      "moveDown": "Descendre"
+    },
+    "yes": "Oui",
+    "no": "Non"
+  }
+}
