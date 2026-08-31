@@ -6,10 +6,12 @@ import {parse} from 'graphql';
  * something a document written once at build time can know about.
  *
  * Fields common to every node are always fetched, whether or not their column is currently shown:
- * there are few of them and each is a cheap scalar read, so asking for all of them unconditionally
- * is simpler and no more costly than tracking which ones are needed. A content type's own fields
- * are different - there can be many, and one can be a large text body - so only the ones actually
- * selected as visible are added to the query.
+ * there are few of them and they are fixed, so asking for all of them unconditionally is simpler
+ * than tracking which ones are needed. Two of them are not scalar reads - `aggregatedPublicationInfo`
+ * and the category references - but the publication badge is on by default anyway, and resolving a
+ * handful of category names per row costs little beside it. A content type's own fields are
+ * different: there can be many and one can be a large text body, so only those actually selected as
+ * visible are added to the query.
  */
 
 /**
@@ -53,6 +55,77 @@ const COMMON_RECORD_FIELDS = `
     publishedBy: property(name: "j:lastPublishedBy", language: $language) {
         value
     }
+    # Tags and categories come from mixins any node can carry, so they are read here with the rest of
+    # the common fields rather than from a type's own definition. Both answer null on a node without
+    # the mixin, which is the same nothing an unset property gives and needs no special case.
+    # j:tagList holds the strings themselves; j:defaultCategory holds references, resolved to the
+    # category's own name rather than left as a uuid. Verified against the definitions: both are
+    # multi-valued and not internationalized, and j:tags is the hidden reference form of the tag list,
+    # not the one an editor sets.
+    tags: property(name: "j:tagList", language: $language) {
+        values
+    }
+    categories: property(name: "j:defaultCategory", language: $language) {
+        refNodes {
+            displayName(language: $language)
+        }
+    }
+    # Whether the record is locked, which any node can be. The two fields answer different questions
+    # and the column shows both: details is who holds a lock and of what kind, empty when there is
+    # none, while lockedAndCannotBeEdited is whether that lock actually stands in an editor's way -
+    # which it does not when the lock is their own. There is no lockOwner on JCRNode in this schema;
+    # the owner exists only inside details.
+    lockedAndCannotBeEdited
+    lockInfo {
+        details(language: $language) {
+            owner
+            type
+        }
+    }
+    # Which of the two publish actions the selection bar offers, asked of the same three types
+    # jContent asks about. Reading them here rather than resolving the selected paths separately is
+    # what keeps the bar from costing a request of its own every time a row is ticked.
+    isPage: isNodeType(type: {multi: ANY, types: ["jnt:page"]})
+    isFolder: isNodeType(type: {multi: ANY, types: ["jnt:contentFolder", "jnt:folder"]})
+`;
+
+/**
+ * Fetched on a referenced node, so that a reference to an image can show the image.
+ *
+ * `thumbnailUrl` is asked with `checkIfExists`, which makes it answer null rather than a URL that
+ * would 404 when the node has no rendition - and that null is also the whole is-it-an-image test.
+ * A reference to ordinary content simply has no thumbnail and needs no type check to say so, which
+ * is how jContent's own media list decides it too.
+ *
+ * The URL that comes back is used only as a yes/no, never as an address: it carries no cache buster,
+ * so a browser that has already fetched a rendition keeps showing it after the image behind it is
+ * re-cropped or replaced. `path` and `lastModified` are what the address is rebuilt from instead -
+ * see `thumbnailFor` in ContentTypesTable, and jContent's media grid, which stamps the same date on
+ * for the same reason.
+ *
+ * `mimeType` is here for WebP alone: the image service generates no rendition for it at all, so the
+ * original file is the only preview it has.
+ */
+const REFERENCED_NODE_FIELDS = `
+    uuid
+    path
+    displayName(language: $language)
+    hasThumbnail: thumbnailUrl(name: "thumbnail", checkIfExists: true)
+    # Where a reference points at a link, so the cell can point there too. j:url is the property both
+    # of Jahia's external link definitions carry - jnt:externalLink and the jmix:externalLink mixin -
+    # and it is a plain string on each: JCR has a URI type, but nothing that ships uses it. A node
+    # that is not a link has no such property and answers null, which is the whole test.
+    linkUrl: property(name: "j:url", language: $language) {
+        value
+    }
+    lastModified: property(name: "jcr:lastModified", language: $language) {
+        value
+    }
+    content: descendant(relPath: "jcr:content") {
+        mimeType: property(name: "jcr:mimeType") {
+            value
+        }
+    }
 `;
 
 /**
@@ -73,7 +146,7 @@ const dynamicFieldSelection = field => {
     const isReference = field.requiredType === 'REFERENCE' || field.requiredType === 'WEAKREFERENCE';
     const valuePart = field.multiple ? 'values' : 'value';
     const refPart = isReference ?
-        (field.multiple ? 'refNodes { displayName(language: $language) }' : 'refNode { displayName(language: $language) }') :
+        (field.multiple ? `refNodes { ${REFERENCED_NODE_FIELDS} }` : `refNode { ${REFERENCED_NODE_FIELDS} }`) :
         '';
 
     return `${field.key}: property(name: "${field.propertyName}", language: $language) { ${valuePart} ${refPart} }`;
@@ -89,6 +162,12 @@ const recordFields = dynamicFields => COMMON_RECORD_FIELDS + dynamicFields.map(d
  * the query; `totalCount` is what lets the table page without fetching everything.
  *
  * A type filter in JCR matches sub types too, so selecting a type also lists its sub types.
+ *
+ * Built on the same `nodesByCriteria` the search below uses, rather than on the site node's
+ * `descendants`, because only the criteria query carries an `ordering` - a sort the repository
+ * performs against the property itself, which is the one that puts numbers in numeric order.
+ * `descendants` offers `fieldSorter` alone, which compares the text a field returned. The two return
+ * the same rows: checked against a site, 161 records of one type either way.
  */
 export const buildListingQuery = dynamicFields => parse(`
     query getContentByType(
@@ -97,23 +176,26 @@ export const buildListingQuery = dynamicFields => parse(`
         $language: String!,
         $offset: Int!,
         $limit: Int!,
-        $fieldSorter: InputFieldSorterInput
+        $fieldSorter: InputFieldSorterInput,
+        $ordering: InputGqlOrdering
     ) {
         jcr(workspace: EDIT) {
-            nodeByPath(path: $sitePath) {
-                uuid
-                descendants(
-                    typesFilter: {types: [$type]},
-                    offset: $offset,
-                    limit: $limit,
-                    fieldSorter: $fieldSorter
-                ) {
-                    pageInfo {
-                        totalCount
-                    }
-                    nodes {
-                        ${recordFields(dynamicFields)}
-                    }
+            nodesByCriteria(
+                criteria: {
+                    language: $language,
+                    nodeType: $type,
+                    paths: [$sitePath],
+                    ordering: $ordering
+                },
+                offset: $offset,
+                limit: $limit,
+                fieldSorter: $fieldSorter
+            ) {
+                pageInfo {
+                    totalCount
+                }
+                nodes {
+                    ${recordFields(dynamicFields)}
                 }
             }
         }
@@ -141,7 +223,8 @@ export const buildSearchQuery = dynamicFields => parse(`
         $language: String!,
         $offset: Int!,
         $limit: Int!,
-        $fieldSorter: InputFieldSorterInput
+        $fieldSorter: InputFieldSorterInput,
+        $ordering: InputGqlOrdering
     ) {
         jcr(workspace: EDIT) {
             nodesByCriteria(
@@ -149,6 +232,7 @@ export const buildSearchQuery = dynamicFields => parse(`
                     language: $language,
                     nodeType: $type,
                     paths: [$sitePath],
+                    ordering: $ordering,
                     nodeConstraint: {
                         any: [
                             {contains: $terms}

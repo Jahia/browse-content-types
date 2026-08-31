@@ -1,5 +1,6 @@
 import i18next from 'i18next';
 import registerContentTypesAccordion from './ContentTypes/registerContentTypesAccordion';
+import registerContentTypesBulkActions from './ContentTypes/registerContentTypesBulkActions';
 import registerContentTypesSettings from './ContentTypes/registerContentTypesSettings';
 
 export const NAMESPACE = 'content-types';
@@ -11,5 +12,6 @@ export default async function () {
     await i18next.loadNamespaces(NAMESPACE);
 
     registerContentTypesAccordion();
+    registerContentTypesBulkActions();
     registerContentTypesSettings();
 }

@@ -6,8 +6,9 @@ import {NAMESPACE} from '../ContentTypes.register';
 import styles from './ContentTypes.module.scss';
 
 /**
- * The content of the columns dropdown: a search box, the columns currently shown, and the ones
- * that could be added - the content type's own fields first, then the metadata every node carries.
+ * The content of the columns dropdown: a search box, the columns currently shown, and the ones that
+ * could be added - in two groups, this content type's own fields first and then the metadata every
+ * node carries, since only the first group is any different from one type to the next.
  *
  * Checking a box takes effect immediately; there is no separate "apply" step. Save as default is
  * the only thing that persists the choice past this visit, and is disabled once the visible set
@@ -20,12 +21,10 @@ export const ContentTypesColumnsPicker = ({
     visibleFields,
     toggleField,
     moveField,
-    isDirty,
-    saveAsDefault
+    resetToDefaults
 }) => {
     const {t} = useTranslation(NAMESPACE);
     const [filter, setFilter] = useState('');
-    const [savedFlash, setSavedFlash] = useState(false);
 
     const term = filter.trim().toLowerCase();
     const matches = field => !term || field.label.toLowerCase().includes(term);
@@ -37,12 +36,42 @@ export const ContentTypesColumnsPicker = ({
     const visible = visibleFields.filter(matches);
     const hidden = availableFields.filter(field => !visibleFields.some(v => v.key === field.key) && matches(field));
 
-    const handleSave = () => {
-        if (saveAsDefault()) {
-            setSavedFlash(true);
-            setTimeout(() => setSavedFlash(false), 2000);
-        }
-    };
+    // Split by where a field comes from, because the two answer different questions. A content type's
+    // own properties are what someone opened this menu for on this type, and there is no telling how
+    // many there are; the metadata every node carries is a fixed list of eleven, identical on every
+    // type, and mostly already familiar. Run together they read as one long list in which the
+    // interesting entries are wherever the catalog happens to have put them.
+    const hiddenType = hidden.filter(field => field.isDynamic);
+    const hiddenCommon = hidden.filter(field => !field.isDynamic);
+
+    /**
+     * One group of fields that could be added. Omitted entirely when it holds nothing, so a type with
+     * no properties of its own shows no empty heading, and neither does a search that matched only
+     * one of the two groups.
+     */
+    const renderAvailable = (labelKey, fields, role) => fields.length > 0 && (
+        <section className={styles.columnsSection} data-sel-role={role}>
+            <Typography className={styles.columnsSectionLabel} variant="caption" weight="bold">
+                {t(labelKey)}
+            </Typography>
+            {fields.map(field => (
+                // Wrapped the same way as a visible row, arrows or not: it is what takes each
+                // CheckboxItem out of being another one's direct sibling, so every section gets its
+                // spacing from .columnsSection's own gap instead of some of them relying on it and
+                // others falling back to Moonstone's wider built-in spacing between adjacent
+                // checkboxes.
+                <div key={field.key} className={styles.columnsRow}>
+                    <CheckboxItem
+                        checked={false}
+                        id={`content-types-column-${field.key}`}
+                        label={field.label}
+                        data-sel-column={field.key}
+                        onChange={() => toggleField(field.key)}
+                    />
+                </div>
+            ))}
+        </section>
+    );
 
     return (
         <div className={styles.columnsPicker} data-sel-role="columns-picker">
@@ -120,29 +149,11 @@ export const ContentTypesColumnsPicker = ({
                     </section>
                 )}
 
-                {hidden.length > 0 && (
-                    <section className={styles.columnsSection} data-sel-role="columns-section-available">
-                        <Typography className={styles.columnsSectionLabel} variant="caption" weight="bold">
-                            {t('label.columns.available')}
-                        </Typography>
-                        {hidden.map(field => (
-                            // Wrapped the same way as a visible row, arrows or not: it is what
-                            // takes each CheckboxItem out of being another one's direct sibling,
-                            // so both sections get their spacing from .columnsSection's own gap
-                            // instead of one relying on it and the other falling back to
-                            // Moonstone's wider built-in spacing between adjacent checkboxes.
-                            <div key={field.key} className={styles.columnsRow}>
-                                <CheckboxItem
-                                    checked={false}
-                                    id={`content-types-column-${field.key}`}
-                                    label={field.label}
-                                    data-sel-column={field.key}
-                                    onChange={() => toggleField(field.key)}
-                                />
-                            </div>
-                        ))}
-                    </section>
-                )}
+                {/* This type's own fields before the metadata every node carries: they are the ones
+                    that differ from one type to the next, so they are what someone came here to
+                    find. */}
+                {renderAvailable('label.columns.availableType', hiddenType, 'columns-section-type')}
+                {renderAvailable('label.columns.availableCommon', hiddenCommon, 'columns-section-common')}
 
                 {!showLocked && visible.length === 0 && hidden.length === 0 && (
                     <Typography className={styles.columnsSectionLabel} variant="caption">
@@ -151,18 +162,20 @@ export const ContentTypesColumnsPicker = ({
                 )}
             </div>
 
+            {/* No save button: a change is kept as it is made. What the footer is for now is the way
+                back, since without it a set someone experimented with would be the set they are
+                stuck with on every later visit. */}
             <footer className={styles.columnsFooter}>
-                <Typography className={styles.subtitle} variant="caption" data-sel-role="columns-save-status">
-                    {savedFlash && t('label.columns.saved')}
+                <Typography className={styles.subtitle} variant="caption">
+                    {t('label.columns.autoSaved')}
                 </Typography>
                 <div className={styles.toolBarSpacer}/>
                 <Button
                     size="big"
-                    color="accent"
-                    label={t('label.columns.saveAsDefault')}
-                    isDisabled={!isDirty}
-                    data-sel-role="columns-save"
-                    onClick={handleSave}
+                    variant="ghost"
+                    label={t('label.columns.reset')}
+                    data-sel-role="columns-reset"
+                    onClick={resetToDefaults}
                 />
             </footer>
         </div>
@@ -175,8 +188,7 @@ ContentTypesColumnsPicker.propTypes = {
     visibleFields: PropTypes.array.isRequired,
     toggleField: PropTypes.func.isRequired,
     moveField: PropTypes.func.isRequired,
-    isDirty: PropTypes.bool.isRequired,
-    saveAsDefault: PropTypes.func.isRequired
+    resetToDefaults: PropTypes.func.isRequired
 };
 
 export default ContentTypesColumnsPicker;

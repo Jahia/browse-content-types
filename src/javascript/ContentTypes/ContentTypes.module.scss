@@ -1,7 +1,29 @@
+/*
+ * Keeping a wide table inside its own scroller, which takes all three of the declarations below.
+ *
+ * Nothing above this pane clips horizontally, and that is a consequence of how the accordion is
+ * registered: overriding `routeComponent` means jContent's own ContentRoute never runs, and
+ * ContentRoute is what wraps content in MainLayout - which is where jContent gets the
+ * `overflow: hidden` that stops its own list view from spilling. What this pane is dropped into
+ * instead is a column flex box with `min-width: 0` and no overflow at all, so anything too wide
+ * paints straight out of it and on past the viewport.
+ *
+ * Which is why bounding this had to be done here, and why `min-width: 0` alone was not enough. A
+ * flex item defaults to `min-width: auto` and so refuses to shrink below its content - that part
+ * `min-width` fixes - but a box with visible overflow lets its content escape regardless of how
+ * wide the box itself ends up. The pane then reaches past the screen, and everything measured
+ * against its right-hand edge goes with it: the columns control at the end of the toolbar, and the
+ * row menu pinned to the right of the table, which sticks to the edge of a scroller that is itself
+ * off-screen.
+ *
+ * `min-height: 0` is this same rule on the other axis, which is why the pane already had one.
+ */
 .mainPane {
     display: flex;
     flex: 1 1 0;
     flex-direction: column;
+    min-width: 0;
+    max-width: 100%;
     min-height: 0;
     padding: 16px 24px;
 
@@ -23,22 +45,137 @@
  * inside the same unbounded flow as the rows left it with no scroll boundary of its own to anchor
  * to, and it drew over the last rows instead of staying pinned below them.
  */
+/*
+ * The hard stop. Nothing inside here can be seen outside it, whatever the table asks for, which is
+ * the piece jContent gets from MainLayout and this pane does not.
+ *
+ * It sits on this box rather than on .mainPane on purpose: the columns dropdown opens from the
+ * toolbar, which is in the pane but not in here, so clipping at this level cannot swallow a popover.
+ */
 .tableArea {
     display: flex;
     flex: 1 1 0;
     flex-direction: column;
+    min-width: 0;
+    max-width: 100%;
     min-height: 0;
+
+    overflow: hidden;
 }
 
+/* Scrolls both ways. The rows are what scroll sideways, not the pane, so the heading above and the
+   pagination below stay where they are while the columns move under them. */
+/*
+ * The one box that scrolls, and the only place the extra width is allowed to exist. `max-width` is
+ * what makes that true: without it this box grows with the table and the scrollbar never appears,
+ * because there is nothing left for it to be a scrollbar for. jContent's own table scroller pairs
+ * exactly these two on the same reasoning.
+ *
+ * Its right-hand edge is also what the pinned row menu sticks to, so bounding it here is what puts
+ * that column back on screen.
+ */
 .tableScroll {
     flex: 1 1 0;
+    min-width: 0;
+    max-width: 100%;
     min-height: 0;
 
-    overflow-y: auto;
+    overflow: auto;
 }
 
+/*
+ * As wide as the columns it actually has, and never narrower than the pane.
+ *
+ * `width: 100%` on its own made the table fit the pane whatever it was holding, so once the chosen
+ * columns added up to more than the width available the browser shrank them below the widths they
+ * had been given - and because a Moonstone cell hides its overflow, the content of one ran under the
+ * next instead of the row simply becoming too wide. Sizing to the content lets a row keep its real
+ * width and hands the excess to the scroller above; the `min-width` is what stops a table of two
+ * columns from huddling at the left edge of an empty pane.
+ */
 .table {
-    width: 100%;
+    width: max-content;
+    min-width: 100%;
+}
+
+/*
+ * Sorting is asked for by clicking the arrow, not by clicking anywhere in the header.
+ *
+ * Moonstone puts the sort handler on the whole `th`, so the label, the padding and the empty space
+ * beside it all reorder the table - easy to trigger by accident while reaching past a header, and it
+ * leaves nowhere inert to click. Taking hit testing off the cell and giving it back to the arrow
+ * alone needs no change to the handler: the arrow is inside the cell, so its click still reaches it
+ * by bubbling.
+ *
+ * Two things fall out of this for free. The pointer cursor Moonstone puts on the whole cell stops
+ * showing over the label, because an element that is not hit tested contributes no cursor - so the
+ * header stops advertising a click that no longer does anything. And the arrow's hover colour still
+ * works, since hovering it makes its ancestors hover too.
+ *
+ * Matched on a substring of the class rather than its full name: Moonstone's CSS module hashes it
+ * (`_sortable_dcb151d`) and only the hash moves between releases. That class is put on sortable
+ * headers only, so the select-all checkbox in the header keeps working.
+ */
+.table th[class*='sortable'] {
+    pointer-events: none;
+}
+
+.table th[class*='sortable'] svg[class*='sort'] {
+    flex: 0 0 auto;
+
+    cursor: pointer;
+
+    pointer-events: auto;
+}
+
+/*
+ * A column heading that gives way rather than pushing the sort arrow out of the cell.
+ *
+ * Moonstone builds a header as a nowrap flex row holding the label and then the arrow, with
+ * `overflow: hidden` on the cell. Passed a plain string - which is what a column label normally is -
+ * the label becomes an anonymous flex item, and being nowrap its smallest possible width is its full
+ * width, so it refuses to shrink: a long heading overflowed the cell and the arrow, last in the row,
+ * was the part clipped away. An anonymous item cannot be styled, hence wrapping the label in
+ * something real. This is that something, and all it does is agree to be narrower than its text.
+ */
+.headerLabel {
+    min-width: 0;
+
+    overflow: hidden;
+
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+/*
+ * The row menu stays put while the columns scroll under it.
+ *
+ * It is the last cell on the line, so with enough columns chosen it was the first thing to leave the
+ * screen - and it is the one column that is not content, so it is worth reaching whatever else is on
+ * show. Pinned to the right edge instead, over the row's own background colour, taken from the same
+ * custom property Moonstone sets on the row so the pinned cell follows the row through hover rather
+ * than sitting on a patch of the wrong shade.
+ *
+ * Two details. The separating line is a shadow, not a border, because a table with collapsed borders
+ * does not carry a sticky cell's border along with it. And the row's own bottom border would be
+ * hidden behind this cell's background, so it is drawn back on as an inset shadow, which keeps the
+ * horizontal rules unbroken across the pinned column.
+ *
+ * This assumes the row menu is the last column, which is how the table builds it.
+ */
+.table tr > :last-child {
+    position: sticky;
+    right: 0;
+    z-index: 1;
+
+    background-color: var(--moon-row-background, var(--color-light));
+    box-shadow: -6px 0 6px -6px rgb(0 0 0 / 20%), inset 0 -1px 0 var(--color-gray_light);
+}
+
+/* Above the cells that scroll under it, and above the header's own stacking, so the corner where the
+   two pinned edges meet stays on top of both. */
+.table thead tr > :last-child {
+    z-index: 6;
 }
 
 .tablePagination {
@@ -49,12 +186,21 @@
     border-top: 1px solid var(--color-gray_light40);
 }
 
+/* `min-width: 0` so this line shrinks with the pane rather than setting a floor under it, which
+   would push its own right-hand end out of view. */
 .toolBar {
     display: flex;
     flex: 0 0 auto;
     align-items: center;
     gap: 8px;
+    min-width: 0;
     padding-bottom: 12px;
+}
+
+/* Last on the line and the first thing to lose room, so it is told not to give any up: whatever
+   else is on this line, the way to choose columns has to stay reachable. */
+.toolBarColumns {
+    flex: 0 0 auto;
 }
 
 .search {
@@ -63,6 +209,92 @@
 
 .toolBarSpacer {
     flex: 1 1 auto;
+}
+
+/*
+ * The bulk actions, in the place the browse controls occupy when nothing is selected. It wraps
+ * rather than scrolls: how many buttons appear depends on what is selected, and a row of actions
+ * that runs off the edge hides the destructive ones at the end.
+ */
+.selectionBar {
+    display: flex;
+    flex: 0 1 auto;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+/* The separator and the generic actions travel together, so that the separator can tell it is the
+   only one here and hide itself when none of those actions apply. */
+.selectionActions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/*
+ * A reference shown as what it points at.
+ *
+ * The thumbnails are Moonstone's own small size, 40px, which is the same size jContent's media list
+ * draws in its own rows - and it fits inside the table's 48px row without forcing it taller. The
+ * min-height is what keeps a row of images the same height as a row of text, and is also what lets
+ * the row grow on its own should a bigger thumbnail ever be used here: a table row treats its height
+ * as a minimum, so the cell content is what decides.
+ */
+.referenceCell {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 40px;
+}
+
+.referenceThumb {
+    display: inline-flex;
+    flex: 0 0 auto;
+}
+
+/* Shown beside a lone thumbnail. Truncates rather than wraps: the row is one line high, and a
+   second line would push the image out of its own cell. */
+.referenceName {
+    min-width: 0;
+
+    overflow: hidden;
+
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.referenceMore {
+    flex: 0 0 auto;
+
+    color: var(--color-gray_dark40);
+}
+
+/* Underlined only on hover and focus, so a column of addresses does not read as a wall of rules,
+   while still being recognisable as something to click. */
+.link {
+    color: var(--color-accent_dark);
+
+    text-decoration: none;
+}
+
+.link:hover,
+.link:focus-visible {
+    text-decoration: underline;
+}
+
+.linkList {
+    min-width: 0;
+}
+
+/* Several chips in one cell, for a multi-valued property. Wraps rather than overflowing, since the
+   cell is already scrollable and a chip cut in half reads as a different word. */
+.chipList {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
 }
 
 .subtitle {

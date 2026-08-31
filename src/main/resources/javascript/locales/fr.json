@@ -17,6 +17,14 @@
       "filter": "Filtrer",
       "columns": "Colonnes"
     },
+    "bulk": {
+      "trigger": "Actions groupées",
+      "empty": "Aucune action groupée n'est disponible.",
+      "tag": "Ajouter des tags",
+      "categorize": "Catégoriser",
+      "exportCsv": "Exporter en CSV",
+      "assignTo": "Assigner à"
+    },
     "settings": {
       "title": "Types de contenu",
       "description": "Choisissez les types de contenu listés dans l'accordéon Types de contenu. Ce réglage s'applique à tous ceux qui travaillent sur ce site. Tout sélectionner conserve le comportement par défaut : les types ajoutés plus tard apparaissent d'eux-mêmes.",
@@ -37,6 +45,9 @@
       "lastModified": "Dernière modification",
       "lastModifiedBy": "Modifié par",
       "publicationStatus": "Publication",
+      "tags": "Tags",
+      "categories": "Catégories",
+      "lock": "Verrou",
       "publishedOn": "Publié le",
       "publishedBy": "Publié par",
       "path": "Chemin",
@@ -46,14 +57,20 @@
     "columns": {
       "searchPlaceholder": "Rechercher un champ",
       "visible": "Champs visibles",
-      "available": "Champs disponibles",
+      "availableType": "Champs propres au type",
+      "availableCommon": "Champs communs",
       "noMatch": "Aucun champ ne correspond.",
-      "saveAsDefault": "Enregistrer par défaut",
-      "saved": "Enregistré",
+      "autoSaved": "Votre choix est conservé",
+      "reset": "Réinitialiser",
       "moveUp": "Monter",
       "moveDown": "Descendre"
     },
-    "yes": "Oui",
-    "no": "Non"
+    "boolean": {
+      "true": "vrai",
+      "false": "faux"
+    },
+    "lock": {
+      "locked": "Verrouillé"
+    }
   }
 }

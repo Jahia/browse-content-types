@@ -17,6 +17,14 @@
       "filter": "Filter",
       "columns": "Columns"
     },
+    "bulk": {
+      "trigger": "Bulk",
+      "empty": "No bulk operation is available.",
+      "tag": "Tag",
+      "categorize": "Categorize",
+      "exportCsv": "Export as CSV",
+      "assignTo": "Assign to"
+    },
     "settings": {
       "title": "Content Types",
       "description": "Choose which content types are listed in the Content Types accordion. This applies to everyone working on this site. Selecting all of them keeps the default, so types added later appear on their own.",
@@ -37,6 +45,9 @@
       "lastModified": "Last modification",
       "lastModifiedBy": "Modified by",
       "publicationStatus": "Publication",
+      "tags": "Tags",
+      "categories": "Categories",
+      "lock": "Lock",
       "publishedOn": "Published on",
       "publishedBy": "Published by",
       "path": "Path",
@@ -46,14 +57,20 @@
     "columns": {
       "searchPlaceholder": "Find a field",
       "visible": "Visible fields",
-      "available": "Available fields",
+      "availableType": "Type-specific fields",
+      "availableCommon": "Common fields",
       "noMatch": "No field matches.",
-      "saveAsDefault": "Save as default",
-      "saved": "Saved",
+      "autoSaved": "Your choice is remembered",
+      "reset": "Reset",
       "moveUp": "Move up",
       "moveDown": "Move down"
     },
-    "yes": "Yes",
-    "no": "No"
+    "boolean": {
+      "true": "true",
+      "false": "false"
+    },
+    "lock": {
+      "locked": "Locked"
+    }
   }
 }
