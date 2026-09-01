@@ -13,8 +13,6 @@
     },
     "toolbar": {
       "searchPlaceholder": "Search",
-      "advancedSearch": "Advanced search",
-      "filter": "Filter",
       "columns": "Columns"
     },
     "bulk": {
@@ -76,8 +74,8 @@
       "column": "Filter on {{column}}",
       "apply": "Apply",
       "clear": "Clear",
+      "remove": "Remove filter {{filter}}",
       "clearAll": "Clear all filters",
-      "none": "No filter is set.",
       "activeCount": "Filtered ({{count}})",
       "valuePlaceholder": "Value",
       "operator": {

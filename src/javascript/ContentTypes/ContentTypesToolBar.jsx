@@ -1,10 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import {useSelector} from 'react-redux';
 import {useTranslation} from 'react-i18next';
 import {Button, Close, CustomDropdown, Filter, SearchInput, Typography} from '@jahia/moonstone';
-import {DisplayAction} from '@jahia/ui-extender';
-import {ButtonRenderer} from '@jahia/jcontent';
 import {ColumnsIcon} from './ColumnsIcon';
 import {ContentTypesColumnsPicker} from './ContentTypesColumnsPicker';
 import {ContentTypesSelectionBar} from './ContentTypesSelectionBar';
@@ -15,13 +12,14 @@ import styles from './ContentTypes.module.scss';
 /**
  * The row of controls between the type heading and the table.
  *
- * The search box narrows the table across every field at once, Advanced search opens jContent's own
- * search dialog - the same registered action its page builder header uses - and the columns icon
- * opens the picker for which fields the table shows, and in what order.
+ * The search box narrows the table across every field at once, and the columns icon opens the picker
+ * for which fields the table shows, and in what order.
  *
- * Filter is the summary, not the way in. Conditions are set from the column headers, where the column
- * is; this gathers up whatever is in force so that a condition on a column since scrolled past, or
- * since hidden, is never narrowing the table with nothing on screen to say why.
+ * Filter is the summary, not the way in, and it appears only once there is something to summarise.
+ * Conditions are set from the column headers, where the column is; this gathers up whatever is in
+ * force so that a condition on a column since scrolled past, or since hidden, is never narrowing the
+ * table with nothing on screen to say why. Each one is also named in the line itself, beside the
+ * button, so that reading why the table is short does not take a click.
  *
  * Ticking a row replaces all of that with what can be done to what is ticked, in the same place, as
  * jContent's own list does: while there is a selection, the controls for finding content are not
@@ -49,7 +47,6 @@ export const ContentTypesToolBar = ({
     onClearAllFilters
 }) => {
     const {t} = useTranslation(NAMESPACE);
-    const site = useSelector(state => state.site);
 
     return (
         <div className={styles.toolBar} data-sel-role="content-types-toolbar">
@@ -66,31 +63,21 @@ export const ContentTypesToolBar = ({
                         onChange={event => onSearchChange(event.target.value)}
                         onClear={() => onSearchChange('')}
                     />
-                    <DisplayAction
-                        actionKey="search"
-                        path={`/sites/${site}`}
-                        buttonLabel={t('label.toolbar.advancedSearch')}
-                        render={ButtonRenderer}
-                        buttonProps={{variant: 'ghost', 'data-sel-role': 'toolbar-advanced-search'}}
-                    />
-                    {/* Where the filters set from the column headers are gathered up. Without it, a
-                        condition on a column since scrolled past - or since hidden - would narrow the
-                        table with nothing on screen to say why. */}
-                    <CustomDropdown
-                        variant="ghost"
-                        icon={<Filter/>}
-                        label={filters.length > 0 ?
-                            t('label.filter.activeCount', {count: filters.length}) :
-                            t('label.toolbar.filter')}
-                        data-sel-role="toolbar-filter"
-                    >
-                        <div className={styles.filterSummary} data-sel-role="filter-summary">
-                            {filters.length === 0 ? (
-                                <Typography variant="caption" className={styles.subtitle}>
-                                    {t('label.filter.none')}
-                                </Typography>
-                            ) : (
-                                <>
+                    {/* Nothing about filters is drawn until one is in force. Conditions are
+                        created from the column headers, not from here, so an empty Filter control
+                        would only invite a click that leads nowhere. Once something is narrowing the
+                        table it is named in the line itself, and the button beside it carries the
+                        whole list and the way to clear them all at once - which is what a shortened
+                        chip cannot do. */}
+                    {filters.length > 0 && (
+                        <>
+                            <CustomDropdown
+                                variant="ghost"
+                                icon={<Filter/>}
+                                label={t('label.filter.activeCount', {count: filters.length})}
+                                data-sel-role="toolbar-filter"
+                            >
+                                <div className={styles.filterSummary} data-sel-role="filter-summary">
                                     {filters.map(filter => (
                                         <div key={filter.c} className={styles.filterSummaryRow}>
                                             <Typography isNowrap variant="body">
@@ -114,10 +101,44 @@ export const ContentTypesToolBar = ({
                                             onClick={onClearAllFilters}
                                         />
                                     </div>
-                                </>
-                            )}
-                        </div>
-                    </CustomDropdown>
+                                </div>
+                            </CustomDropdown>
+
+                            {/* The same conditions spelled out in the line itself, so that reading
+                                why the table is short does not take a click. */}
+                            <div className={styles.activeFilters} data-sel-role="active-filters">
+                                {filters.map(filter => {
+                                    const described = describeFilter(filter, fieldsByKey.get(filter.c), t);
+
+                                    return (
+                                        <span
+                                            key={filter.c}
+                                            className={styles.activeFilter}
+                                            data-sel-role="active-filter"
+                                            data-sel-filter={filter.c}
+                                        >
+                                            <Typography
+                                                isNowrap
+                                                variant="caption"
+                                                className={styles.activeFilterLabel}
+                                                title={described}
+                                            >
+                                                {described}
+                                            </Typography>
+                                            <Button
+                                                variant="ghost"
+                                                size="small"
+                                                icon={<Close/>}
+                                                aria-label={t('label.filter.remove', {filter: described})}
+                                                data-sel-role="active-filter-remove"
+                                                onClick={() => onClearFilter(filter.c)}
+                                            />
+                                        </span>
+                                    );
+                                })}
+                            </div>
+                        </>
+                    )}
                 </>
             )}
 

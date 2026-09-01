@@ -13,8 +13,6 @@
     },
     "toolbar": {
       "searchPlaceholder": "Rechercher",
-      "advancedSearch": "Recherche avancée",
-      "filter": "Filtrer",
       "columns": "Colonnes"
     },
     "bulk": {
@@ -76,8 +74,8 @@
       "column": "Filtrer sur {{column}}",
       "apply": "Appliquer",
       "clear": "Retirer",
+      "remove": "Retirer le filtre {{filter}}",
       "clearAll": "Retirer tous les filtres",
-      "none": "Aucun filtre n'est défini.",
       "activeCount": "Filtré ({{count}})",
       "valuePlaceholder": "Valeur",
       "operator": {

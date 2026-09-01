@@ -378,6 +378,44 @@
     border-top: 1px solid var(--color-gray_light40);
 }
 
+/*
+ * The conditions in force, named in the toolbar beside the Filter button.
+ *
+ * Truncated one at a time and never wrapped: the toolbar is a single line, and one long condition on
+ * a long column name would otherwise push the columns control off the end of it. Each carries its
+ * full text as a tooltip, and the dropdown still lists every one, so a shortened chip is never the
+ * only place a condition can be read.
+ */
+.activeFilters {
+    display: flex;
+    flex: 0 1 auto;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.activeFilter {
+    display: flex;
+    flex: 0 1 auto;
+    align-items: center;
+    min-width: 0;
+    max-width: 240px;
+    padding-left: 8px;
+
+    border-radius: 16px;
+    background-color: var(--color-gray_light40);
+}
+
+.activeFilterLabel {
+    min-width: 0;
+    overflow: hidden;
+
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+
 .subtitle {
     color: var(--color-gray_dark40);
 }
