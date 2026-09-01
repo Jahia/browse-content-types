@@ -324,6 +324,25 @@
     flex: 0 0 auto;
 }
 
+/*
+ * The arrow of a column that is not the one being sorted by.
+ *
+ * Moonstone draws it in `--color-gray_light`, which is #dadada: 1.37:1 against the header, where
+ * anything carrying meaning is asked for 3:1, and in practice hard to make out at all. `--color-gray`
+ * brings it to 3.96:1 and still reads as inactive beside the accent of the arrow in force.
+ *
+ * Hover goes a step darker again, because Moonstone's own hover colour is the one now used at rest -
+ * without this the arrow would stop answering the pointer. Both selectors carry a class and an
+ * element, so they outrank the single class Moonstone sets the colour with.
+ */
+.headerSortInactive svg {
+    color: var(--color-gray);
+}
+
+.headerSortInactive:hover svg {
+    color: var(--color-gray_dark);
+}
+
 /* A column that is currently narrowing the table says so where the condition was set, not only in
    the summary above. */
 

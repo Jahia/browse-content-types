@@ -91,18 +91,25 @@ const humanise = status => status.toLowerCase().replace(/_/g, ' ');
  * this button is the only thing that reorders anything. Two buttons, two meanings, and the arrow is
  * reachable from the keyboard - which a sort living on a non-focusable `th` never was.
  */
-const ColumnSortControl = ({label, isSorted, direction, onToggle}) => (
-    <Button
-        variant="ghost"
-        size="small"
-        icon={<SortIndicator isSorted={isSorted} direction={direction}/>}
-        aria-label={label}
-        title={label}
-        className={styles.headerSort}
-        data-sel-role={isSorted ? 'column-sort-active' : 'column-sort'}
-        onClick={onToggle}
-    />
-);
+const ColumnSortControl = ({label, isSorted, direction, onToggle}) => {
+    const classes = [styles.headerSort];
+    if (!isSorted) {
+        classes.push(styles.headerSortInactive);
+    }
+
+    return (
+        <Button
+            variant="ghost"
+            size="small"
+            icon={<SortIndicator isSorted={isSorted} direction={direction}/>}
+            aria-label={label}
+            title={label}
+            className={classes.join(' ')}
+            data-sel-role={isSorted ? 'column-sort-active' : 'column-sort'}
+            onClick={onToggle}
+        />
+    );
+};
 
 ColumnSortControl.propTypes = {
     label: PropTypes.string.isRequired,
