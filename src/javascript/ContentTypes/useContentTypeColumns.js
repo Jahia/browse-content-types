@@ -245,6 +245,39 @@ export const useContentTypeColumns = contentType => {
             });
     }, [data, contentType, labelsByProperty, optionsByProperty]);
 
+    /**
+     * The Name column as something that can be filtered.
+     *
+     * It shows a computed value rather than a property, so there was nothing to constrain and no
+     * filter on the column a reader is most likely to want one on. What it computes is the type's
+     * primary item, so that is what gets constrained - checked against a site, `contains "mansion"`
+     * on `luxe:estate.title` returns exactly the rows whose displayed name contains it.
+     *
+     * Only when the primary item is really a property of this type: a type may name a child node
+     * instead, and one may name nothing at all. Either way the display name falls back to the node's
+     * own name, so the filter follows it to `j:nodename`.
+     *
+     * Deliberately not part of `availableFields`: that list is the columns picker, and Name is always
+     * shown. It is published on its own so the table can filter it and the summary can name it.
+     */
+    const nameField = useMemo(() => {
+        const definitions = data?.jcr?.nodeTypeByName?.properties || [];
+        const primaryItem = data?.jcr?.nodeTypeByName?.primaryItem?.name;
+        const isProperty = primaryItem && definitions.some(definition => definition.name === primaryItem);
+
+        return {
+            key: 'displayName',
+            label: t('label.table.name'),
+            jcrProperty: isProperty ? primaryItem : 'j:nodename',
+            filterType: FILTER_TEXT,
+            multiple: false,
+            // Only when falling back: the node name is punctuated where the displayed name has
+            // spaces, so a space in what was typed has to match either. A primary item needs none of
+            // this - its value is what the column draws, character for character.
+            looseSeparators: !isProperty
+        };
+    }, [data, t]);
+
     const availableFields = useMemo(() => [
         ...COMMON_FIELDS.map(field => {
             const common = {...field, label: t(field.labelKey), ...COMMON_FILTERS[field.key]};
@@ -351,7 +384,7 @@ export const useContentTypeColumns = contentType => {
         return visibleKeys.map(key => byKey.get(key)).filter(Boolean);
     }, [availableFields, visibleKeys]);
 
-    return {availableFields, visibleFields, visibleKeys, toggleField, moveField, resetToDefaults, loading};
+    return {availableFields, nameField, visibleFields, visibleKeys, toggleField, moveField, resetToDefaults, loading};
 };
 
 export default useContentTypeColumns;

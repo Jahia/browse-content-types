@@ -1084,7 +1084,7 @@ export const ContentTypesTable = ({
         return [
             {
                 key: 'displayName',
-                label: headerLabel(t('label.table.name'), 'displayName', true),
+                label: headerLabel(t('label.table.name'), 'displayName', true, fieldsByKey.get('displayName')),
                 width: NAME_COLUMN_WIDTH,
                 // Bounded and scrollable, the way every other text column already was. The whole
                 // name is in the cell, so hovering it scrolls through the part that does not fit;
@@ -1113,7 +1113,7 @@ export const ContentTypesTable = ({
                 ))
             }
         ];
-    }, [visibleFields, t, renderContext, hasSelection, filters, onSetFilter, onClearFilter, sortBy, sortDirection, toggleSort]);
+    }, [visibleFields, t, renderContext, hasSelection, filters, fieldsByKey, onSetFilter, onClearFilter, sortBy, sortDirection, toggleSort]);
 
     // Falling back to previousData keeps the table on screen while a page or sort change is in
     // flight, instead of collapsing to a loader and back on every click.

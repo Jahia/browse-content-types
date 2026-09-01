@@ -41,6 +41,13 @@ export const GET_CONTENT_TYPE_FIELDS = gql`
         jcr {
             nodeTypeByName(name: $type) {
                 name
+                # What the Name column shows. Jahia draws a node's display name from its type's
+                # primary item, which is a different property for every type - title on an estate,
+                # lastName on a realtor - and the node's own name where a type names none. Asking
+                # for it is what lets that column be filtered on the value it actually displays.
+                primaryItem {
+                    name
+                }
                 properties {
                     name
                     displayName(language: $language)

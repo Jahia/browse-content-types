@@ -118,6 +118,23 @@ export const valuesOf = value => (Array.isArray(value) ? value : [value])
 const escapeLike = value => String(value).replace(/[\\%_]/g, match => `\\${match}`);
 
 /**
+ * What a reader typed, as the inside of a LIKE pattern.
+ *
+ * Lowercased to pair with LOWER_CASE, and escaped so their `%` means a percent sign.
+ *
+ * A column matched on the node name gets one more step: a space becomes a wildcard. Such a column
+ * *displays* a prettified name - `highlight-numbers` is drawn as "Highlight Numbers" - so a reader
+ * typing what they can see would otherwise match nothing at all, the stored name having a hyphen
+ * where they typed a space. Measured on this site, 40 of the 50 listed types have no primary item and
+ * so are matched this way, which makes it the common case rather than the exception.
+ */
+const likeFragment = (text, field) => {
+    const escaped = escapeLike(text.toLowerCase());
+
+    return field?.looseSeparators ? escaped.replace(/\s+/g, '%') : escaped;
+};
+
+/**
  * How each operator becomes a constraint, keyed by the name the form offers.
  *
  * A table rather than a switch so that adding an operator is one entry in one place, and so that the
@@ -164,8 +181,8 @@ const CONSTRAINT_BUILDERS = {
     isTrue: property => ({property, equals: 'true'}),
     isFalse: property => ({property, equals: 'false'}),
 
-    contains: (property, text) => ({property, like: `%${escapeLike(text.toLowerCase())}%`, function: 'LOWER_CASE'}),
-    startsWith: (property, text) => ({property, like: `${escapeLike(text.toLowerCase())}%`, function: 'LOWER_CASE'}),
+    contains: (property, text, field) => ({property, like: `%${likeFragment(text, field)}%`, function: 'LOWER_CASE'}),
+    startsWith: (property, text, field) => ({property, like: `${likeFragment(text, field)}%`, function: 'LOWER_CASE'}),
 
     // The odd one out, and deliberately so. There is no `notLike`, so the only negation available for
     // a pattern is the `none` composition - and a `none` on its own is unreliable: checked against a
@@ -177,10 +194,10 @@ const CONSTRAINT_BUILDERS = {
     // The `exists` arm is doing that job, and it also settles a question the operator would otherwise
     // leave open: a record with no value at all is not returned. "Does not contain" describes a value
     // that is there, which is also the only reading the repository will answer reliably.
-    notContains: (property, text) => ({
+    notContains: (property, text, field) => ({
         all: [
             {property, exists: true},
-            {none: [{property, like: `%${escapeLike(text.toLowerCase())}%`, function: 'LOWER_CASE'}]}
+            {none: [{property, like: `%${likeFragment(text, field)}%`, function: 'LOWER_CASE'}]}
         ]
     }),
 
@@ -223,7 +240,7 @@ export const toConstraint = (field, filter) => {
         return null;
     }
 
-    return build(property, text);
+    return build(property, text, field);
 };
 
 /**

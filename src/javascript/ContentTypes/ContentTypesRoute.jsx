@@ -60,8 +60,10 @@ export const ContentTypesRoute = () => {
     // name a column this reader has hidden, and it must still narrow the table and still be nameable
     // in the summary.
     const fieldsByKey = useMemo(
-        () => new Map(columns.availableFields.map(field => [field.key, field])),
-        [columns.availableFields]
+        // Name is in here without being in the picker: it is always shown, but a filter on it still
+        // has to be built and still has to be nameable in the summary.
+        () => new Map([...columns.availableFields, columns.nameField].map(field => [field.key, field])),
+        [columns.availableFields, columns.nameField]
     );
 
     if (!contentType) {
