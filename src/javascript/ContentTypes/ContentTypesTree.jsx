@@ -3,11 +3,26 @@ import {useQuery} from '@apollo/client';
 import {shallowEqual, useDispatch, useSelector} from 'react-redux';
 import {useTranslation} from 'react-i18next';
 import {registry} from '@jahia/ui-extender';
-import {Loader, TreeView, Typography} from '@jahia/moonstone';
+import {Layers, Loader, TreeView, Typography, toIconComponent} from '@jahia/moonstone';
 import {GET_LISTED_TYPES, GET_SITE_CONTENT_TYPES} from './ContentTypes.gql';
 import {ACCORDION_KEY} from './registerContentTypesAccordion';
 import {NAMESPACE} from '../ContentTypes.register';
 import styles from './ContentTypes.module.scss';
+
+/**
+ * A content type's own icon, or a generic one where it has none.
+ *
+ * Jahia answers with a path carrying no extension, and with `nt_base` for a type nobody gave an icon
+ * to - the same sentinel jContent's content type picker tests for, which is why the `.png` is put
+ * back before the test rather than after: it keeps the comparison identical to the one over there.
+ * `Layers` is what jContent falls back to for an unrecognised type, so a type without an icon of its
+ * own looks the same here as it does everywhere else.
+ */
+const typeIcon = icon => {
+    const url = icon ? `${icon}.png` : null;
+
+    return url && !url.endsWith('/nt_base.png') ? toIconComponent(url) : <Layers/>;
+};
 
 /**
  * Navigates through jContent's own action, which turns a selection into a URL. That is what puts
@@ -104,6 +119,7 @@ export const ContentTypesTree = () => {
     const treeData = types.map(type => ({
         id: type.name,
         label: type.displayName || type.name,
+        iconStart: typeIcon(type.icon),
         isSelectable: true,
         treeItemProps: {
             'data-sel-role': 'content-type-item',

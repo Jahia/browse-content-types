@@ -21,6 +21,7 @@ export const GET_SITE_CONTENT_TYPES = gql`
                     name
                     displayName(language: $language)
                     editorial: isNodeType(type: {types: ["jmix:editorialContent"]})
+                    icon
                 }
             }
         }
