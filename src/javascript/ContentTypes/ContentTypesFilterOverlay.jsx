@@ -2,7 +2,7 @@ import React, {useState} from 'react';
 import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
 import {Button, Dropdown, Input} from '@jahia/moonstone';
-import {FILTER_BOOLEAN, FILTER_DATE, FILTER_NUMBER, OPERATORS, VALUELESS_OPERATORS} from './ContentTypesFilters';
+import {FILTER_BOOLEAN, FILTER_DATE, FILTER_NUMBER, OPERATORS, VALUELESS_OPERATORS, defaultOperator, operatorLabel} from './ContentTypesFilters';
 import {NAMESPACE} from '../ContentTypes.register';
 import styles from './ContentTypes.module.scss';
 
@@ -21,7 +21,7 @@ export const ContentTypesFilterOverlay = ({field, filter, onApply, onClear, onCl
     const {t} = useTranslation(NAMESPACE);
     const operators = OPERATORS[field.filterType] || [];
 
-    const [operator, setOperator] = useState(filter?.o || operators[0]);
+    const [operator, setOperator] = useState(filter?.o || defaultOperator(field.filterType));
     const [value, setValue] = useState(filter?.v === undefined ? '' : String(filter.v));
 
     const needsValue = !VALUELESS_OPERATORS.has(operator);
@@ -58,7 +58,7 @@ export const ContentTypesFilterOverlay = ({field, filter, onApply, onClear, onCl
                 isFullWidth
                 size="small"
                 hasSearch={false}
-                data={operators.map(name => ({label: t(`label.filter.operator.${name}`), value: name}))}
+                data={operators.map(name => ({label: operatorLabel(t, field.filterType, name), value: name}))}
                 value={operator}
                 data-sel-role="filter-operator"
                 onChange={(event, item) => {

@@ -95,7 +95,17 @@
         "before": "before",
         "lastDays": "in the last (days)",
         "isTrue": "is true",
-        "isFalse": "is false"
+        "isFalse": "is false",
+        "notContains": "does not contain",
+        "text": {
+          "equals": "is exactly"
+        },
+        "number": {
+          "equals": "equal to",
+          "gt": "superior to",
+          "lt": "inferior to",
+          "notEquals": "is not"
+        }
       }
     },
     "noFilterResults": "No content of this type matches the filters."

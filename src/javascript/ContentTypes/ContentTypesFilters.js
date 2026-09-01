@@ -21,11 +21,25 @@ export const FILTER_BOOLEAN = 'boolean';
  * numerically rather than comparing the text it is stored as.
  */
 export const OPERATORS = {
-    [FILTER_TEXT]: ['contains', 'equals', 'notEquals', 'startsWith', 'empty', 'notEmpty'],
-    [FILTER_NUMBER]: ['equals', 'notEquals', 'gt', 'gte', 'lt', 'lte', 'empty', 'notEmpty'],
+    [FILTER_TEXT]: ['startsWith', 'contains', 'notContains', 'equals'],
+    [FILTER_NUMBER]: ['equals', 'gt', 'lt', 'notEquals'],
     [FILTER_DATE]: ['after', 'before', 'lastDays', 'empty', 'notEmpty'],
     [FILTER_BOOLEAN]: ['isTrue', 'isFalse', 'empty']
 };
+
+/**
+ * The operator a fresh filter starts on, which is not simply the first one listed.
+ *
+ * Order is what reads best in the dropdown; the default is what a reader most often wants. For text
+ * those differ - "contains" is the common case, while the list starts at "starts with" - so the two
+ * are kept apart rather than one being bent to serve the other. Falls back to the first operator for
+ * any kind not named here.
+ */
+const DEFAULT_OPERATORS = {
+    [FILTER_TEXT]: 'contains'
+};
+
+export const defaultOperator = filterType => DEFAULT_OPERATORS[filterType] || (OPERATORS[filterType] || [])[0];
 
 /** Operators that are the whole condition, with nothing for the reader to type. */
 export const VALUELESS_OPERATORS = new Set(['empty', 'notEmpty', 'isTrue', 'isFalse']);
@@ -59,6 +73,23 @@ const CONSTRAINT_BUILDERS = {
 
     contains: (property, text) => ({property, like: `%${escapeLike(text.toLowerCase())}%`, function: 'LOWER_CASE'}),
     startsWith: (property, text) => ({property, like: `${escapeLike(text.toLowerCase())}%`, function: 'LOWER_CASE'}),
+
+    // The odd one out, and deliberately so. There is no `notLike`, so the only negation available for
+    // a pattern is the `none` composition - and a `none` on its own is unreliable: checked against a
+    // site, `none: [like]` on a property whose value contains spaces returned every record instead of
+    // none of them, while the same negation on a single-word property was correct. It has no base set
+    // to subtract from. Pairing it with a positive constraint gives it one, and then
+    // contains + notContains adds back up to the total on every property tried, spaces or not.
+    //
+    // The `exists` arm is doing that job, and it also settles a question the operator would otherwise
+    // leave open: a record with no value at all is not returned. "Does not contain" describes a value
+    // that is there, which is also the only reading the repository will answer reliably.
+    notContains: (property, text) => ({
+        all: [
+            {property, exists: true},
+            {none: [{property, like: `%${escapeLike(text.toLowerCase())}%`, function: 'LOWER_CASE'}]}
+        ]
+    }),
 
     equals: (property, text) => ({property, equals: text}),
     notEquals: (property, text) => ({property, notEquals: text}),
@@ -120,6 +151,18 @@ export const toNodeConstraint = (filters, fieldsByKey, searchConstraint) => {
     return constraints.length === 1 ? constraints[0] : {all: constraints};
 };
 
+/**
+ * An operator in the reader's words.
+ *
+ * Asked for by column kind first, falling back to a name that suits every kind. `equals` is why: "is
+ * exactly" reads correctly over text and "equal to" over a number, and the same operator serves both.
+ * i18next takes the first key that resolves, so a kind only needs an entry where it wants to differ.
+ */
+export const operatorLabel = (t, filterType, operator) => t([
+    `label.filter.operator.${filterType}.${operator}`,
+    `label.filter.operator.${operator}`
+]);
+
 /** The filter set on a column, if any. */
 export const filterFor = (filters, columnKey) => filters.find(filter => filter.c === columnKey);
 
@@ -132,7 +175,7 @@ export const filterFor = (filters, columnKey) => filters.find(filter => filter.c
  */
 export const describeFilter = (filter, field, t) => {
     const column = field?.label || filter.c;
-    const operator = t(`label.filter.operator.${filter.o}`);
+    const operator = operatorLabel(t, field?.filterType, filter.o);
 
     return VALUELESS_OPERATORS.has(filter.o) ?
         `${column} · ${operator}` :

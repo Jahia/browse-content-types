@@ -95,7 +95,17 @@
         "before": "avant le",
         "lastDays": "dans les derniers (jours)",
         "isTrue": "est vrai",
-        "isFalse": "est faux"
+        "isFalse": "est faux",
+        "notContains": "ne contient pas",
+        "text": {
+          "equals": "est exactement"
+        },
+        "number": {
+          "equals": "égal à",
+          "gt": "supérieur à",
+          "lt": "inférieur à",
+          "notEquals": "n'est pas"
+        }
       }
     },
     "noFilterResults": "Aucun contenu de ce type ne correspond aux filtres."
