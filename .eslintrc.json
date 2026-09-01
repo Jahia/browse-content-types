@@ -14,5 +14,19 @@
   },
   "rules": {
     "import/named": "error"
-  }
+  },
+  "overrides": [
+    {
+      "files": [
+        "**/*.spec.js",
+        "**/*.spec.jsx"
+      ],
+      "extends": [
+        "plugin:jest/recommended"
+      ],
+      "env": {
+        "jest": true
+      }
+    }
+  ]
 }
