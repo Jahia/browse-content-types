@@ -14,6 +14,15 @@ export const FILTER_DATE = 'date';
 export const FILTER_BOOLEAN = 'boolean';
 
 /**
+ * A property that can only hold one of a listed set of values.
+ *
+ * Its own kind rather than text or number, because what it holds is a code from the definition -
+ * `swimmingPool`, `house`, `AF` - and the reader is shown the label. Typing is the wrong control for
+ * it: the values are known, finite, and already on the client, so they are offered as a list.
+ */
+export const FILTER_CHOICE = 'choice';
+
+/**
  * The operators each kind offers, in the order they are listed.
  *
  * Every one of them is something `nodeConstraint` can express, and - unlike the sort - the comparison
@@ -21,6 +30,7 @@ export const FILTER_BOOLEAN = 'boolean';
  * numerically rather than comparing the text it is stored as.
  */
 export const OPERATORS = {
+    [FILTER_CHOICE]: ['is', 'isNot'],
     [FILTER_TEXT]: ['startsWith', 'contains', 'notContains', 'equals'],
     [FILTER_NUMBER]: ['equals', 'gt', 'lt', 'notEquals'],
     [FILTER_DATE]: ['after', 'before', 'lastDays', 'empty', 'notEmpty'],
@@ -67,6 +77,26 @@ const escapeLike = value => String(value).replace(/[\\%_]/g, match => `\\${match
 const CONSTRAINT_BUILDERS = {
     empty: property => ({property, exists: false}),
     notEmpty: property => ({property, exists: true}),
+
+    // Choosing from a value list. `is` needs nothing clever: measured against a site, `equals` on a
+    // multi-valued property matches a node holding that value among its others, which is exactly what
+    // "is" should mean - 33 of 161 estates for `options is garage`, matching the data exactly.
+    is: (property, value) => ({property, equals: value}),
+
+    // `isNot` cannot use notEquals. On a multi-valued property notEquals answers neither "does not
+    // hold this value" (128) nor "holds some other value" (93) but 45, which is neither - so it is
+    // not usable there at all. This shape is: no value at all, or a value that is not this one. It
+    // was checked against the data on four constrained properties, single and multi valued, and
+    // agreed with it on every one.
+    //
+    // The `exists` arm inside `all` is what makes the negation reliable - a bare `none` has no base
+    // set to subtract from and returns everything. See notContains above.
+    isNot: (property, value) => ({
+        any: [
+            {property, exists: false},
+            {all: [{property, exists: true}, {none: [{property, equals: value}]}]}
+        ]
+    }),
 
     isTrue: property => ({property, equals: 'true'}),
     isFalse: property => ({property, equals: 'false'}),
@@ -154,14 +184,37 @@ export const toNodeConstraint = (filters, fieldsByKey, searchConstraint) => {
 /**
  * An operator in the reader's words.
  *
- * Asked for by column kind first, falling back to a name that suits every kind. `equals` is why: "is
- * exactly" reads correctly over text and "equal to" over a number, and the same operator serves both.
- * i18next takes the first key that resolves, so a kind only needs an entry where it wants to differ.
+ * Asked for in three steps: how this kind of column words it when it holds several values, how the
+ * kind words it, then a name that suits every kind. i18next takes the first key that resolves, so a
+ * kind only needs an entry where it wants to differ.
+ *
+ * Both steps earn their place. `equals` is why the middle one exists: "is exactly" reads correctly
+ * over text and "equal to" over a number, and one operator serves both. Multiplicity is why the first
+ * does: `equals` on a multi-valued property matches a node holding that value *among others* -
+ * measured, 33 of 161 estates for `options equals garage` - so on such a column the operator is a
+ * "contains", and calling it "is" would misdescribe what it does. On a single-valued column "is" is
+ * exactly right and "contains" would be the wrong word.
  */
-export const operatorLabel = (t, filterType, operator) => t([
-    `label.filter.operator.${filterType}.${operator}`,
-    `label.filter.operator.${operator}`
-]);
+export const operatorLabel = (t, field, operator) => {
+    const kind = field?.filterType;
+    const keys = [`label.filter.operator.${kind}.${operator}`, `label.filter.operator.${operator}`];
+
+    if (field?.multiple) {
+        keys.unshift(`label.filter.operator.${kind}Multiple.${operator}`);
+    }
+
+    return t(keys);
+};
+
+/**
+ * A stored value as the reader knows it.
+ *
+ * A constrained property keeps a code while its label belongs to the defining module's resource
+ * bundle. `valueLabels` carries what Content Editor shows for the same field, in the same language.
+ * Falls through to the value for anything not in the map: a property with no value list, and a code
+ * that is stored but no longer offered by the definition, which would otherwise render as nothing.
+ */
+export const labelForValue = (field, value) => field?.valueLabels?.[value] ?? value;
 
 /** The filter set on a column, if any. */
 export const filterFor = (filters, columnKey) => filters.find(filter => filter.c === columnKey);
@@ -175,9 +228,9 @@ export const filterFor = (filters, columnKey) => filters.find(filter => filter.c
  */
 export const describeFilter = (filter, field, t) => {
     const column = field?.label || filter.c;
-    const operator = operatorLabel(t, field?.filterType, filter.o);
+    const operator = operatorLabel(t, field, filter.o);
 
     return VALUELESS_OPERATORS.has(filter.o) ?
         `${column} · ${operator}` :
-        `${column} · ${operator} ${filter.v}`;
+        `${column} · ${operator} ${labelForValue(field, filter.v)}`;
 };

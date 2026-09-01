@@ -2,7 +2,7 @@ import React, {useState} from 'react';
 import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
 import {Button, Dropdown, Input} from '@jahia/moonstone';
-import {FILTER_BOOLEAN, FILTER_DATE, FILTER_NUMBER, OPERATORS, VALUELESS_OPERATORS, defaultOperator, operatorLabel} from './ContentTypesFilters';
+import {FILTER_BOOLEAN, FILTER_CHOICE, FILTER_DATE, FILTER_NUMBER, OPERATORS, VALUELESS_OPERATORS, defaultOperator, operatorLabel} from './ContentTypesFilters';
 import {NAMESPACE} from '../ContentTypes.register';
 import styles from './ContentTypes.module.scss';
 
@@ -17,6 +17,9 @@ import styles from './ContentTypes.module.scss';
  * Nothing is applied as it is typed. A filter reloads the table and changes the address bar, and
  * doing that on every keystroke would fill the browser's history with half-typed words.
  */
+/** Past this many values the list is worth searching rather than scrolling - country has 249. */
+const SEARCHABLE_FROM = 12;
+
 export const ContentTypesFilterOverlay = ({field, filter, onApply, onClear, onClose}) => {
     const {t} = useTranslation(NAMESPACE);
     const operators = OPERATORS[field.filterType] || [];
@@ -58,7 +61,7 @@ export const ContentTypesFilterOverlay = ({field, filter, onApply, onClear, onCl
                 isFullWidth
                 size="small"
                 hasSearch={false}
-                data={operators.map(name => ({label: operatorLabel(t, field.filterType, name), value: name}))}
+                data={operators.map(name => ({label: operatorLabel(t, field, name), value: name}))}
                 value={operator}
                 data-sel-role="filter-operator"
                 onChange={(event, item) => {
@@ -70,7 +73,22 @@ export const ContentTypesFilterOverlay = ({field, filter, onApply, onClear, onCl
                 }}
             />
 
-            {needsValue && field.filterType !== FILTER_BOOLEAN && (
+            {/* A value list is chosen from, never typed: the labels are what the reader sees in the
+                cells, and the code behind each one never has to be known or spelled. */}
+            {needsValue && field.filterType === FILTER_CHOICE && (
+                <Dropdown
+                    isFullWidth
+                    size="small"
+                    hasSearch={(field.valueOptions || []).length > SEARCHABLE_FROM}
+                    placeholder={t('label.filter.valuePlaceholder')}
+                    data={(field.valueOptions || []).map(option => ({label: option.label, value: option.value}))}
+                    value={value}
+                    data-sel-role="filter-choice"
+                    onChange={(event, item) => setValue(item.value)}
+                />
+            )}
+
+            {needsValue && field.filterType !== FILTER_BOOLEAN && field.filterType !== FILTER_CHOICE && (
                 <Input
                     autoFocus
                     type={inputType}

@@ -95,6 +95,8 @@
         "isTrue": "is true",
         "isFalse": "is false",
         "notContains": "does not contain",
+        "is": "is",
+        "isNot": "is not",
         "text": {
           "equals": "is exactly"
         },
@@ -103,6 +105,10 @@
           "gt": "superior to",
           "lt": "inferior to",
           "notEquals": "is not"
+        },
+        "choiceMultiple": {
+          "is": "contains",
+          "isNot": "does not contain"
         }
       }
     },

@@ -3,7 +3,7 @@ import {useQuery} from '@apollo/client';
 import {useSelector} from 'react-redux';
 import {useTranslation} from 'react-i18next';
 import {GET_CONTENT_TYPE_FIELDS, GET_CONTENT_TYPE_VALUE_LABELS} from './ContentTypes.gql';
-import {FILTER_BOOLEAN, FILTER_DATE, FILTER_NUMBER, FILTER_TEXT} from './ContentTypesFilters';
+import {FILTER_BOOLEAN, FILTER_CHOICE, FILTER_DATE, FILTER_NUMBER, FILTER_TEXT} from './ContentTypesFilters';
 import {NAMESPACE} from '../ContentTypes.register';
 
 const STORAGE_PREFIX = 'content-types:columns:';
@@ -168,9 +168,17 @@ export const useContentTypeColumns = contentType => {
         skip: !contentType || !site
     });
 
-    /** Every constrained property of this type, as value -> label. */
-    const valueLabelsByProperty = useMemo(() => {
+    /**
+     * Every constrained property of this type: the labels for looking a stored value up, and the
+     * values in the order the definition lists them.
+     *
+     * Two shapes of the same thing because they are read differently. A cell looks one value up, once
+     * per row, so that wants a map; the filter form offers the whole list, and an object would not
+     * keep the definition's order for a list of numeric codes.
+     */
+    const {labelsByProperty, optionsByProperty} = useMemo(() => {
         const byProperty = {};
+        const optionsFor = {};
 
         const collect = formField => {
             if (formField.declaringNodeType !== contentType) {
@@ -178,25 +186,28 @@ export const useContentTypeColumns = contentType => {
             }
 
             const labels = {};
+            const options = [];
             (formField.valueConstraints || []).forEach(constraint => {
                 const value = constraint.value?.string;
                 // A constraint that is not a choicelist - a node type on a reference, the regex on
                 // seoKeywords - answers with the value as its own label. Left out, so those fields
-                // carry no map at all and render exactly as they did before.
+                // carry no list at all and are filtered as text, the way they always were.
                 if (value && constraint.displayValue && constraint.displayValue !== value) {
                     labels[value] = constraint.displayValue;
+                    options.push({value, label: constraint.displayValue});
                 }
             });
 
-            if (Object.keys(labels).length > 0) {
+            if (options.length > 0) {
                 byProperty[formField.name] = labels;
+                optionsFor[formField.name] = options;
             }
         };
 
         const sections = labelData?.forms?.createForm?.sections || [];
         sections.forEach(section => (section.fieldSets || []).forEach(fieldSet => (fieldSet.fields || []).forEach(collect)));
 
-        return byProperty;
+        return {labelsByProperty: byProperty, optionsByProperty: optionsFor};
     }, [labelData, contentType]);
 
     const contentTypeFields = useMemo(() => {
@@ -205,6 +216,7 @@ export const useContentTypeColumns = contentType => {
             .filter(definition => definition.declaringNodeType?.name === contentType && isRenderable(definition))
             .map(definition => {
                 const key = `ct_${definition.name.replace(/[^a-zA-Z0-9]/g, '_')}`;
+                const valueLabels = labelsByProperty[definition.name];
                 return {
                     key,
                     label: definition.displayName || definition.name,
@@ -218,11 +230,17 @@ export const useContentTypeColumns = contentType => {
                     // A filter constrains the property itself, so multi-valued is no obstacle the way
                     // it is for sorting: a constraint on one value matches a node holding it.
                     jcrProperty: definition.name,
-                    filterType: FILTER_TYPES_BY_REQUIRED_TYPE[definition.requiredType],
-                    valueLabels: valueLabelsByProperty[definition.name]
+                    // A value list decides how the column is filtered, whatever type the codes are
+                    // stored as: the listed values are the only ones it can hold, so it is chosen
+                    // from rather than typed into.
+                    filterType: valueLabels ?
+                        FILTER_CHOICE :
+                        FILTER_TYPES_BY_REQUIRED_TYPE[definition.requiredType],
+                    valueLabels,
+                    valueOptions: optionsByProperty[definition.name]
                 };
             });
-    }, [data, contentType, valueLabelsByProperty]);
+    }, [data, contentType, labelsByProperty, optionsByProperty]);
 
     const availableFields = useMemo(() => [
         ...COMMON_FIELDS.map(field => ({...field, label: t(field.labelKey), ...COMMON_FILTERS[field.key]})),
