@@ -3,7 +3,7 @@ import {useQuery} from '@apollo/client';
 import {useSelector} from 'react-redux';
 import {useTranslation} from 'react-i18next';
 import {GET_CONTENT_TYPE_FIELDS, GET_CONTENT_TYPE_VALUE_LABELS} from './ContentTypes.gql';
-import {FILTER_BOOLEAN, FILTER_CHOICE, FILTER_DATE, FILTER_NUMBER, FILTER_TEXT} from './ContentTypesFilters';
+import {FILTER_BOOLEAN, FILTER_CHOICE, FILTER_DATE, FILTER_NUMBER, FILTER_PUBLICATION, FILTER_TEXT, publicationOptions} from './ContentTypesFilters';
 import {NAMESPACE} from '../ContentTypes.register';
 
 const STORAGE_PREFIX = 'content-types:columns:';
@@ -26,6 +26,9 @@ const COMMON_FILTERS = {
     // Multi-valued, and a constraint on one matches a node holding it among others - which is what
     // filtering by a tag should mean.
     tags: {jcrProperty: 'j:tagList', filterType: FILTER_TEXT},
+    // No `jcrProperty`, deliberately: there is no property to constrain, so nothing is asked of the
+    // repository and the filter is applied to the records instead. See FILTER_PUBLICATION.
+    publicationStatus: {filterType: FILTER_PUBLICATION},
     systemName: {jcrProperty: 'j:nodename', filterType: FILTER_TEXT}
 };
 
@@ -243,7 +246,22 @@ export const useContentTypeColumns = contentType => {
     }, [data, contentType, labelsByProperty, optionsByProperty]);
 
     const availableFields = useMemo(() => [
-        ...COMMON_FIELDS.map(field => ({...field, label: t(field.labelKey), ...COMMON_FILTERS[field.key]})),
+        ...COMMON_FIELDS.map(field => {
+            const common = {...field, label: t(field.labelKey), ...COMMON_FILTERS[field.key]};
+            if (common.filterType !== FILTER_PUBLICATION) {
+                return common;
+            }
+
+            // The statuses are this module's own words rather than the definition's, so they are
+            // built here where `t` is, in the same shape a value list arrives in.
+            const options = publicationOptions(t);
+            const labels = {};
+            options.forEach(option => {
+                labels[option.value] = option.label;
+            });
+
+            return {...common, valueOptions: options, valueLabels: labels};
+        }),
         ...contentTypeFields
     ], [contentTypeFields, t]);
 

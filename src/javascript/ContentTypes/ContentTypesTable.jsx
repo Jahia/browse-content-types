@@ -7,7 +7,7 @@ import {Button, Chip, DataTable, Loader, Lock, Menu, Pagination, SortIndicator, 
 import {ContextualMenu, DisplayAction, registry} from '@jahia/ui-extender';
 import {ButtonRendererNoLabel} from '@jahia/jcontent';
 import {buildRecordQuery} from './ContentTypesRecordQuery';
-import {filterFor, labelForValue, toNodeConstraint} from './ContentTypesFilters';
+import {filterFor, labelForValue, matchesPublication, toNodeConstraint} from './ContentTypesFilters';
 import {ContentTypesFilterOverlay} from './ContentTypesFilterOverlay';
 import {NAMESPACE} from '../ContentTypes.register';
 import styles from './ContentTypes.module.scss';
@@ -73,6 +73,9 @@ const ellipsize = text => {
 const PUBLICATION_CHIPS = {
     PUBLISHED: {labelKey: 'label.publication.published', color: 'success'},
     MODIFIED: {labelKey: 'label.publication.modified', color: 'warning'},
+    // Withdrawn from live after having been published, which is not the same as never having been -
+    // and worth telling apart at a glance, since only one of the two is a state somebody chose.
+    UNPUBLISHED: {labelKey: 'label.publication.unpublished', color: 'danger'},
     NOT_PUBLISHED: {labelKey: 'label.publication.notPublished', color: 'default'}
 };
 
@@ -641,6 +644,20 @@ const renderDynamicField = (field, payload, context) => {
 
 const toRow = node => ({...node, displayName: node.displayName || node.name});
 
+/** The column whose filter this table answers itself. */
+const PUBLICATION_FILTER_KEY = 'publicationStatus';
+
+/**
+ * How many records this table will read at once to answer a publication filter.
+ *
+ * Publication status is not a property, so the repository cannot narrow by it and cannot count what
+ * matches - the records have to be read and sorted through here. That is fine for a type with a few
+ * hundred of them and wrong for one with a hundred thousand, so there is a ceiling, and past it the
+ * table says the answer is partial rather than quietly showing a page of a set it never saw the whole
+ * of.
+ */
+const PUBLICATION_FILTER_CEILING = 2000;
+
 /**
  * Characters the full text parser reads as syntax. Left in a term they change the query, and a
  * stray quote makes it invalid outright: the server answers with a RepositoryException rather
@@ -832,6 +849,18 @@ export const ContentTypesTable = ({
         return toNodeConstraint(filters, fieldsByKey, searchConstraint);
     }, [isSearching, terms, nameTerms, filters, fieldsByKey]);
 
+    /**
+     * The publication filter, when one is set.
+     *
+     * Its presence changes how the table is read: a page at a time is no use when the thing being
+     * filtered on is not something the query can narrow by, so the records are read up to the ceiling
+     * and both the filtering and the paging happen here instead.
+     */
+    const publicationFilter = useMemo(
+        () => filters.find(filter => filter.c === PUBLICATION_FILTER_KEY) || null,
+        [filters]
+    );
+
     const ready = Boolean(site) && Boolean(contentType);
 
     const {data, loading, error, previousData, refetch} = useQuery(recordQuery, {
@@ -839,8 +868,8 @@ export const ContentTypesTable = ({
             sitePath: `/sites/${site}`,
             type: contentType,
             language,
-            offset: (currentPage - 1) * itemsPerPage,
-            limit: itemsPerPage,
+            offset: publicationFilter ? 0 : (currentPage - 1) * itemsPerPage,
+            limit: publicationFilter ? PUBLICATION_FILTER_CEILING : itemsPerPage,
             fieldSorter,
             ordering,
             nodeConstraint
@@ -941,7 +970,10 @@ export const ContentTypesTable = ({
          */
         const headerLabel = (label, sortKey, isSortable, field) => (
             <>
-                {field?.filterType && field?.jcrProperty ? (
+                {/* A kind of filter is the whole test. It used to also require a property to
+                    constrain, which was true of every filterable column until publication status -
+                    which is answered here rather than by the repository and so has none. */}
+                {field?.filterType ? (
                     <FilterableColumnLabel
                         field={field}
                         filter={filterFor(filters, field.key)}
@@ -1027,8 +1059,34 @@ export const ContentTypesTable = ({
     // Both queries are the same criteria query with and without a search constraint, so they answer
     // in the same place; past here nothing cares which one ran.
     const connection = current?.jcr?.nodesByCriteria;
-    const rows = useMemo(() => (connection?.nodes || []).map(toRow), [connection]);
-    const totalItems = connection?.pageInfo?.totalCount || 0;
+    const fetched = useMemo(() => (connection?.nodes || []).map(toRow), [connection]);
+    const serverTotal = connection?.pageInfo?.totalCount || 0;
+
+    // The status the chip shows is the status the filter reads - the same field, in the same
+    // language - so a row can never be hidden by a condition its own cell contradicts.
+    const matching = useMemo(() => (publicationFilter ?
+        fetched.filter(row => matchesPublication(
+            publicationFilter,
+            row.aggregatedPublicationInfo?.publicationStatus
+        )) :
+        fetched), [fetched, publicationFilter]);
+
+    const rows = useMemo(() => {
+        if (!publicationFilter) {
+            return matching;
+        }
+
+        const from = (currentPage - 1) * itemsPerPage;
+        return matching.slice(from, from + itemsPerPage);
+    }, [matching, publicationFilter, currentPage, itemsPerPage]);
+
+    // What was matched, not what the repository counted: the query knows nothing about the status, so
+    // its own total is the unfiltered one and would page to rows that are not there.
+    const totalItems = publicationFilter ? matching.length : serverTotal;
+
+    // More records of this type than were read, so what is on screen is drawn from the first
+    // PUBLICATION_FILTER_CEILING of them rather than from all of them.
+    const partialAnswer = Boolean(publicationFilter) && serverTotal > PUBLICATION_FILTER_CEILING;
 
     // What a bulk action deleted is gone from the rows the refetch brings back, but would otherwise
     // still be selected - and the bar would still be offering to act on it. Dropping whatever the
@@ -1072,6 +1130,11 @@ export const ContentTypesTable = ({
                 that can grow taller than the viewport, and ended up drawn over the last rows
                 instead of pinned below them.
             */}
+            {partialAnswer && (
+                <Typography className={styles.message} variant="caption" data-sel-role="publication-partial">
+                    {t('label.filter.publicationPartial', {read: PUBLICATION_FILTER_CEILING, total: serverTotal})}
+                </Typography>
+            )}
             <div className={styles.tableScroll}>
                 <DataTable
                     enableSelection

@@ -9,6 +9,7 @@
     "publication": {
       "published": "Publié",
       "modified": "Modifié",
+      "unpublished": "Dépublié",
       "notPublished": "Jamais publié"
     },
     "toolbar": {
@@ -79,6 +80,7 @@
       "activeCount": "Filtré ({{count}})",
       "valuePlaceholder": "Valeur",
       "valueSeparator": " ou ",
+      "publicationPartial": "Résultats parmi les {{read}} premiers enregistrements sur {{total}}. Affinez la recherche pour voir le reste.",
       "operator": {
         "contains": "contient",
         "equals": "est",

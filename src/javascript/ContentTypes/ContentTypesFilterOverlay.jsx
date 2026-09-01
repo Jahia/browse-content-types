@@ -2,7 +2,7 @@ import React, {useState} from 'react';
 import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
 import {Button, Dropdown, Input} from '@jahia/moonstone';
-import {FILTER_BOOLEAN, FILTER_CHOICE, FILTER_DATE, FILTER_NUMBER, MULTI_VALUE_OPERATORS, OPERATORS, VALUELESS_OPERATORS, defaultOperator, operatorLabel, valuesOf} from './ContentTypesFilters';
+import {FILTER_BOOLEAN, FILTER_CHOICE, FILTER_DATE, FILTER_NUMBER, FILTER_PUBLICATION, MULTI_VALUE_OPERATORS, OPERATORS, VALUELESS_OPERATORS, defaultOperator, operatorLabel, valuesOf} from './ContentTypesFilters';
 import {NAMESPACE} from '../ContentTypes.register';
 import styles from './ContentTypes.module.scss';
 
@@ -20,21 +20,50 @@ import styles from './ContentTypes.module.scss';
 /** Past this many values the list is worth searching rather than scrolling - country has 249. */
 const SEARCHABLE_FROM = 12;
 
+/**
+ * The value the form opens with, in the shape that column keeps its values in.
+ *
+ * A value list keeps a list, a status keeps the one it holds, and everything else keeps the string it
+ * was typed as. A filter arriving from a shared link is folded into the same shape, which is why a
+ * bare string is read through `valuesOf` rather than used as it stands.
+ */
+const initialValue = (field, filter) => {
+    if (field.filterType === FILTER_CHOICE) {
+        return valuesOf(filter?.v);
+    }
+
+    if (field.filterType === FILTER_PUBLICATION) {
+        return valuesOf(filter?.v)[0] || '';
+    }
+
+    return filter?.v === undefined ? '' : String(filter.v);
+};
+
+/** The kind of box a typed value is entered in. */
+const inputTypeFor = (field, operator) => {
+    if (field.filterType === FILTER_NUMBER) {
+        return 'number';
+    }
+
+    if (field.filterType === FILTER_DATE) {
+        // "In the last N days" asks for a count, not a day, even in a date column.
+        return operator === 'lastDays' ? 'number' : 'date';
+    }
+
+    return 'text';
+};
+
 export const ContentTypesFilterOverlay = ({field, filter, onApply, onClear, onClose}) => {
     const {t} = useTranslation(NAMESPACE);
     const operators = OPERATORS[field.filterType] || [];
 
     const isChoice = field.filterType === FILTER_CHOICE;
+    // A status at a time, unlike a value list: a record holds exactly one, so several would only ever
+    // widen the answer, and asking for "not published or unpublished" is two filters nobody needs.
+    const isStatus = field.filterType === FILTER_PUBLICATION;
 
     const [operator, setOperator] = useState(filter?.o || defaultOperator(field.filterType));
-    // A value list keeps a list of values; everything else keeps the one string it was typed as.
-    const [value, setValue] = useState(() => {
-        if (isChoice) {
-            return valuesOf(filter?.v);
-        }
-
-        return filter?.v === undefined ? '' : String(filter.v);
-    });
+    const [value, setValue] = useState(() => initialValue(field, filter));
 
     const needsValue = !VALUELESS_OPERATORS.has(operator);
     const canApply = isChoice ? value.length > 0 : (!needsValue || String(value).trim() !== '');
@@ -70,13 +99,7 @@ export const ContentTypesFilterOverlay = ({field, filter, onApply, onClear, onCl
         }
     };
 
-    let inputType = 'text';
-    if (field.filterType === FILTER_NUMBER) {
-        inputType = 'number';
-    } else if (field.filterType === FILTER_DATE) {
-        // "In the last N days" asks for a count, not a day, even in a date column.
-        inputType = operator === 'lastDays' ? 'number' : 'date';
-    }
+    const inputType = inputTypeFor(field, operator);
 
     return (
         <div className={styles.filterOverlay} data-sel-role="filter-overlay" onKeyDown={onKeyDown}>
@@ -114,7 +137,20 @@ export const ContentTypesFilterOverlay = ({field, filter, onApply, onClear, onCl
                 />
             )}
 
-            {needsValue && field.filterType !== FILTER_BOOLEAN && !isChoice && (
+            {needsValue && isStatus && (
+                <Dropdown
+                    isFullWidth
+                    size="small"
+                    hasSearch={false}
+                    placeholder={t('label.filter.valuePlaceholder')}
+                    data={(field.valueOptions || []).map(option => ({label: option.label, value: option.value}))}
+                    value={value}
+                    data-sel-role="filter-status"
+                    onChange={(event, item) => setValue(item.value)}
+                />
+            )}
+
+            {needsValue && field.filterType !== FILTER_BOOLEAN && !isChoice && !isStatus && (
                 <Input
                     autoFocus
                     type={inputType}

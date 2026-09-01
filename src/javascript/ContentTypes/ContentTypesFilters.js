@@ -23,6 +23,41 @@ export const FILTER_BOOLEAN = 'boolean';
 export const FILTER_CHOICE = 'choice';
 
 /**
+ * Publication status, which is not a property at all.
+ *
+ * Its own kind because it cannot be asked of the repository. The status is computed per node and per
+ * language from `j:published` and a comparison of `jcr:lastModified` against `j:lastPublished` on the
+ * language's own `j:translation_<lang>` node - and a query can compare a property to a literal but
+ * never to another property, which the engine rejects outright. So there is no constraint to build,
+ * and this filter is applied to the records after they arrive. See matchesPublication.
+ */
+export const FILTER_PUBLICATION = 'publication';
+
+/**
+ * The statuses offered, in the order a record moves through them.
+ *
+ * Four of the eleven Jahia can report. The rest - conflict, the mandatory-language pair, live-only,
+ * deleted - are states a reader of this table cannot act on, and none occurs on a working site. A
+ * record in one of them still shows its own chip; it just cannot be filtered for.
+ *
+ * `NOT_PUBLISHED` and `UNPUBLISHED` are kept apart because they mean different things: never
+ * published at all, against published once and since withdrawn. In the data that is the difference
+ * between having no `j:lastPublished` anywhere and having one with `j:published` false.
+ */
+export const PUBLICATION_STATUSES = [
+    {value: 'PUBLISHED', labelKey: 'label.publication.published'},
+    {value: 'MODIFIED', labelKey: 'label.publication.modified'},
+    {value: 'UNPUBLISHED', labelKey: 'label.publication.unpublished'},
+    {value: 'NOT_PUBLISHED', labelKey: 'label.publication.notPublished'}
+];
+
+/** The statuses as the form offers them. */
+export const publicationOptions = t => PUBLICATION_STATUSES.map(status => ({
+    value: status.value,
+    label: t(status.labelKey)
+}));
+
+/**
  * The operators each kind offers, in the order they are listed.
  *
  * Every one of them is something `nodeConstraint` can express, and - unlike the sort - the comparison
@@ -31,6 +66,7 @@ export const FILTER_CHOICE = 'choice';
  */
 export const OPERATORS = {
     [FILTER_CHOICE]: ['is', 'isNot'],
+    [FILTER_PUBLICATION]: ['is', 'isNot'],
     [FILTER_TEXT]: ['startsWith', 'contains', 'notContains', 'equals'],
     [FILTER_NUMBER]: ['equals', 'gt', 'lt', 'notEquals'],
     [FILTER_DATE]: ['after', 'before', 'lastDays', 'empty', 'notEmpty'],
@@ -247,6 +283,26 @@ export const operatorLabel = (t, field, operator) => {
  * that is stored but no longer offered by the definition, which would otherwise render as nothing.
  */
 export const labelForValue = (field, value) => field?.valueLabels?.[value] ?? value;
+
+/**
+ * Whether a record's publication status satisfies a publication filter.
+ *
+ * The one filter that is answered here rather than by the repository. The status arrives with each
+ * record - the table already asks for it to draw the chip - so this reads exactly what the reader
+ * sees in the column, in the language the table is being read in.
+ *
+ * A record whose status did not come back is treated as not matching `is`, and as matching `is not`:
+ * whatever it is, it is not the status that was asked for.
+ */
+export const matchesPublication = (filter, status) => {
+    const wanted = valuesOf(filter?.v);
+    if (wanted.length === 0) {
+        return true;
+    }
+
+    const held = wanted.includes(status);
+    return filter.o === 'isNot' ? !held : held;
+};
 
 /** The filter set on a column, if any. */
 export const filterFor = (filters, columnKey) => filters.find(filter => filter.c === columnKey);

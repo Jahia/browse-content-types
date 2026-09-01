@@ -9,6 +9,7 @@
     "publication": {
       "published": "Published",
       "modified": "Modified",
+      "unpublished": "Unpublished",
       "notPublished": "Never published"
     },
     "toolbar": {
@@ -79,6 +80,7 @@
       "activeCount": "Filtered ({{count}})",
       "valuePlaceholder": "Value",
       "valueSeparator": " or ",
+      "publicationPartial": "Showing matches from the first {{read}} records of {{total}}. Narrow the search to see the rest.",
       "operator": {
         "contains": "contains",
         "equals": "is",
