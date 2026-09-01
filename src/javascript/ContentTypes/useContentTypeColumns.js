@@ -2,7 +2,7 @@ import {useEffect, useMemo, useState} from 'react';
 import {useQuery} from '@apollo/client';
 import {useSelector} from 'react-redux';
 import {useTranslation} from 'react-i18next';
-import {GET_CONTENT_TYPE_FIELDS} from './ContentTypes.gql';
+import {GET_CONTENT_TYPE_FIELDS, GET_CONTENT_TYPE_VALUE_LABELS} from './ContentTypes.gql';
 import {FILTER_BOOLEAN, FILTER_DATE, FILTER_NUMBER, FILTER_TEXT} from './ContentTypesFilters';
 import {NAMESPACE} from '../ContentTypes.register';
 
@@ -143,12 +143,61 @@ export const useContentTypeColumns = contentType => {
     const {t} = useTranslation(NAMESPACE);
     const site = useSelector(state => state.site);
     const uilang = useSelector(state => state.uilang);
+    const language = useSelector(state => state.language);
     const storageKey = `${STORAGE_PREFIX}${site}:${contentType}`;
 
     const {data, loading} = useQuery(GET_CONTENT_TYPE_FIELDS, {
         variables: {type: contentType, language: uilang || 'en'},
         skip: !contentType
     });
+
+    // The language the table is being read in, not the language of the interface around it. A reader
+    // who has switched the table to French is reading French content and expects French values, even
+    // with an English interface - and it is the language in the address, so it is the one thing on
+    // screen that says which language the values are being shown in.
+    //
+    // Not part of `loading`: a column is worth showing as soon as its values arrive, and the labels
+    // only change how those values read. Blocking the table on a second round trip would trade a
+    // brief moment of raw codes for a longer wait on everything.
+    const {data: labelData} = useQuery(GET_CONTENT_TYPE_VALUE_LABELS, {
+        variables: {
+            type: contentType,
+            language: language || uilang || 'en',
+            path: `/sites/${site}/contents`
+        },
+        skip: !contentType || !site
+    });
+
+    /** Every constrained property of this type, as value -> label. */
+    const valueLabelsByProperty = useMemo(() => {
+        const byProperty = {};
+
+        const collect = formField => {
+            if (formField.declaringNodeType !== contentType) {
+                return;
+            }
+
+            const labels = {};
+            (formField.valueConstraints || []).forEach(constraint => {
+                const value = constraint.value?.string;
+                // A constraint that is not a choicelist - a node type on a reference, the regex on
+                // seoKeywords - answers with the value as its own label. Left out, so those fields
+                // carry no map at all and render exactly as they did before.
+                if (value && constraint.displayValue && constraint.displayValue !== value) {
+                    labels[value] = constraint.displayValue;
+                }
+            });
+
+            if (Object.keys(labels).length > 0) {
+                byProperty[formField.name] = labels;
+            }
+        };
+
+        const sections = labelData?.forms?.createForm?.sections || [];
+        sections.forEach(section => (section.fieldSets || []).forEach(fieldSet => (fieldSet.fields || []).forEach(collect)));
+
+        return byProperty;
+    }, [labelData, contentType]);
 
     const contentTypeFields = useMemo(() => {
         const definitions = data?.jcr?.nodeTypeByName?.properties || [];
@@ -169,10 +218,11 @@ export const useContentTypeColumns = contentType => {
                     // A filter constrains the property itself, so multi-valued is no obstacle the way
                     // it is for sorting: a constraint on one value matches a node holding it.
                     jcrProperty: definition.name,
-                    filterType: FILTER_TYPES_BY_REQUIRED_TYPE[definition.requiredType]
+                    filterType: FILTER_TYPES_BY_REQUIRED_TYPE[definition.requiredType],
+                    valueLabels: valueLabelsByProperty[definition.name]
                 };
             });
-    }, [data, contentType]);
+    }, [data, contentType, valueLabelsByProperty]);
 
     const availableFields = useMemo(() => [
         ...COMMON_FIELDS.map(field => ({...field, label: t(field.labelKey), ...COMMON_FILTERS[field.key]})),

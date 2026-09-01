@@ -523,6 +523,18 @@ const renderThumbnails = previews => {
  * its target for a `renderUrl` and being ready for null, since such a link is allowed to point at a
  * folder that has no page of its own. Those keep showing their title as text.
  */
+/**
+ * A stored value as the reader knows it.
+ *
+ * A constrained property keeps a code - `swimmingPool`, `house`, `AF` - while its label belongs to
+ * the defining module's resource bundle. `valueLabels` carries what Content Editor shows for the
+ * same field, in the same language, so a value reads the same in both places.
+ *
+ * Falls through to the value for anything not in the map: a property with no choicelist, and a code
+ * that is stored but no longer offered by the definition, which would otherwise render as nothing.
+ */
+const labelFor = (field, value) => field.valueLabels?.[value] ?? value;
+
 const renderDynamicField = (field, payload, context) => {
     const {t} = context;
     if (!payload) {
@@ -589,7 +601,7 @@ const renderDynamicField = (field, payload, context) => {
         return renderLinkList(values.map((value, index) => ({
             key: index,
             href: linkHref(value),
-            text: value
+            text: labelFor(field, value)
         })));
     }
 
@@ -621,7 +633,7 @@ const renderDynamicField = (field, payload, context) => {
         return renderLink(href, href);
     }
 
-    return payload.value;
+    return labelFor(field, payload.value);
 };
 
 const toRow = node => ({...node, displayName: node.displayName || node.name});

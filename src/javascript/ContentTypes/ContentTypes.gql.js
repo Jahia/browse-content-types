@@ -58,6 +58,50 @@ export const GET_CONTENT_TYPE_FIELDS = gql`
 `;
 
 /**
+ * What a constrained property's stored values are called, in the reader's language.
+ *
+ * A choicelist keeps a code - `swimmingPool`, `house`, `AF` - and the label lives in the defining
+ * module's resource bundle, not in the content, so the stored value on its own means nothing to
+ * anyone who did not write the type. This is the same form Content Editor builds, asked only for its
+ * value constraints, so a value reads in the table exactly as it reads in the editor.
+ *
+ * `createForm` rather than the node type definition because `constraints` there returns the raw
+ * values and no labels at all. It answers for a type that could not actually be created under this
+ * path - luxe:estate belongs under an agency - which is what makes one path serve every type.
+ *
+ * Fields of the type itself are the ones that matter; the rest belong to mixins the table does not
+ * render, and their names could otherwise collide with a property of the same name.
+ *
+ * **`uiLocale` is what resolves the labels, and `locale` has no bearing on them at all** - measured
+ * against a site, all four combinations of the two: `uiLocale: fr` answers Piscine whichever locale
+ * accompanies it, `uiLocale: en` answers Swimming Pool. So the language the table is being read in
+ * is passed as `uiLocale`, not as `locale`. Both carry it, since the form is asked for nothing but
+ * its constraints and `locale` has nothing left to influence.
+ */
+export const GET_CONTENT_TYPE_VALUE_LABELS = gql`
+    query getContentTypeValueLabels($type: String!, $language: String!, $path: String!) {
+        forms {
+            createForm(primaryNodeType: $type, uiLocale: $language, locale: $language, uuidOrPath: $path) {
+                sections {
+                    fieldSets {
+                        fields {
+                            name
+                            declaringNodeType
+                            valueConstraints {
+                                value {
+                                    string
+                                }
+                                displayValue
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+`;
+
+/**
  * Category labels for the content types, as Jahia groups them.
  *
  * Used only for grouping. This answers "what may be created under this path", so it is not a
