@@ -34,6 +34,17 @@ export const FILTER_CHOICE = 'choice';
 export const FILTER_PUBLICATION = 'publication';
 
 /**
+ * An image column, filtered on whether there is one.
+ *
+ * A reference stores a uuid, so asking *which* image needs a picker rather than a box - that is still
+ * to come. Asking whether there is one at all needs neither: it is the presence of the property, and
+ * the two operators that answer it already exist. Verified against a site, `exists` agrees exactly
+ * with the data on every reference property there, splitting 3 from 5 on the one that is partly
+ * filled.
+ */
+export const FILTER_IMAGE = 'image';
+
+/**
  * The statuses offered, in the order a record moves through them.
  *
  * Four of the eleven Jahia can report. The rest - conflict, the mandatory-language pair, live-only,
@@ -67,6 +78,8 @@ export const publicationOptions = t => PUBLICATION_STATUSES.map(status => ({
 export const OPERATORS = {
     [FILTER_CHOICE]: ['is', 'isNot'],
     [FILTER_PUBLICATION]: ['is', 'isNot'],
+    // The presence operators the other kinds already use, which need no value and so need no control.
+    [FILTER_IMAGE]: ['notEmpty', 'empty'],
     [FILTER_TEXT]: ['startsWith', 'contains', 'notContains', 'equals'],
     [FILTER_NUMBER]: ['equals', 'gt', 'lt', 'notEquals'],
     [FILTER_DATE]: ['after', 'before', 'lastDays', 'empty', 'notEmpty'],

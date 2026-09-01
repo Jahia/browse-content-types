@@ -55,6 +55,10 @@ export const GET_CONTENT_TYPE_FIELDS = gql`
                     protected
                     multiple
                     requiredType
+                    # What a reference is allowed to point at, which is how an image column is told
+                    # from a reference to anything else: an image column constrains its target to
+                    # jmix:image.
+                    constraints
                     declaringNodeType {
                         name
                     }

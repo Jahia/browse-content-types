@@ -3,7 +3,7 @@ import {useQuery} from '@apollo/client';
 import {useSelector} from 'react-redux';
 import {useTranslation} from 'react-i18next';
 import {GET_CONTENT_TYPE_FIELDS, GET_CONTENT_TYPE_VALUE_LABELS} from './ContentTypes.gql';
-import {FILTER_BOOLEAN, FILTER_CHOICE, FILTER_DATE, FILTER_NUMBER, FILTER_PUBLICATION, FILTER_TEXT, publicationOptions} from './ContentTypesFilters';
+import {FILTER_BOOLEAN, FILTER_CHOICE, FILTER_DATE, FILTER_IMAGE, FILTER_NUMBER, FILTER_PUBLICATION, FILTER_TEXT, publicationOptions} from './ContentTypesFilters';
 import {NAMESPACE} from '../ContentTypes.register';
 
 const STORAGE_PREFIX = 'content-types:columns:';
@@ -31,6 +31,23 @@ const COMMON_FILTERS = {
     publicationStatus: {filterType: FILTER_PUBLICATION},
     systemName: {jcrProperty: 'j:nodename', filterType: FILTER_TEXT}
 };
+
+/** Reference types, which hold a uuid rather than anything a reader would recognise. */
+const REFERENCE_TYPES = new Set(['REFERENCE', 'WEAKREFERENCE']);
+
+/**
+ * Whether a property points at images.
+ *
+ * A reference records what its target must be, as an expanded node type name - so an image column
+ * says `{http://www.jahia.org/jahia/mix/1.0}image` while a reference to a file or to another content
+ * type says something else. Matched on the local name so the namespace can move.
+ *
+ * References that are not to images are left unfiltered: whether one is set is a fair question of an
+ * image, which a reader sees as a thumbnail or an empty cell, and a vaguer one of a reference to a
+ * content item, where what is wanted is nearly always *which* one.
+ */
+const isImageReference = definition => REFERENCE_TYPES.has(definition.requiredType) &&
+    (definition.constraints || []).some(constraint => constraint.replace(/^\{[^}]*\}/, '').toLowerCase() === 'image');
 
 /**
  * The kind of filter form a content type's own property gets, or nothing where it gets none.
@@ -142,6 +159,19 @@ const readStoredKeys = storageKey => {
  * you meant to keep - what is on screen is what you get next time, and `resetToDefaults` is the way
  * back.
  */
+/** The kind of filter a content type's own property gets. */
+const filterTypeFor = (definition, valueLabels) => {
+    if (valueLabels) {
+        return FILTER_CHOICE;
+    }
+
+    if (isImageReference(definition)) {
+        return FILTER_IMAGE;
+    }
+
+    return FILTER_TYPES_BY_REQUIRED_TYPE[definition.requiredType];
+};
+
 export const useContentTypeColumns = contentType => {
     const {t} = useTranslation(NAMESPACE);
     const site = useSelector(state => state.site);
@@ -235,10 +265,8 @@ export const useContentTypeColumns = contentType => {
                     jcrProperty: definition.name,
                     // A value list decides how the column is filtered, whatever type the codes are
                     // stored as: the listed values are the only ones it can hold, so it is chosen
-                    // from rather than typed into.
-                    filterType: valueLabels ?
-                        FILTER_CHOICE :
-                        FILTER_TYPES_BY_REQUIRED_TYPE[definition.requiredType],
+                    // from rather than typed into. An image is filtered on whether there is one.
+                    filterType: filterTypeFor(definition, valueLabels),
                     valueLabels,
                     valueOptions: optionsByProperty[definition.name]
                 };

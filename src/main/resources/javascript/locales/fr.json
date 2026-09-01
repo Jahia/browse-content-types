@@ -112,6 +112,14 @@
         "choiceMultiple": {
           "is": "contient",
           "isNot": "ne contient pas"
+        },
+        "image": {
+          "notEmpty": "a une image",
+          "empty": "n'a pas d'image"
+        },
+        "imageMultiple": {
+          "notEmpty": "contient une image",
+          "empty": "ne contient pas d'image"
         }
       }
     },
