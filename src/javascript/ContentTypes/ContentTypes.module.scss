@@ -288,13 +288,94 @@
     min-width: 0;
 }
 
-/* Several chips in one cell, for a multi-valued property. Wraps rather than overflowing, since the
-   cell is already scrollable and a chip cut in half reads as a different word. */
+/*
+ * Several chips in one cell - a list of tags, or a multi-valued boolean.
+ *
+ * On one line rather than wrapped: the cell scrolls on hover like every other text column, and a row
+ * of tags that wrapped would make its whole row two or three times taller than the rest, which costs
+ * far more than it saves.
+ */
 .chipList {
     display: inline-flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     align-items: center;
     gap: 4px;
+}
+
+/*
+ * Several dates in one cell, separated by a rule rather than by text.
+ *
+ * Each date is its own element so that it can carry its own tooltip, which rules out joining them
+ * into one string. Putting the comma in the CSS also keeps it out of the tooltip, and a written comma
+ * would read badly beside a date that already contains one of its own.
+ */
+.dateList > :not(:last-child)::after {
+    content: ', ';
+}
+
+/*
+ * A column's filter control, in the header beside the label.
+ *
+ * Hit testing is given back explicitly: the header cell has it taken away, which is what confines
+ * sorting to the arrow, and a descendant that re-enables it still bubbles its own clicks.
+ */
+.headerFilter {
+    display: inline-flex;
+    flex: 0 0 auto;
+
+    pointer-events: auto;
+}
+
+/* A column that is currently narrowing the table says so where the condition was set, not only in
+   the summary above. */
+.headerFilterActive {
+    color: var(--color-accent_dark);
+}
+
+.filterOverlay {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 260px;
+    padding: 12px;
+}
+
+.filterOverlayFooter {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-top: 8px;
+
+    border-top: 1px solid var(--color-gray_light40);
+}
+
+/* Every condition in force, listed where the Filter control opens. */
+.filterSummary {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 260px;
+    max-width: 420px;
+    padding: 12px;
+}
+
+.filterSummaryRow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.filterSummaryRow > :first-child {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.filterSummaryFooter {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 8px;
+
+    border-top: 1px solid var(--color-gray_light40);
 }
 
 .subtitle {

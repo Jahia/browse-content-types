@@ -2,21 +2,26 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import {useSelector} from 'react-redux';
 import {useTranslation} from 'react-i18next';
-import {Button, CustomDropdown, SearchInput} from '@jahia/moonstone';
+import {Button, Close, CustomDropdown, Filter, SearchInput, Typography} from '@jahia/moonstone';
 import {DisplayAction} from '@jahia/ui-extender';
 import {ButtonRenderer} from '@jahia/jcontent';
 import {ColumnsIcon} from './ColumnsIcon';
 import {ContentTypesColumnsPicker} from './ContentTypesColumnsPicker';
 import {ContentTypesSelectionBar} from './ContentTypesSelectionBar';
+import {describeFilter} from './ContentTypesFilters';
 import {NAMESPACE} from '../ContentTypes.register';
 import styles from './ContentTypes.module.scss';
 
 /**
  * The row of controls between the type heading and the table.
  *
- * The search box filters the table, Advanced search opens jContent's own search dialog - the
- * same registered action its page builder header uses - and the columns icon opens the picker for
- * which fields the table shows, and in what order. Filter is laid out but does nothing yet.
+ * The search box narrows the table across every field at once, Advanced search opens jContent's own
+ * search dialog - the same registered action its page builder header uses - and the columns icon
+ * opens the picker for which fields the table shows, and in what order.
+ *
+ * Filter is the summary, not the way in. Conditions are set from the column headers, where the column
+ * is; this gathers up whatever is in force so that a condition on a column since scrolled past, or
+ * since hidden, is never narrowing the table with nothing on screen to say why.
  *
  * Ticking a row replaces all of that with what can be done to what is ticked, in the same place, as
  * jContent's own list does: while there is a selection, the controls for finding content are not
@@ -37,7 +42,11 @@ export const ContentTypesToolBar = ({
     moveField,
     resetToDefaults,
     selection,
-    onClearSelection
+    onClearSelection,
+    filters,
+    fieldsByKey,
+    onClearFilter,
+    onClearAllFilters
 }) => {
     const {t} = useTranslation(NAMESPACE);
     const site = useSelector(state => state.site);
@@ -64,10 +73,51 @@ export const ContentTypesToolBar = ({
                         render={ButtonRenderer}
                         buttonProps={{variant: 'ghost', 'data-sel-role': 'toolbar-advanced-search'}}
                     />
-                    <Button variant="ghost"
-                            label={t('label.toolbar.filter')}
-                            data-sel-role="toolbar-filter"
-                    />
+                    {/* Where the filters set from the column headers are gathered up. Without it, a
+                        condition on a column since scrolled past - or since hidden - would narrow the
+                        table with nothing on screen to say why. */}
+                    <CustomDropdown
+                        variant="ghost"
+                        icon={<Filter/>}
+                        label={filters.length > 0 ?
+                            t('label.filter.activeCount', {count: filters.length}) :
+                            t('label.toolbar.filter')}
+                        data-sel-role="toolbar-filter"
+                    >
+                        <div className={styles.filterSummary} data-sel-role="filter-summary">
+                            {filters.length === 0 ? (
+                                <Typography variant="caption" className={styles.subtitle}>
+                                    {t('label.filter.none')}
+                                </Typography>
+                            ) : (
+                                <>
+                                    {filters.map(filter => (
+                                        <div key={filter.c} className={styles.filterSummaryRow}>
+                                            <Typography isNowrap variant="body">
+                                                {describeFilter(filter, fieldsByKey.get(filter.c), t)}
+                                            </Typography>
+                                            <Button
+                                                variant="ghost"
+                                                size="small"
+                                                icon={<Close/>}
+                                                aria-label={t('label.filter.clear')}
+                                                data-sel-role="filter-summary-remove"
+                                                onClick={() => onClearFilter(filter.c)}
+                                            />
+                                        </div>
+                                    ))}
+                                    <div className={styles.filterSummaryFooter}>
+                                        <Button
+                                            variant="ghost"
+                                            label={t('label.filter.clearAll')}
+                                            data-sel-role="filter-clear-all"
+                                            onClick={onClearAllFilters}
+                                        />
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </CustomDropdown>
                 </>
             )}
 
@@ -106,7 +156,12 @@ ContentTypesToolBar.propTypes = {
     resetToDefaults: PropTypes.func.isRequired,
     /** The ticked rows. Empty means nothing is selected, and the browse controls hold the line. */
     selection: PropTypes.array.isRequired,
-    onClearSelection: PropTypes.func.isRequired
+    onClearSelection: PropTypes.func.isRequired,
+    /** The conditions currently narrowing the table, gathered from the column headers. */
+    filters: PropTypes.array.isRequired,
+    fieldsByKey: PropTypes.instanceOf(Map).isRequired,
+    onClearFilter: PropTypes.func.isRequired,
+    onClearAllFilters: PropTypes.func.isRequired
 };
 
 export default ContentTypesToolBar;

@@ -71,6 +71,33 @@
     },
     "lock": {
       "locked": "Locked"
-    }
+    },
+    "filter": {
+      "column": "Filter on {{column}}",
+      "apply": "Apply",
+      "clear": "Clear",
+      "clearAll": "Clear all filters",
+      "none": "No filter is set.",
+      "activeCount": "Filtered ({{count}})",
+      "valuePlaceholder": "Value",
+      "operator": {
+        "contains": "contains",
+        "equals": "is",
+        "notEquals": "is not",
+        "startsWith": "starts with",
+        "empty": "is empty",
+        "notEmpty": "is not empty",
+        "gt": "greater than",
+        "gte": "at least",
+        "lt": "less than",
+        "lte": "at most",
+        "after": "after",
+        "before": "before",
+        "lastDays": "in the last (days)",
+        "isTrue": "is true",
+        "isFalse": "is false"
+      }
+    },
+    "noFilterResults": "No content of this type matches the filters."
   }
 }

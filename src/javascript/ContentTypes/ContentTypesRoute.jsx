@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {useQuery} from '@apollo/client';
 import {shallowEqual, useSelector} from 'react-redux';
 import {useTranslation} from 'react-i18next';
@@ -7,6 +7,7 @@ import {GET_SITE_CONTENT_TYPES} from './ContentTypes.gql';
 import {ContentTypesTable} from './ContentTypesTable';
 import {ContentTypesToolBar} from './ContentTypesToolBar';
 import {useContentTypeColumns} from './useContentTypeColumns';
+import {useColumnFilters} from './useColumnFilters';
 import {NAMESPACE} from '../ContentTypes.register';
 import styles from './ContentTypes.module.scss';
 
@@ -50,6 +51,19 @@ export const ContentTypesRoute = () => {
     // dependency on every render.
     const clearSelection = useCallback(() => setSelection([]), []);
 
+    // Owned here for the same reason the columns are: the headers in the table set the filters and the
+    // toolbar above summarises them, so neither can hold the state the other needs. They live in the
+    // address bar rather than in this component, which is what makes a narrowed table a link.
+    const {filters, setFilter, clearFilter, clearAll} = useColumnFilters();
+
+    // Indexed over the whole catalog, not only what is shown: a filter carried in a shared link can
+    // name a column this reader has hidden, and it must still narrow the table and still be nameable
+    // in the summary.
+    const fieldsByKey = useMemo(
+        () => new Map(columns.availableFields.map(field => [field.key, field])),
+        [columns.availableFields]
+    );
+
     if (!contentType) {
         return <div className={styles.mainPane} data-sel-role="content-types-route"/>;
     }
@@ -75,15 +89,24 @@ export const ContentTypesRoute = () => {
                 moveField={columns.moveField}
                 resetToDefaults={columns.resetToDefaults}
                 selection={selection}
+                filters={filters}
+                fieldsByKey={fieldsByKey}
                 onSearchChange={setSearch}
                 onClearSelection={clearSelection}
+                onClearFilter={clearFilter}
+                onClearAllFilters={clearAll}
             />
             <ContentTypesTable
                 contentType={contentType}
                 search={search}
                 visibleFields={columns.visibleFields}
+                availableFields={columns.availableFields}
                 selection={selection}
+                filters={filters}
+                fieldsByKey={fieldsByKey}
                 onSelectionChange={setSelection}
+                onSetFilter={setFilter}
+                onClearFilter={clearFilter}
             />
         </div>
     );

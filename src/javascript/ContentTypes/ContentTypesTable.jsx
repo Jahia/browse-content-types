@@ -3,10 +3,12 @@ import PropTypes from 'prop-types';
 import {useQuery} from '@apollo/client';
 import {shallowEqual, useSelector} from 'react-redux';
 import {useTranslation} from 'react-i18next';
-import {Chip, DataTable, Loader, Lock, Pagination, Thumbnail, Typography} from '@jahia/moonstone';
+import {Button, Chip, DataTable, Filter, Loader, Lock, Menu, Pagination, Thumbnail, Typography} from '@jahia/moonstone';
 import {ContextualMenu, DisplayAction, registry} from '@jahia/ui-extender';
 import {ButtonRendererNoLabel} from '@jahia/jcontent';
-import {buildListingQuery, buildSearchQuery} from './ContentTypesRecordQuery';
+import {buildRecordQuery} from './ContentTypesRecordQuery';
+import {filterFor, toNodeConstraint} from './ContentTypesFilters';
+import {ContentTypesFilterOverlay} from './ContentTypesFilterOverlay';
 import {NAMESPACE} from '../ContentTypes.register';
 import styles from './ContentTypes.module.scss';
 
@@ -76,7 +78,81 @@ const PUBLICATION_CHIPS = {
 
 const humanise = status => status.toLowerCase().replace(/_/g, ' ');
 
-const renderDate = (value, dateFormat) => (value ? dateFormat.format(new Date(value)) : '-');
+/**
+ * A column's filter control: the funnel in its header, and the form it opens.
+ *
+ * In the header rather than behind the toolbar's Filter button because that is where the column is -
+ * no step asking which field is meant, and the condition is scoped by where it was opened from. It is
+ * its own small button rather than the label being clickable: the label already truncates and carries
+ * a tooltip, and making it a second click target beside the sort arrow is how the header became easy
+ * to trigger by accident in the first place.
+ *
+ * `pointer-events` is given back explicitly because the header cell has them taken away, which is
+ * what confines sorting to the arrow.
+ */
+const ColumnFilterControl = ({field, filter, onApply, onClear, label}) => {
+    const anchor = useRef();
+    const [isOpen, setOpen] = useState(false);
+
+    return (
+        <span ref={anchor} className={styles.headerFilter}>
+            <Button
+                variant="ghost"
+                size="small"
+                icon={<Filter/>}
+                aria-label={label}
+                title={label}
+                // Set when a condition is in force, so a narrowed column says so in its own header
+                // rather than only in the summary above the table.
+                data-sel-role={filter ? 'column-filter-active' : 'column-filter'}
+                className={filter ? styles.headerFilterActive : undefined}
+                onClick={() => setOpen(open => !open)}
+            />
+            <Menu
+                hasSearch={false}
+                isDisplayed={isOpen}
+                anchorEl={anchor}
+                onClose={() => setOpen(false)}
+            >
+                <ContentTypesFilterOverlay
+                    field={field}
+                    filter={filter}
+                    onApply={onApply}
+                    onClear={onClear}
+                    onClose={() => setOpen(false)}
+                />
+            </Menu>
+        </span>
+    );
+};
+
+ColumnFilterControl.propTypes = {
+    field: PropTypes.object.isRequired,
+    filter: PropTypes.object,
+    label: PropTypes.string.isRequired,
+    onApply: PropTypes.func.isRequired,
+    onClear: PropTypes.func.isRequired
+};
+
+/**
+ * The day in the cell, the moment in the tooltip.
+ *
+ * A column is scanned, so the cell carries only what tells one row from another - and the time of day
+ * cost width in every row to separate two things changed the same afternoon. Which is exactly when
+ * the time does matter, so it is a hover away rather than gone: the tooltip spells the date out in
+ * full, down to the minute.
+ *
+ * The `key` is taken as an argument rather than set at the call site because several dates can share
+ * a cell, and a key written into JSX from a loop index is what the linter objects to.
+ */
+const renderDate = (value, {dateFormat, dateTimeFormat}, key) => {
+    if (!value) {
+        return '-';
+    }
+
+    const date = new Date(value);
+    return <span key={key} title={dateTimeFormat.format(date)}>{dateFormat.format(date)}</span>;
+};
 
 /** A list of values as one cell, or a dash where there are none to show. */
 const joinOrDash = values => (values?.length > 0 ? values.filter(Boolean).join(', ') || '-' : '-');
@@ -100,6 +176,38 @@ const renderBoolean = (value, t, key) => {
             label={isTrue ? t('label.boolean.true') : t('label.boolean.false')}
             data-sel-boolean={isTrue}
         />
+    );
+};
+
+/**
+ * A list of labels as one chip each, the way Content Editor draws a tag field.
+ *
+ * Content Editor gives every tag its own chip - a `Chip` per value in its MultipleInput, muted while
+ * read only. The chip here is Moonstone's rather than the `@jahia/design-system-kit` one that field
+ * still uses, since Moonstone is what this table already draws publication states and booleans with,
+ * but it is the same idea: a tag is a thing in its own right, and a row of them reads as a set at a
+ * glance where a joined string reads as a sentence.
+ *
+ * Neutral on purpose. Green, amber and red carry meaning in this table - a publication state, a
+ * boolean - and a tag is not a status, so colouring one would say something that is not true.
+ *
+ * It also settles what the joined form could not: a tag containing a comma was indistinguishable
+ * from two tags.
+ */
+const renderChipList = values => {
+    // Deduplicated, which a set of labels should be anyway, and which lets the label itself be the
+    // key rather than a position that changes meaning as the list does.
+    const items = [...new Set((values || []).filter(Boolean))];
+    if (items.length === 0) {
+        return '-';
+    }
+
+    return (
+        <span className={styles.chipList}>
+            {items.map(value => (
+                <Chip key={value} color="default" label={value} data-sel-tag={value}/>
+            ))}
+        </span>
     );
 };
 
@@ -147,8 +255,8 @@ const renderLock = (data, t) => {
 const COMMON_RENDERERS = {
     type: data => data.primaryNodeType?.displayName || data.primaryNodeType?.name || '-',
     createdBy: data => data.createdBy?.value || '-',
-    createdDate: (data, {dateFormat}) => renderDate(data.createdDate?.value, dateFormat),
-    lastModified: (data, {dateFormat}) => renderDate(data.lastModified?.value, dateFormat),
+    createdDate: (data, context) => renderDate(data.createdDate?.value, context),
+    lastModified: (data, context) => renderDate(data.lastModified?.value, context),
     lastModifiedBy: data => data.lastModifiedBy?.value || '-',
     publicationStatus: (data, {t}) => {
         const status = data.aggregatedPublicationInfo?.publicationStatus;
@@ -164,12 +272,12 @@ const COMMON_RENDERERS = {
             />
         );
     },
-    publishedOn: (data, {dateFormat}) => renderDate(data.publishedOn?.value, dateFormat),
+    publishedOn: (data, context) => renderDate(data.publishedOn?.value, context),
     publishedBy: data => data.publishedBy?.value || '-',
     // Joined the same way a multi-valued content type field is, so a list reads the same wherever it
     // came from. A node without the mixin has no property at all and shows the same dash as one that
     // has it and was left empty - the distinction is not one an editor of this table can act on.
-    tags: data => joinOrDash(data.tags?.values),
+    tags: data => renderChipList(data.tags?.values),
     categories: data => joinOrDash(data.categories?.refNodes?.map(node => node.displayName)),
     lock: (data, {t}) => renderLock(data, t),
     path: data => data.path,
@@ -194,6 +302,15 @@ const NARROW_COLUMN_WIDTH = 'calc(12ch + 32px)';
 
 /** The width a content type's own field gets when nothing more specific is known about it. */
 const DEFAULT_COLUMN_WIDTH = '220px';
+
+/** What a field common to every node gets, none of them holding anything unbounded. */
+const COMMON_COLUMN_WIDTH = '160px';
+
+/**
+ * The three common fields that do not hold one short value, and so are given a text column's width
+ * and its hover-to-scroll: a path is as deep as the tree, and tags and categories are lists.
+ */
+const WIDE_COMMON_FIELDS = new Set(['path', 'tags', 'categories']);
 
 /** A figure needing twelve characters is already an unusual figure. */
 const NUMERIC_TYPES = new Set(['LONG', 'DOUBLE', 'DECIMAL']);
@@ -362,7 +479,8 @@ const renderThumbnails = previews => {
  * its target for a `renderUrl` and being ready for null, since such a link is allowed to point at a
  * folder that has no page of its own. Those keep showing their title as text.
  */
-const renderDynamicField = (field, payload, {t, dateFormat}) => {
+const renderDynamicField = (field, payload, context) => {
+    const {t} = context;
     if (!payload) {
         return '-';
     }
@@ -412,7 +530,14 @@ const renderDynamicField = (field, payload, {t, dateFormat}) => {
         }
 
         if (field.requiredType === 'DATE') {
-            return joinOrDash(values.map(value => renderDate(value, dateFormat)));
+            // Each date is its own element now, carrying its own tooltip, so they cannot be joined
+            // into one string. The commas between them come from a rule instead - see .dateList,
+            // which also explains why they are not written into the text.
+            return (
+                <span className={styles.dateList}>
+                    {values.filter(Boolean).map((value, index) => renderDate(value, context, index))}
+                </span>
+            );
         }
 
         // The same treatment a single value gets, so a field holding several addresses is no less
@@ -440,7 +565,7 @@ const renderDynamicField = (field, payload, {t, dateFormat}) => {
     // date field was the one date in the table left as the timestamp the repository stores it as,
     // hour, seconds, timezone offset and all.
     if (field.requiredType === 'DATE') {
-        return renderDate(payload.value, dateFormat);
+        return renderDate(payload.value, context);
     }
 
     // A property holding an address becomes one, which is what makes browsing a link type - where
@@ -514,7 +639,17 @@ const useSearchTerm = search => {
     }, [debounced]);
 };
 
-export const ContentTypesTable = ({contentType, search, visibleFields, selection, onSelectionChange}) => {
+export const ContentTypesTable = ({
+    contentType,
+    search,
+    visibleFields,
+    filters,
+    fieldsByKey,
+    selection,
+    onSelectionChange,
+    onSetFilter,
+    onClearFilter
+}) => {
     const {t} = useTranslation(NAMESPACE);
     const {site, language, uilang} = useSelector(state => ({
         site: state.site,
@@ -534,7 +669,7 @@ export const ContentTypesTable = ({contentType, search, visibleFields, selection
     // type that has content.
     useEffect(() => {
         setCurrentPage(1);
-    }, [contentType, terms]);
+    }, [contentType, terms, filters]);
 
     // The selection only ever holds rows that are on screen.
     //
@@ -550,7 +685,7 @@ export const ContentTypesTable = ({contentType, search, visibleFields, selection
     // this table is entitled to.
     useEffect(() => {
         onSelectionChange([]);
-    }, [site, contentType, terms, currentPage, itemsPerPage, sortBy, sortDirection, onSelectionChange]);
+    }, [site, contentType, terms, filters, currentPage, itemsPerPage, sortBy, sortDirection, onSelectionChange]);
 
     // Reset the sort whenever the chosen column disappears - hiding a column that the table was
     // sorted by would otherwise keep silently requesting a sort the picker no longer offers.
@@ -567,9 +702,7 @@ export const ContentTypesTable = ({contentType, search, visibleFields, selection
     // every render, and not when a common field becomes visible, since those are always fetched.
     const dynamicFieldsKey = dynamicFields.map(field => field.key).join(',');
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    const listingQuery = useMemo(() => buildListingQuery(dynamicFields), [dynamicFieldsKey]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    const searchQuery = useMemo(() => buildSearchQuery(dynamicFields), [dynamicFieldsKey]);
+    const recordQuery = useMemo(() => buildRecordQuery(dynamicFields), [dynamicFieldsKey]);
 
     /**
      * The sort, as one of the two things the query can be asked for - never both.
@@ -604,41 +737,48 @@ export const ContentTypesTable = ({contentType, search, visibleFields, selection
         };
     }, [sortBy, sortDirection, visibleFields]);
 
-    const common = {
-        sitePath: `/sites/${site}`,
-        type: contentType,
-        language,
-        offset: (currentPage - 1) * itemsPerPage,
-        limit: itemsPerPage,
-        fieldSorter,
-        ordering
-    };
+    /**
+     * Everything being asked of the records, as one constraint.
+     *
+     * A search and the column filters are the same kind of thing to the repository, so they are built
+     * together here and composed with `all`. The search keeps its own three ways of matching - full
+     * text, the tag list, and the node name as a substring - which stay an `any` of their own, so a
+     * search still widens across those three while a filter narrows.
+     */
+    const nodeConstraint = useMemo(() => {
+        const searchConstraint = isSearching ? {
+            any: [
+                {contains: terms},
+                {contains: terms, property: 'j:tagList'},
+                // LOWER_CASE lowercases the column server-side, so an upper-case pattern would never
+                // match. jContent lowercases the pattern here for the same reason.
+                {like: nameTerms, property: 'j:nodename', function: 'LOWER_CASE'}
+            ]
+        } : null;
+
+        return toNodeConstraint(filters, fieldsByKey, searchConstraint);
+    }, [isSearching, terms, nameTerms, filters, fieldsByKey]);
 
     const ready = Boolean(site) && Boolean(contentType);
 
-    const listing = useQuery(listingQuery, {
-        variables: common,
-        skip: !ready || isSearching
-    });
-
-    const found = useQuery(searchQuery, {
+    const {data, loading, error, previousData, refetch} = useQuery(recordQuery, {
         variables: {
-            ...common,
-            terms,
-            // LOWER_CASE lowercases the column server-side, so an upper-case pattern would never
-            // match. jContent lowercases the pattern here for the same reason.
-            nameTerms
+            sitePath: `/sites/${site}`,
+            type: contentType,
+            language,
+            offset: (currentPage - 1) * itemsPerPage,
+            limit: itemsPerPage,
+            fieldSorter,
+            ordering,
+            nodeConstraint
         },
-        skip: !ready || !isSearching
+        skip: !ready
     });
-
-    const {data, loading, error, previousData} = isSearching ? found : listing;
 
     // Re-registered on every render, with no dependency list, which is how jContent registers its
-    // own: whichever of the two queries is the live one changes with the search, and the entry has
-    // to be the one that is actually running or an action's refresh reaches a query that is skipped.
+    // own, so the entry always refers to the query as it currently stands.
     useEffect(() => {
-        registry.addOrReplace('refetcher', REFETCHER, {refetch: isSearching ? found.refetch : listing.refetch});
+        registry.addOrReplace('refetcher', REFETCHER, {refetch});
 
         return () => {
             // Taken out rather than emptied, so a refetch sweep after this table has gone does not
@@ -648,17 +788,27 @@ export const ContentTypesTable = ({contentType, search, visibleFields, selection
         };
     });
 
+    // Both follow the interface language. Sorting is unaffected by either: it happens on the server
+    // against the stored property, which keeps its full precision whatever is drawn here, so two rows
+    // from the same day still come back in the right order.
     const dateFormat = useMemo(
-        // The day, without the time of day. A listing is read by scanning a column, and a time
-        // nobody asked for costs width in every row while telling apart two things changed the same
-        // afternoon - which is not what this table is for. It takes nothing away from sorting: that
-        // happens on the server against the stored property, which keeps its full precision whatever
-        // is drawn here, so two rows from the same day still come back in the right order.
+        // What the cell shows: the day, and nothing a column does not need in every row.
         () => new Intl.DateTimeFormat(uilang || language || undefined, {dateStyle: 'medium'}),
         [uilang, language]
     );
 
-    const renderContext = useMemo(() => ({t, dateFormat}), [t, dateFormat]);
+    const dateTimeFormat = useMemo(
+        // What the tooltip shows: the same moment spelled out, down to the minute. A tooltip has room
+        // to be unambiguous, so it names the weekday too rather than leaving a bare numeric date to
+        // be read in whichever order the reader assumes.
+        () => new Intl.DateTimeFormat(uilang || language || undefined, {dateStyle: 'full', timeStyle: 'short'}),
+        [uilang, language]
+    );
+
+    const renderContext = useMemo(
+        () => ({t, dateFormat, dateTimeFormat}),
+        [t, dateFormat, dateTimeFormat]
+    );
 
     // The table is told which rows are ticked in the terms it keys them by; the selection is kept
     // as the rows themselves for the benefit of the bar above, which needs more than their paths.
@@ -708,18 +858,29 @@ export const ContentTypesTable = ({contentType, search, visibleFields, selection
         }
     };
 
-    /**
-     * A column heading, as an element rather than the bare string a column label usually is.
-     *
-     * That is what lets it be narrowed: as a string it is an anonymous flex item that will not shrink
-     * below its own width, and a long one pushed the sort arrow out of the cell. The full text stays
-     * on hover, the way a truncated name does.
-     */
-    const headerLabel = label => (
-        <span className={styles.headerLabel} title={label}>{label}</span>
-    );
-
     const columns = useMemo(() => {
+        /**
+         * A column heading, as an element rather than the bare string a column label usually is.
+         *
+         * That is what lets it be narrowed: as a string it is an anonymous flex item that will not shrink
+         * below its own width, and a long one pushed the sort arrow out of the cell. The full text stays
+         * on hover, the way a truncated name does.
+         */
+        const headerLabel = (label, field) => (
+            <>
+                <span className={styles.headerLabel} title={label}>{label}</span>
+                {field?.filterType && field?.jcrProperty && (
+                    <ColumnFilterControl
+                        field={field}
+                        filter={filterFor(filters, field.key)}
+                        label={t('label.filter.column', {column: label})}
+                        onApply={filter => onSetFilter(field.key, filter)}
+                        onClear={() => onClearFilter(field.key)}
+                    />
+                )}
+            </>
+        );
+
         // A content type's own field can hold anything up to a full rich text body, so it is bounded
         // and scrollable rather than growing the column to fit whatever the longest value happens to
         // be, or wrapping every row to several lines. How wide that bound is depends on what the
@@ -727,7 +888,7 @@ export const ContentTypesTable = ({contentType, search, visibleFields, selection
         // deeply nested site pushes every column after it off screen.
         const fieldColumns = visibleFields.map(field => (field.isDynamic ? {
             key: field.key,
-            label: headerLabel(field.label),
+            label: headerLabel(field.label, field),
             // Sortable if the hook found either way of ordering it. What is left without an arrow is
             // a multi-valued property, which has no single value to order a row by.
             isSortable: Boolean(field.sortJcrProperty || field.sortProperty),
@@ -736,10 +897,10 @@ export const ContentTypesTable = ({contentType, search, visibleFields, selection
             render: ({value}) => renderDynamicField(field, value, renderContext)
         } : {
             key: field.key,
-            label: headerLabel(field.label),
+            label: headerLabel(field.label, field),
             isSortable: Boolean(field.sortProperty),
-            width: '160px',
-            isScrollable: field.key === 'path',
+            width: WIDE_COMMON_FIELDS.has(field.key) ? DEFAULT_COLUMN_WIDTH : COMMON_COLUMN_WIDTH,
+            isScrollable: WIDE_COMMON_FIELDS.has(field.key),
             render: ({data: row}) => COMMON_RENDERERS[field.key](row, renderContext)
         }));
 
@@ -776,7 +937,7 @@ export const ContentTypesTable = ({contentType, search, visibleFields, selection
                 ))
             }
         ];
-    }, [visibleFields, t, renderContext, hasSelection]);
+    }, [visibleFields, t, renderContext, hasSelection, filters, onSetFilter, onClearFilter]);
 
     // Falling back to previousData keeps the table on screen while a page or sort change is in
     // flight, instead of collapsing to a loader and back on every click.
@@ -812,7 +973,9 @@ export const ContentTypesTable = ({contentType, search, visibleFields, selection
     if (totalItems === 0) {
         return (
             <Typography className={styles.message} variant="body" data-sel-role="content-empty">
-                {isSearching ? t('label.noSearchResults', {terms: typed}) : t('label.noContent')}
+                {isSearching ?
+                    t('label.noSearchResults', {terms: typed}) :
+                    t(filters.length > 0 ? 'label.noFilterResults' : 'label.noContent')}
             </Typography>
         );
     }
@@ -888,6 +1051,12 @@ ContentTypesTable.propTypes = {
     contentType: PropTypes.string.isRequired,
     search: PropTypes.string,
     visibleFields: PropTypes.array,
+    /** The conditions narrowing the table, and every field they could name - including ones whose
+     *  column is hidden, since a filter in a shared link outlives a column choice held in a browser. */
+    filters: PropTypes.array.isRequired,
+    fieldsByKey: PropTypes.instanceOf(Map).isRequired,
+    onSetFilter: PropTypes.func.isRequired,
+    onClearFilter: PropTypes.func.isRequired,
     /** The ticked rows, held above so the toolbar can act on them. Whole rows rather than paths,
      *  because the bar names them and reads their node type flags. */
     selection: PropTypes.array.isRequired,

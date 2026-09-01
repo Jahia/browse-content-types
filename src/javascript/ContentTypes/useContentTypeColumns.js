@@ -3,9 +3,49 @@ import {useQuery} from '@apollo/client';
 import {useSelector} from 'react-redux';
 import {useTranslation} from 'react-i18next';
 import {GET_CONTENT_TYPE_FIELDS} from './ContentTypes.gql';
+import {FILTER_BOOLEAN, FILTER_DATE, FILTER_NUMBER, FILTER_TEXT} from './ContentTypesFilters';
 import {NAMESPACE} from '../ContentTypes.register';
 
 const STORAGE_PREFIX = 'content-types:columns:';
+
+/**
+ * Which property a common field can be filtered on, and with what kind of form.
+ *
+ * A filter is a constraint on a named JCR property, so a column can only offer one where it reads a
+ * property in the first place. Four of them do not: Content Type and Publication are computed rather
+ * than stored, Path is what the query already scopes itself by, and ID and Lock are neither. Those
+ * columns simply get no filter control, which is more honest than a form that could not be answered.
+ */
+const COMMON_FILTERS = {
+    createdBy: {jcrProperty: 'jcr:createdBy', filterType: FILTER_TEXT},
+    createdDate: {jcrProperty: 'jcr:created', filterType: FILTER_DATE},
+    lastModified: {jcrProperty: 'jcr:lastModified', filterType: FILTER_DATE},
+    lastModifiedBy: {jcrProperty: 'jcr:lastModifiedBy', filterType: FILTER_TEXT},
+    publishedOn: {jcrProperty: 'j:lastPublished', filterType: FILTER_DATE},
+    publishedBy: {jcrProperty: 'j:lastPublishedBy', filterType: FILTER_TEXT},
+    // Multi-valued, and a constraint on one matches a node holding it among others - which is what
+    // filtering by a tag should mean.
+    tags: {jcrProperty: 'j:tagList', filterType: FILTER_TEXT},
+    systemName: {jcrProperty: 'j:nodename', filterType: FILTER_TEXT}
+};
+
+/**
+ * The kind of filter form a content type's own property gets, or nothing where it gets none.
+ *
+ * References are left out for now: a constraint on one compares the uuid it stores, so a usable
+ * filter needs a picker to turn a choice into that uuid rather than a box to type in.
+ */
+const FILTER_TYPES_BY_REQUIRED_TYPE = {
+    STRING: FILTER_TEXT,
+    NAME: FILTER_TEXT,
+    PATH: FILTER_TEXT,
+    URI: FILTER_TEXT,
+    LONG: FILTER_NUMBER,
+    DOUBLE: FILTER_NUMBER,
+    DECIMAL: FILTER_NUMBER,
+    DATE: FILTER_DATE,
+    BOOLEAN: FILTER_BOOLEAN
+};
 
 /**
  * Metadata and content status are not part of any single content type's own definition, but every
@@ -125,13 +165,17 @@ export const useContentTypeColumns = contentType => {
                     isDynamic: true,
                     // Contributes one of `sortJcrProperty` or `sortProperty`, or neither - which is
                     // what leaves a multi-valued column without a sort arrow. See sortingFor.
-                    ...sortingFor(definition, key)
+                    ...sortingFor(definition, key),
+                    // A filter constrains the property itself, so multi-valued is no obstacle the way
+                    // it is for sorting: a constraint on one value matches a node holding it.
+                    jcrProperty: definition.name,
+                    filterType: FILTER_TYPES_BY_REQUIRED_TYPE[definition.requiredType]
                 };
             });
     }, [data, contentType]);
 
     const availableFields = useMemo(() => [
-        ...COMMON_FIELDS.map(field => ({...field, label: t(field.labelKey)})),
+        ...COMMON_FIELDS.map(field => ({...field, label: t(field.labelKey), ...COMMON_FILTERS[field.key]})),
         ...contentTypeFields
     ], [contentTypeFields, t]);
 

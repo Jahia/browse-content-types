@@ -1,9 +1,10 @@
 import {parse} from 'graphql';
 
 /**
- * Builds the two record queries (the full listing and the search) at runtime, because which
- * fields they fetch depends on which columns are visible - a choice made in the browser, not
- * something a document written once at build time can know about.
+ * Builds the record query at runtime, because which fields it fetches depends on which columns are
+ * visible - a choice made in the browser, not something a document written once at build time can
+ * know about. What narrows it is a constraint built in the browser too, so searching and filtering
+ * need no query of their own.
  *
  * Fields common to every node are always fetched, whether or not their column is currently shown:
  * there are few of them and they are fixed, so asking for all of them unconditionally is simpler
@@ -155,21 +156,26 @@ const dynamicFieldSelection = field => {
 const recordFields = dynamicFields => COMMON_RECORD_FIELDS + dynamicFields.map(dynamicFieldSelection).join('');
 
 /**
- * Every record of one content type in a site, for when nothing is being searched for.
+ * Every record of one content type in a site, narrowed by whatever is being asked of it.
  *
- * Sorting and paging both happen on the server. Sorting one page in the browser would order only
- * the rows already fetched while presenting it as the whole set, so the sort has to travel with
- * the query; `totalCount` is what lets the table page without fetching everything.
+ * One query rather than two. Searching and filtering are both just constraints on the same criteria
+ * query, so the shape they arrive in - `$nodeConstraint`, built in the browser and null when nothing
+ * is being asked - is the only thing that differs between "everything of this type" and any narrowing
+ * of it. That also means a filter and a search compose without either knowing about the other.
+ *
+ * Sorting and paging both happen on the server. Sorting one page in the browser would order only the
+ * rows already fetched while presenting it as the whole set, so the sort has to travel with the
+ * query; `totalCount` is what lets the table page without fetching everything.
  *
  * A type filter in JCR matches sub types too, so selecting a type also lists its sub types.
  *
- * Built on the same `nodesByCriteria` the search below uses, rather than on the site node's
- * `descendants`, because only the criteria query carries an `ordering` - a sort the repository
- * performs against the property itself, which is the one that puts numbers in numeric order.
- * `descendants` offers `fieldSorter` alone, which compares the text a field returned. The two return
- * the same rows: checked against a site, 161 records of one type either way.
+ * Built on `nodesByCriteria` rather than on the site node's `descendants` because only the criteria
+ * query carries an `ordering` - a sort the repository performs against the property itself, which is
+ * the one that puts numbers in numeric order. `descendants` offers `fieldSorter` alone, which compares
+ * the text a field returned. The two return the same rows: checked against a site, 161 records of one
+ * type either way.
  */
-export const buildListingQuery = dynamicFields => parse(`
+export const buildRecordQuery = dynamicFields => parse(`
     query getContentByType(
         $sitePath: String!,
         $type: String!,
@@ -177,54 +183,8 @@ export const buildListingQuery = dynamicFields => parse(`
         $offset: Int!,
         $limit: Int!,
         $fieldSorter: InputFieldSorterInput,
-        $ordering: InputGqlOrdering
-    ) {
-        jcr(workspace: EDIT) {
-            nodesByCriteria(
-                criteria: {
-                    language: $language,
-                    nodeType: $type,
-                    paths: [$sitePath],
-                    ordering: $ordering
-                },
-                offset: $offset,
-                limit: $limit,
-                fieldSorter: $fieldSorter
-            ) {
-                pageInfo {
-                    totalCount
-                }
-                nodes {
-                    ${recordFields(dynamicFields)}
-                }
-            }
-        }
-    }
-`);
-
-/**
- * The records of one content type in a site that match a search.
- *
- * Uses the same criteria search jContent's own search screen runs, so results and ranking behave
- * the way they already do elsewhere in the product. It returns the same
- * `pageInfo.totalCount` + `nodes` shape as the listing above, which is what lets the table page
- * and sort a search exactly as it pages and sorts the full set.
- *
- * The three constraints are an OR: full text anywhere in the record, the tag list, and the node
- * name. `contains` runs against the search index, so it matches whole words; the node name arm is
- * what gives substring matching, and is why a partial word still finds something.
- */
-export const buildSearchQuery = dynamicFields => parse(`
-    query searchContentByType(
-        $sitePath: String!,
-        $type: String!,
-        $terms: String!,
-        $nameTerms: String!,
-        $language: String!,
-        $offset: Int!,
-        $limit: Int!,
-        $fieldSorter: InputFieldSorterInput,
-        $ordering: InputGqlOrdering
+        $ordering: InputGqlOrdering,
+        $nodeConstraint: InputGqlJcrNodeConstraintInput
     ) {
         jcr(workspace: EDIT) {
             nodesByCriteria(
@@ -233,13 +193,7 @@ export const buildSearchQuery = dynamicFields => parse(`
                     nodeType: $type,
                     paths: [$sitePath],
                     ordering: $ordering,
-                    nodeConstraint: {
-                        any: [
-                            {contains: $terms}
-                            {contains: $terms, property: "j:tagList"}
-                            {like: $nameTerms, property: "j:nodename", function: LOWER_CASE}
-                        ]
-                    }
+                    nodeConstraint: $nodeConstraint
                 },
                 offset: $offset,
                 limit: $limit,

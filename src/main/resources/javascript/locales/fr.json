@@ -71,6 +71,33 @@
     },
     "lock": {
       "locked": "Verrouillé"
-    }
+    },
+    "filter": {
+      "column": "Filtrer sur {{column}}",
+      "apply": "Appliquer",
+      "clear": "Retirer",
+      "clearAll": "Retirer tous les filtres",
+      "none": "Aucun filtre n'est défini.",
+      "activeCount": "Filtré ({{count}})",
+      "valuePlaceholder": "Valeur",
+      "operator": {
+        "contains": "contient",
+        "equals": "est",
+        "notEquals": "n'est pas",
+        "startsWith": "commence par",
+        "empty": "est vide",
+        "notEmpty": "n'est pas vide",
+        "gt": "supérieur à",
+        "gte": "au moins",
+        "lt": "inférieur à",
+        "lte": "au plus",
+        "after": "après le",
+        "before": "avant le",
+        "lastDays": "dans les derniers (jours)",
+        "isTrue": "est vrai",
+        "isFalse": "est faux"
+      }
+    },
+    "noFilterResults": "Aucun contenu de ce type ne correspond aux filtres."
   }
 }
