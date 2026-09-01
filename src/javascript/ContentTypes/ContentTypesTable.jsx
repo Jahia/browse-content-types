@@ -34,7 +34,13 @@ const SEARCH_DEBOUNCE_MS = 300;
  * scrolled past is a cost with nothing to show for it. 300 is far past anything worth scrolling and
  * well short of an article.
  */
-const NAME_COLUMN_WIDTH = '220px';
+/*
+ * The name is the column a reader looks at first and the one that identifies a row, so it is the one
+ * worth spending width on. 220px was under thirty characters, and on this site an estate's name runs
+ * to 59 on the median and 144 at the longest - so the column was truncating almost every row while
+ * three author columns beside it sat two thirds empty.
+ */
+const NAME_COLUMN_WIDTH = '320px';
 const MAX_NAME_LENGTH = 300;
 
 /**
@@ -366,6 +372,39 @@ const COMMON_COLUMN_WIDTH = '160px';
  */
 const WIDE_COMMON_FIELDS = new Set(['path', 'tags', 'categories']);
 
+/**
+ * Common fields holding one short thing: a user name, or a lock icon.
+ *
+ * They were given the same 160px as every other common field, which is about twenty characters for a
+ * value that measured five at the longest on this site - `robin` - and three at the median. That is
+ * width taken from the columns a reader is actually reading.
+ */
+const SHORT_COMMON_FIELDS = new Set(['createdBy', 'lastModifiedBy', 'publishedBy', 'lock']);
+
+/** Common fields holding a date. */
+const DATE_COMMON_FIELDS = new Set(['createdDate', 'lastModified', 'publishedOn']);
+
+/**
+ * What a date needs, and no more.
+ *
+ * `dateStyle: 'medium'` is what the cell draws - "Sep 18, 2025", "18 sept. 2025" - so fourteen
+ * characters covers it in either language, with the full moment a hover away in the tooltip.
+ */
+const DATE_COLUMN_WIDTH = 'calc(14ch + 32px)';
+
+/** The width a common field asks for, by what it holds rather than by being common. */
+const commonColumnWidth = key => {
+    if (WIDE_COMMON_FIELDS.has(key)) {
+        return DEFAULT_COLUMN_WIDTH;
+    }
+
+    if (DATE_COMMON_FIELDS.has(key)) {
+        return DATE_COLUMN_WIDTH;
+    }
+
+    return SHORT_COMMON_FIELDS.has(key) ? NARROW_COLUMN_WIDTH : COMMON_COLUMN_WIDTH;
+};
+
 /** A figure needing twelve characters is already an unusual figure. */
 const NUMERIC_TYPES = new Set(['LONG', 'DOUBLE', 'DECIMAL']);
 
@@ -388,14 +427,37 @@ const CODE_PROPERTIES = new Set([
     'isocountrycode'
 ]);
 
+/*
+ * Bounds on a value list's column: never cramped, and never given over to its longest outlier.
+ *
+ * The cap is below the longest label some lists hold - `country` offers a 38-character one - so those
+ * few truncate and are read from the tooltip. That is the better trade in a table scanned across:
+ * sizing the column for a value that appears in no row on this site would cost every other column
+ * the room.
+ */
+const MIN_CHOICE_CH = 10;
+const MAX_CHOICE_CH = 14;
+
 /**
  * The width to ask for a content type's own field.
  *
  * A field can hold anything up to a full rich text body, so the default is generous and scrollable.
- * What this narrows are the two kinds that are reliably short, where a wide column is empty space
- * that pushes everything worth reading further right.
+ * What this narrows are the kinds that are reliably short, where a wide column is empty space that
+ * pushes everything worth reading further right.
+ *
+ * A value list is the one case where the longest possible value is known in advance - it is the
+ * longest label the definition offers - so it is measured rather than guessed. This is also what now
+ * sizes `country`: it holds two-letter codes but *shows* their names, so the old rule that gave it
+ * twelve characters was reasoning from what is stored rather than from what is drawn.
  */
 const columnWidthFor = field => {
+    if (field.valueOptions?.length > 0) {
+        const longest = field.valueOptions.reduce((most, option) => Math.max(most, option.label.length), 0);
+        const ch = Math.min(Math.max(longest, MIN_CHOICE_CH), MAX_CHOICE_CH);
+
+        return `calc(${ch}ch + 32px)`;
+    }
+
     if (NUMERIC_TYPES.has(field.requiredType)) {
         return NARROW_COLUMN_WIDTH;
     }
@@ -1014,7 +1076,7 @@ export const ContentTypesTable = ({
         } : {
             key: field.key,
             label: headerLabel(field.label, field.key, Boolean(field.sortProperty), field),
-            width: WIDE_COMMON_FIELDS.has(field.key) ? DEFAULT_COLUMN_WIDTH : COMMON_COLUMN_WIDTH,
+            width: commonColumnWidth(field.key),
             isScrollable: WIDE_COMMON_FIELDS.has(field.key),
             render: ({data: row}) => COMMON_RENDERERS[field.key](row, renderContext)
         }));
