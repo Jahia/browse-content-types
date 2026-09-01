@@ -295,10 +295,18 @@ export const toNodeConstraint = (filters, fieldsByKey, searchConstraint) => {
  */
 export const operatorLabel = (t, field, operator) => {
     const kind = field?.filterType;
-    const keys = [`label.filter.operator.${kind}.${operator}`, `label.filter.operator.${operator}`];
+    const keys = [`label.filter.operator.${operator}`];
 
-    if (field?.multiple) {
-        keys.unshift(`label.filter.operator.${kind}Multiple.${operator}`);
+    // Only where there is a kind to name. A filter on a column the catalog no longer holds - which a
+    // shared link can carry - would otherwise ask for `operator.undefined.contains`, a key that can
+    // never resolve. i18next would move on to the general one and the summary would read correctly,
+    // but a key nothing can answer has no business being asked for.
+    if (kind) {
+        keys.unshift(`label.filter.operator.${kind}.${operator}`);
+
+        if (field.multiple) {
+            keys.unshift(`label.filter.operator.${kind}Multiple.${operator}`);
+        }
     }
 
     return t(keys);
