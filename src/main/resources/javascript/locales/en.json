@@ -106,6 +106,9 @@
         }
       }
     },
+    "sort": {
+      "column": "Sort by {{column}}"
+    },
     "noFilterResults": "No content of this type matches the filters."
   }
 }

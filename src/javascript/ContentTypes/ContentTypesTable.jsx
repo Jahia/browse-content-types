@@ -1,9 +1,9 @@
-import React, {useEffect, useMemo, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import PropTypes from 'prop-types';
 import {useQuery} from '@apollo/client';
 import {shallowEqual, useSelector} from 'react-redux';
 import {useTranslation} from 'react-i18next';
-import {Button, Chip, DataTable, Filter, Loader, Lock, Menu, Pagination, Thumbnail, Typography} from '@jahia/moonstone';
+import {Button, Chip, DataTable, Loader, Lock, Menu, Pagination, SortIndicator, Thumbnail, Typography} from '@jahia/moonstone';
 import {ContextualMenu, DisplayAction, registry} from '@jahia/ui-extender';
 import {ButtonRendererNoLabel} from '@jahia/jcontent';
 import {buildRecordQuery} from './ContentTypesRecordQuery';
@@ -79,35 +79,78 @@ const PUBLICATION_CHIPS = {
 const humanise = status => status.toLowerCase().replace(/_/g, ' ');
 
 /**
- * A column's filter control: the funnel in its header, and the form it opens.
+ * A column's sort control: the arrow in its header, and only the arrow.
  *
- * In the header rather than behind the toolbar's Filter button because that is where the column is -
- * no step asking which field is meant, and the condition is scoped by where it was opened from. It is
- * its own small button rather than the label being clickable: the label already truncates and carries
- * a tooltip, and making it a second click target beside the sort arrow is how the header became easy
- * to trigger by accident in the first place.
+ * Moonstone sorts from the whole header cell, which put sorting and filtering behind one click -
+ * opening a column's funnel re-sorted the table on the way in. Confining that to the arrow with
+ * `pointer-events` did not work either: the rule matched `[class*='sort']`, and the indicator's base
+ * class is `moonstone-SortIndicator`, so only `-sorted` ever matched. The arrow of a column that was
+ * not already sorted took no clicks at all, which left no way to sort by a different column.
  *
- * `pointer-events` is given back explicitly because the header cell has them taken away, which is
- * what confines sorting to the arrow.
+ * So the sort is ours: the column carries no `isSortable`, the table is given no `onSortChange`, and
+ * this button is the only thing that reorders anything. Two buttons, two meanings, and the arrow is
+ * reachable from the keyboard - which a sort living on a non-focusable `th` never was.
  */
-const ColumnFilterControl = ({field, filter, onApply, onClear, label}) => {
+const ColumnSortControl = ({label, isSorted, direction, onToggle}) => (
+    <Button
+        variant="ghost"
+        size="small"
+        icon={<SortIndicator isSorted={isSorted} direction={direction}/>}
+        aria-label={label}
+        title={label}
+        className={styles.headerSort}
+        data-sel-role={isSorted ? 'column-sort-active' : 'column-sort'}
+        onClick={onToggle}
+    />
+);
+
+ColumnSortControl.propTypes = {
+    label: PropTypes.string.isRequired,
+    isSorted: PropTypes.bool,
+    direction: PropTypes.oneOf(['ascending', 'descending']),
+    onToggle: PropTypes.func.isRequired
+};
+
+/**
+ * A column's heading, which is also the way to filter it.
+ *
+ * The funnel that used to sit beside it cost width in every filterable header, and a header has
+ * little to spare - the label was already the first thing to be truncated. So the label is the
+ * control. Nothing is lost by that now: sorting moved to its own arrow, so a click on the heading
+ * has only one meaning, which was the objection to making it clickable in the first place.
+ *
+ * A real button rather than a span with a handler, so the heading is reachable by keyboard and
+ * announces that it opens something. It carries no button chrome - see .headerLabelFilterable, which
+ * strips it back to text and keeps the truncation the plain heading has.
+ *
+ * A column with a condition on it is coloured rather than badged, which says the whole of what the
+ * funnel's active state used to say and costs no width at all.
+ */
+const FilterableColumnLabel = ({field, filter, label, title, onApply, onClear}) => {
     const anchor = useRef();
     const [isOpen, setOpen] = useState(false);
 
+    const classes = [styles.headerLabel, styles.headerLabelFilterable];
+    if (filter) {
+        classes.push(styles.headerLabelFiltered);
+    }
+
     return (
-        <span ref={anchor} className={styles.headerFilter}>
-            <Button
-                variant="ghost"
-                size="small"
-                icon={<Filter/>}
-                aria-label={label}
-                title={label}
-                // Set when a condition is in force, so a narrowed column says so in its own header
-                // rather than only in the summary above the table.
+        <>
+            <button
+                ref={anchor}
+                type="button"
+                className={classes.join(' ')}
+                title={title}
+                aria-haspopup="dialog"
+                aria-expanded={isOpen}
+                // Says whether a condition is in force, for the tests and for anything reading the
+                // header without seeing its colour.
                 data-sel-role={filter ? 'column-filter-active' : 'column-filter'}
-                className={filter ? styles.headerFilterActive : undefined}
                 onClick={() => setOpen(open => !open)}
-            />
+            >
+                {label}
+            </button>
             <Menu
                 hasSearch={false}
                 isDisplayed={isOpen}
@@ -122,14 +165,15 @@ const ColumnFilterControl = ({field, filter, onApply, onClear, label}) => {
                     onClose={() => setOpen(false)}
                 />
             </Menu>
-        </span>
+        </>
     );
 };
 
-ColumnFilterControl.propTypes = {
+FilterableColumnLabel.propTypes = {
     field: PropTypes.object.isRequired,
     filter: PropTypes.object,
     label: PropTypes.string.isRequired,
+    title: PropTypes.string.isRequired,
     onApply: PropTypes.func.isRequired,
     onClear: PropTypes.func.isRequired
 };
@@ -662,6 +706,20 @@ export const ContentTypesTable = ({
     const [sortBy, setSortBy] = useState('displayName');
     const [sortDirection, setSortDirection] = useState('ascending');
 
+    // Sorting is driven from the header's arrow rather than from the table - see ColumnSortControl.
+    // A different column starts ascending; the same column reverses. Either way the paging goes back
+    // to the first page, since page 4 of one ordering says nothing about page 4 of another.
+    const toggleSort = useCallback(key => {
+        if (key === sortBy) {
+            setSortDirection(direction => (direction === 'ascending' ? 'descending' : 'ascending'));
+        } else {
+            setSortBy(key);
+            setSortDirection('ascending');
+        }
+
+        setCurrentPage(1);
+    }, [sortBy]);
+
     const {isSearching, terms, nameTerms, typed} = useSearchTerm(search);
 
     // Page numbers do not carry across types, and no more across a change of search: page 4 of one
@@ -866,16 +924,28 @@ export const ContentTypesTable = ({
          * below its own width, and a long one pushed the sort arrow out of the cell. The full text stays
          * on hover, the way a truncated name does.
          */
-        const headerLabel = (label, field) => (
+        const headerLabel = (label, sortKey, isSortable, field) => (
             <>
-                <span className={styles.headerLabel} title={label}>{label}</span>
-                {field?.filterType && field?.jcrProperty && (
-                    <ColumnFilterControl
+                {field?.filterType && field?.jcrProperty ? (
+                    <FilterableColumnLabel
                         field={field}
                         filter={filterFor(filters, field.key)}
-                        label={t('label.filter.column', {column: label})}
+                        label={label}
+                        // Names the column in full, so it doubles as the tooltip a truncated heading
+                        // needs - which is the one thing the plain heading used its title for.
+                        title={t('label.filter.column', {column: label})}
                         onApply={filter => onSetFilter(field.key, filter)}
                         onClear={() => onClearFilter(field.key)}
+                    />
+                ) : (
+                    <span className={styles.headerLabel} title={label}>{label}</span>
+                )}
+                {isSortable && (
+                    <ColumnSortControl
+                        label={t('label.sort.column', {column: label})}
+                        isSorted={sortBy === sortKey}
+                        direction={sortBy === sortKey ? sortDirection : 'ascending'}
+                        onToggle={() => toggleSort(sortKey)}
                     />
                 )}
             </>
@@ -888,17 +958,15 @@ export const ContentTypesTable = ({
         // deeply nested site pushes every column after it off screen.
         const fieldColumns = visibleFields.map(field => (field.isDynamic ? {
             key: field.key,
-            label: headerLabel(field.label, field),
-            // Sortable if the hook found either way of ordering it. What is left without an arrow is
-            // a multi-valued property, which has no single value to order a row by.
-            isSortable: Boolean(field.sortJcrProperty || field.sortProperty),
+            // An arrow if the hook found either way of ordering it. What is left without one is a
+            // multi-valued property, which has no single value to order a row by.
+            label: headerLabel(field.label, field.key, Boolean(field.sortJcrProperty || field.sortProperty), field),
             width: columnWidthFor(field),
             isScrollable: true,
             render: ({value}) => renderDynamicField(field, value, renderContext)
         } : {
             key: field.key,
-            label: headerLabel(field.label, field),
-            isSortable: Boolean(field.sortProperty),
+            label: headerLabel(field.label, field.key, Boolean(field.sortProperty), field),
             width: WIDE_COMMON_FIELDS.has(field.key) ? DEFAULT_COLUMN_WIDTH : COMMON_COLUMN_WIDTH,
             isScrollable: WIDE_COMMON_FIELDS.has(field.key),
             render: ({data: row}) => COMMON_RENDERERS[field.key](row, renderContext)
@@ -907,8 +975,7 @@ export const ContentTypesTable = ({
         return [
             {
                 key: 'displayName',
-                label: headerLabel(t('label.table.name')),
-                isSortable: true,
+                label: headerLabel(t('label.table.name'), 'displayName', true),
                 width: NAME_COLUMN_WIDTH,
                 // Bounded and scrollable, the way every other text column already was. The whole
                 // name is in the cell, so hovering it scrolls through the part that does not fit;
@@ -937,7 +1004,7 @@ export const ContentTypesTable = ({
                 ))
             }
         ];
-    }, [visibleFields, t, renderContext, hasSelection, filters, onSetFilter, onClearFilter]);
+    }, [visibleFields, t, renderContext, hasSelection, filters, onSetFilter, onClearFilter, sortBy, sortDirection, toggleSort]);
 
     // Falling back to previousData keeps the table on screen while a page or sort change is in
     // flight, instead of collapsing to a loader and back on every click.
@@ -992,7 +1059,6 @@ export const ContentTypesTable = ({
             */}
             <div className={styles.tableScroll}>
                 <DataTable
-                    enableSorting
                     enableSelection
                     enablePagination={false}
                     className={styles.table}
@@ -1004,8 +1070,6 @@ export const ContentTypesTable = ({
                     // translation before it can be acted on.
                     primaryKey="path"
                     selection={selectedPaths}
-                    sortBy={sortBy}
-                    sortDirection={sortDirection}
                     data-sel-role="content-types-table"
                     rowProps={({data: row}) => ({
                         'data-sel-role': 'content-row',
@@ -1017,11 +1081,6 @@ export const ContentTypesTable = ({
                     // choice. Resolving them here, against the rows on screen, is what lets the
                     // rest of the module hold the selection as content rather than as identifiers.
                     onChangeSelection={paths => onSelectionChange(rows.filter(row => paths.includes(row.path)))}
-                    onSortChange={(by, direction) => {
-                        setSortBy(by);
-                        setSortDirection(direction);
-                        setCurrentPage(1);
-                    }}
                 />
             </div>
             <Pagination

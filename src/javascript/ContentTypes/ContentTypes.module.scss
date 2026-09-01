@@ -99,36 +99,6 @@
 }
 
 /*
- * Sorting is asked for by clicking the arrow, not by clicking anywhere in the header.
- *
- * Moonstone puts the sort handler on the whole `th`, so the label, the padding and the empty space
- * beside it all reorder the table - easy to trigger by accident while reaching past a header, and it
- * leaves nowhere inert to click. Taking hit testing off the cell and giving it back to the arrow
- * alone needs no change to the handler: the arrow is inside the cell, so its click still reaches it
- * by bubbling.
- *
- * Two things fall out of this for free. The pointer cursor Moonstone puts on the whole cell stops
- * showing over the label, because an element that is not hit tested contributes no cursor - so the
- * header stops advertising a click that no longer does anything. And the arrow's hover colour still
- * works, since hovering it makes its ancestors hover too.
- *
- * Matched on a substring of the class rather than its full name: Moonstone's CSS module hashes it
- * (`_sortable_dcb151d`) and only the hash moves between releases. That class is put on sortable
- * headers only, so the select-all checkbox in the header keeps working.
- */
-.table th[class*='sortable'] {
-    pointer-events: none;
-}
-
-.table th[class*='sortable'] svg[class*='sort'] {
-    flex: 0 0 auto;
-
-    cursor: pointer;
-
-    pointer-events: auto;
-}
-
-/*
  * A column heading that gives way rather than pushing the sort arrow out of the cell.
  *
  * Moonstone builds a header as a nowrap flex row holding the label and then the arrow, with
@@ -145,6 +115,37 @@
 
     white-space: nowrap;
     text-overflow: ellipsis;
+}
+
+/*
+ * A heading that opens its filter, looking like the heading it replaced.
+ *
+ * Everything a button brings of its own is taken back off - box, background, padding, the inherited
+ * font it does not inherit - so the only difference a reader sees from a plain heading is the cursor,
+ * and the colour once a condition is in force. `text-align` matters because a button centres its
+ * text where a heading does not, and `width: 100%` keeps the click target the whole of the space the
+ * heading occupies rather than only the glyphs.
+ */
+.headerLabelFilterable {
+    width: 100%;
+    padding: 0;
+
+    border: 0;
+
+    color: inherit;
+    font: inherit;
+    text-align: left;
+
+    background: none;
+    cursor: pointer;
+}
+
+/*
+ * Says this column is narrowing the table, in the one place a reader is already looking. It is the
+ * whole of what the funnel's active state used to convey, without the width a funnel cost.
+ */
+.headerLabelFiltered {
+    color: var(--color-accent_dark);
 }
 
 /*
@@ -319,18 +320,23 @@
  * Hit testing is given back explicitly: the header cell has it taken away, which is what confines
  * sorting to the arrow, and a descendant that re-enables it still bubbles its own clicks.
  */
-.headerFilter {
+/*
+ * The two header controls. Each keeps its own width whatever the label does, so a long heading
+ * shortens itself rather than squeezing them out of the cell.
+ *
+ * Neither needs `pointer-events`. The cell used to sort on click, so sorting had to be confined by
+ * taking hit testing off the cell and handing it back to the arrow - which never actually worked,
+ * the rule matching `[class*='sort']` against a base class of `moonstone-SortIndicator`, so only an
+ * already-sorted column answered its arrow. Sorting is its own button now, and the cell sorts
+ * nothing, so there is nothing left to confine.
+ */
+.headerSort {
     display: inline-flex;
     flex: 0 0 auto;
-
-    pointer-events: auto;
 }
 
 /* A column that is currently narrowing the table says so where the condition was set, not only in
    the summary above. */
-.headerFilterActive {
-    color: var(--color-accent_dark);
-}
 
 .filterOverlay {
     display: flex;
@@ -414,7 +420,6 @@
     white-space: nowrap;
     text-overflow: ellipsis;
 }
-
 
 .subtitle {
     color: var(--color-gray_dark40);
