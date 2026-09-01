@@ -55,6 +55,25 @@ export const defaultOperator = filterType => DEFAULT_OPERATORS[filterType] || (O
 export const VALUELESS_OPERATORS = new Set(['empty', 'notEmpty', 'isTrue', 'isFalse']);
 
 /**
+ * Operators whose value is a set rather than one thing.
+ *
+ * Only the value list operators: what a constrained column can hold is known, so asking for several
+ * of them at once costs the reader nothing and saves setting the same filter twice over.
+ */
+export const MULTI_VALUE_OPERATORS = new Set(['is', 'isNot']);
+
+/**
+ * A filter's value as a list, whatever shape it arrived in.
+ *
+ * A shared link written before these operators took a set carries a bare string, and a half-used
+ * form can carry an empty one, so both are folded into the same list here rather than at every
+ * point that reads a value.
+ */
+export const valuesOf = value => (Array.isArray(value) ? value : [value])
+    .map(entry => String(entry ?? '').trim())
+    .filter(Boolean);
+
+/**
  * A value on its way into a LIKE pattern.
  *
  * `%` and `_` are the pattern's own wildcards, so a reader searching for "50%" would otherwise be
@@ -81,7 +100,12 @@ const CONSTRAINT_BUILDERS = {
     // Choosing from a value list. `is` needs nothing clever: measured against a site, `equals` on a
     // multi-valued property matches a node holding that value among its others, which is exactly what
     // "is" should mean - 33 of 161 estates for `options is garage`, matching the data exactly.
-    is: (property, value) => ({property, equals: value}),
+    //
+    // Several values mean any of them, composed with `any`. One value is left as the bare comparison
+    // rather than an `any` of one, which is the same question asked more plainly.
+    is: (property, values) => (values.length === 1 ?
+        {property, equals: values[0]} :
+        {any: values.map(value => ({property, equals: value}))}),
 
     // `isNot` cannot use notEquals. On a multi-valued property notEquals answers neither "does not
     // hold this value" (128) nor "holds some other value" (93) but 45, which is neither - so it is
@@ -91,10 +115,13 @@ const CONSTRAINT_BUILDERS = {
     //
     // The `exists` arm inside `all` is what makes the negation reliable - a bare `none` has no base
     // set to subtract from and returns everything. See notContains above.
-    isNot: (property, value) => ({
+    isNot: (property, values) => ({
         any: [
             {property, exists: false},
-            {all: [{property, exists: true}, {none: [{property, equals: value}]}]}
+            {all: [
+                {property, exists: true},
+                {none: values.map(value => ({property, equals: value}))}
+            ]}
         ]
     }),
 
@@ -148,6 +175,11 @@ export const toConstraint = (field, filter) => {
     const build = CONSTRAINT_BUILDERS[filter?.o];
     if (!property || !build) {
         return null;
+    }
+
+    if (MULTI_VALUE_OPERATORS.has(filter.o)) {
+        const values = valuesOf(filter.v);
+        return values.length > 0 ? build(property, values) : null;
     }
 
     const text = String(filter.v ?? '').trim();
@@ -230,7 +262,18 @@ export const describeFilter = (filter, field, t) => {
     const column = field?.label || filter.c;
     const operator = operatorLabel(t, field, filter.o);
 
-    return VALUELESS_OPERATORS.has(filter.o) ?
-        `${column} · ${operator}` :
-        `${column} · ${operator} ${labelForValue(field, filter.v)}`;
+    if (VALUELESS_OPERATORS.has(filter.o)) {
+        return `${column} · ${operator}`;
+    }
+
+    // Joined with "or" rather than a comma, because a comma leaves the reader to guess whether all of
+    // them are wanted or any of them. Any of them is what the constraint asks, in both directions:
+    // "contains Garage or Piscine" holds one of the two, "does not contain Garage or Piscine" holds
+    // neither.
+    if (MULTI_VALUE_OPERATORS.has(filter.o)) {
+        const values = valuesOf(filter.v).map(value => labelForValue(field, value));
+        return `${column} · ${operator} ${values.join(t('label.filter.valueSeparator'))}`;
+    }
+
+    return `${column} · ${operator} ${labelForValue(field, filter.v)}`;
 };

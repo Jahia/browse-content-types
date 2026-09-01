@@ -2,7 +2,7 @@ import React, {useState} from 'react';
 import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
 import {Button, Dropdown, Input} from '@jahia/moonstone';
-import {FILTER_BOOLEAN, FILTER_CHOICE, FILTER_DATE, FILTER_NUMBER, OPERATORS, VALUELESS_OPERATORS, defaultOperator, operatorLabel} from './ContentTypesFilters';
+import {FILTER_BOOLEAN, FILTER_CHOICE, FILTER_DATE, FILTER_NUMBER, MULTI_VALUE_OPERATORS, OPERATORS, VALUELESS_OPERATORS, defaultOperator, operatorLabel, valuesOf} from './ContentTypesFilters';
 import {NAMESPACE} from '../ContentTypes.register';
 import styles from './ContentTypes.module.scss';
 
@@ -24,11 +24,34 @@ export const ContentTypesFilterOverlay = ({field, filter, onApply, onClear, onCl
     const {t} = useTranslation(NAMESPACE);
     const operators = OPERATORS[field.filterType] || [];
 
+    const isChoice = field.filterType === FILTER_CHOICE;
+
     const [operator, setOperator] = useState(filter?.o || defaultOperator(field.filterType));
-    const [value, setValue] = useState(filter?.v === undefined ? '' : String(filter.v));
+    // A value list keeps a list of values; everything else keeps the one string it was typed as.
+    const [value, setValue] = useState(() => {
+        if (isChoice) {
+            return valuesOf(filter?.v);
+        }
+
+        return filter?.v === undefined ? '' : String(filter.v);
+    });
 
     const needsValue = !VALUELESS_OPERATORS.has(operator);
-    const canApply = !needsValue || String(value).trim() !== '';
+    const canApply = isChoice ? value.length > 0 : (!needsValue || String(value).trim() !== '');
+
+    /**
+     * Adds or removes one value, keeping them in the order the definition lists them.
+     *
+     * Ordered by the definition rather than by the order they were ticked, so that the same two
+     * values always read the same way in the summary above the table.
+     */
+    const toggleValue = code => setValue(previous => {
+        const next = previous.includes(code) ?
+            previous.filter(entry => entry !== code) :
+            [...previous, code];
+
+        return (field.valueOptions || []).map(option => option.value).filter(entry => next.includes(entry));
+    });
 
     const apply = () => {
         if (canApply) {
@@ -68,27 +91,30 @@ export const ContentTypesFilterOverlay = ({field, filter, onApply, onClear, onCl
                     setOperator(item.value);
                     // A condition that takes no value must not carry one over from the last choice.
                     if (VALUELESS_OPERATORS.has(item.value)) {
-                        setValue('');
+                        setValue(isChoice ? [] : '');
                     }
                 }}
             />
 
             {/* A value list is chosen from, never typed: the labels are what the reader sees in the
                 cells, and the code behind each one never has to be known or spelled. */}
-            {needsValue && field.filterType === FILTER_CHOICE && (
+            {needsValue && isChoice && (
                 <Dropdown
                     isFullWidth
                     size="small"
                     hasSearch={(field.valueOptions || []).length > SEARCHABLE_FROM}
                     placeholder={t('label.filter.valuePlaceholder')}
                     data={(field.valueOptions || []).map(option => ({label: option.label, value: option.value}))}
-                    value={value}
+                    // `values` rather than `value` is what puts Moonstone's dropdown into multiple
+                    // selection. It reports the value that was ticked or unticked, not the new set,
+                    // so the set is kept here.
+                    values={MULTI_VALUE_OPERATORS.has(operator) ? value : []}
                     data-sel-role="filter-choice"
-                    onChange={(event, item) => setValue(item.value)}
+                    onChange={(event, item) => toggleValue(item.value)}
                 />
             )}
 
-            {needsValue && field.filterType !== FILTER_BOOLEAN && field.filterType !== FILTER_CHOICE && (
+            {needsValue && field.filterType !== FILTER_BOOLEAN && !isChoice && (
                 <Input
                     autoFocus
                     type={inputType}

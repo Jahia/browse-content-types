@@ -78,6 +78,7 @@
       "clearAll": "Clear all filters",
       "activeCount": "Filtered ({{count}})",
       "valuePlaceholder": "Value",
+      "valueSeparator": " or ",
       "operator": {
         "contains": "contains",
         "equals": "is",
