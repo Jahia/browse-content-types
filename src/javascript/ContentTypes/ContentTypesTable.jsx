@@ -485,10 +485,19 @@ const thumbnailFor = node => {
  * A single reference gets its name beside the image - that is the usual case, one picture on a piece
  * of content, and there is room for it. Several would not fit, so those rely on the tooltip.
  */
+/**
+ * The images themselves, and nothing written out beside them.
+ *
+ * A lone image used to be named after its thumbnail, which cost the width of a filename in a column
+ * that exists to be glanced at - and the name is already on the thumbnail as its tooltip, where it
+ * is a hover away rather than permanently in the way. Every thumbnail carries it, so a cell holding
+ * several is no less identifiable than a cell holding one.
+ *
+ * `alt` carries it too, which is what a reader who cannot see the image gets.
+ */
 const renderThumbnails = previews => {
     const shown = previews.slice(0, MAX_THUMBNAILS);
     const hidden = previews.length - shown.length;
-    const soleName = previews.length === 1 ? previews[0].node.displayName : null;
 
     return (
         <span className={styles.referenceCell}>
@@ -503,7 +512,6 @@ const renderThumbnails = previews => {
                     />
                 </span>
             ))}
-            {soleName && <span className={styles.referenceName}>{soleName}</span>}
             {hidden > 0 && <span className={styles.referenceMore}>{`+${hidden}`}</span>}
         </span>
     );

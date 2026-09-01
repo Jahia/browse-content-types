@@ -255,17 +255,6 @@
     flex: 0 0 auto;
 }
 
-/* Shown beside a lone thumbnail. Truncates rather than wraps: the row is one line high, and a
-   second line would push the image out of its own cell. */
-.referenceName {
-    min-width: 0;
-
-    overflow: hidden;
-
-    white-space: nowrap;
-    text-overflow: ellipsis;
-}
-
 .referenceMore {
     flex: 0 0 auto;
 
