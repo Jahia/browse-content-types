@@ -83,10 +83,23 @@ export const ContentTypesFilterOverlay = ({field, filter, onApply, onClear, onCl
     });
 
     const apply = () => {
-        if (canApply) {
-            onApply({o: operator, v: needsValue ? value : undefined});
-            onClose();
+        if (!canApply) {
+            return;
         }
+
+        // The key is left out rather than set to undefined. Filters are kept in jContent's params,
+        // which are rison-encoded, and rison refuses an undefined value outright - it throws inside
+        // the navigation, so the address never changes, the table never reloads, and applying the
+        // filter appears to do nothing at all. Only a condition that takes no value can reach this
+        // with nothing to store, which is why it went unnoticed until a column whose operators are
+        // all valueless.
+        const applied = {o: operator};
+        if (needsValue) {
+            applied.v = value;
+        }
+
+        onApply(applied);
+        onClose();
     };
 
     // Enter applies, which is what a single-field form invites; Escape gives up on it.
