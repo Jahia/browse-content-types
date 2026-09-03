@@ -21,5 +21,8 @@ module.exports = {
     testEnvironment: 'node',
     testMatch: ['<rootDir>/src/javascript/**/*.spec.{js,jsx}'],
     transform: {'^.+\\.jsx?$': babel},
+    // A component cannot be rendered in a test without this: the source imports its CSS module, and
+    // jest has no idea what to do with SCSS. The stand-in answers each class with its own name.
+    moduleNameMapper: {'\.(scss|css)$': '<rootDir>/src/javascript/__mocks__/styleMock.js'},
     collectCoverageFrom: ['src/javascript/**/*.{js,jsx}']
 };
