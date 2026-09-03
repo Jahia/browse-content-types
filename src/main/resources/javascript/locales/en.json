@@ -211,7 +211,8 @@
       "action": "Undo",
       "actionWith": "Undo — {{message}}",
       "dismiss": "Dismiss",
-      "failed": "The change could not be undone."
+      "failed": "The change could not be undone.",
+      "promise": "This can be undone straight afterwards."
     },
     "preview": {
       "close": "Close preview",

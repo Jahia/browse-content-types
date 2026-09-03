@@ -351,6 +351,13 @@ export const ContentTypesBulkEditDialog = ({isOpen, nodes, availableFields, visi
                     )}
                 </ModalBody>
                 <ModalFooter>
+                    {/* Said before the button rather than discovered after it: an editor deciding
+                        whether to change a hundred records is deciding under a different risk if
+                        they know it can be taken back. */}
+                    <Typography variant="caption" className={styles.undoPromise} data-sel-role="undo-promise">
+                        {t('label.undo.promise')}
+                    </Typography>
+                    <div className={styles.toolBarSpacer}/>
                     <Button size="big" variant="ghost" label={t('label.bulkEdit.cancel')} onClick={close}/>
                     <Button
                         size="big"

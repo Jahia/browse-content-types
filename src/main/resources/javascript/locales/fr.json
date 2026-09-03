@@ -211,7 +211,8 @@
       "action": "Annuler",
       "actionWith": "Annuler — {{message}}",
       "dismiss": "Fermer",
-      "failed": "La modification n'a pas pu être annulée."
+      "failed": "La modification n'a pas pu être annulée.",
+      "promise": "Cette action peut être annulée juste après."
     },
     "preview": {
       "close": "Fermer l'aperçu",

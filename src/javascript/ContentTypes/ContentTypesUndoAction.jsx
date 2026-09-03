@@ -91,7 +91,10 @@ export const ContentTypesUndoAction = () => {
         <div className={styles.undoAction} data-sel-role="undo-action-group" data-sel-undo-kind={snapshot.kind}>
             <Button
                 size="default"
-                variant="outlined"
+                // Filled rather than outlined, and the only filled control on this line: an offer
+                // that expires when the next operation supersedes it has to be seen while it stands,
+                // and a ghost button among ghost buttons is not seen.
+                variant="default"
                 color={failed ? 'danger' : 'accent'}
                 icon={<Undo/>}
                 // What was done, on the control that takes it back - the label alone would leave an

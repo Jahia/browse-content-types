@@ -794,6 +794,31 @@
     flex: 0 0 auto;
     gap: var(--spacing-nano);
     margin-left: var(--spacing-small);
+
+    /*
+     * A one-shot flare on arrival.
+     *
+     * The control appears in a line the reader has just looked away from - their attention is on the
+     * table that changed, or on the dialog that closed - so a button that simply materialises is one
+     * nobody sees. This draws the eye once and then stops: a ring that fades over a second rather
+     * than anything that keeps moving, since a control that pulses forever reads as an error.
+     */
+    animation: undo-arrives 1.2s ease-out 1;
+    border-radius: var(--border-radius);
+}
+
+@keyframes undo-arrives {
+    0%   { box-shadow: 0 0 0 0 var(--color-accent_dark); }
+    30%  { box-shadow: 0 0 0 6px rgb(0 0 0 / 0%); }
+    100% { box-shadow: 0 0 0 0 rgb(0 0 0 / 0%); }
+}
+
+/*
+ * Nobody is told anything by movement they asked not to see. The control is filled and labelled
+ * with what it would reverse, so it stands on its own without the flare.
+ */
+@media (prefers-reduced-motion: reduce) {
+    .undoAction { animation: none; }
 }
 
 /* The table and the preview side by side, sharing whatever height the toolbar leaves. */
@@ -871,4 +896,9 @@
  */
 :global(.moonstone-menu) {
     max-height: 60vh;
+}
+
+/* The reassurance in a dialog footer, to the left of the buttons it is about. */
+.undoPromise {
+    color: var(--color-gray_dark);
 }
