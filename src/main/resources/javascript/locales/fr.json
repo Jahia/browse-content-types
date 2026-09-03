@@ -212,6 +212,11 @@
       "actionWith": "Annuler — {{message}}",
       "dismiss": "Fermer",
       "failed": "La modification n'a pas pu être annulée."
+    },
+    "preview": {
+      "close": "Fermer l'aperçu",
+      "unavailable": "Aucun aperçu n'est disponible pour ce contenu.",
+      "inPage": "Affiché dans la page qui le présente, ce contenu ne pouvant pas être rendu seul."
     }
   }
 }

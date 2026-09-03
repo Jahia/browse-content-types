@@ -55,6 +55,15 @@ const MAX_NAME_LENGTH = 300;
 const REFETCHER = 'contentTypesTable';
 
 /**
+ * How long after a menu closes the table waits before reloading.
+ *
+ * Clicking an entry closes the menu and starts the action at the same moment, so a reload timed to
+ * the close itself can read the repository before the action has written to it. Long enough for a
+ * single mutation to land, short enough that a lock appears to take effect as it is clicked.
+ */
+const MENU_SETTLE_MS = 600;
+
+/**
  * The backstop on a name's length, cut on a word boundary where there is one near the end, as
  * jContent does. Only the Name column needs it, and only against a rich text record whose display
  * name is its entire body; the full text stays in the cell's title either way.
@@ -951,6 +960,58 @@ export const ContentTypesTable = ({
             registry.remove('refetcher', REFETCHER);
         };
     });
+
+    /**
+     * Reloading once a row menu closes.
+     *
+     * Some of jContent's actions change a record without telling anybody. `delete`, `rename`,
+     * `paste`, `zip` and `unzip` all call `triggerRefetchAll`, which walks the refetcher registry
+     * above and so reaches this table; **`lock` and `unlock` do not** - they refetch only their own
+     * permission query. The lock lands in the repository and the Lock column keeps showing the old
+     * state until something else reloads the page. Verified: the mutation succeeds and this table's
+     * own query reports the new lock as soon as it is asked again.
+     *
+     * There is no close callback to hang this on - neither `ContextualMenu` nor the composed
+     * `menuAction` offers one - so the signal is the menu's own portal emptying. ui-extender renders
+     * every menu into a single `#menuHolder` div appended to the body, and empties it when the last
+     * one has finished closing. Watching that is exact, where a timer or a document click would be
+     * guesswork.
+     *
+     * The reload is deferred past the close because clicking an entry both closes the menu and
+     * starts the action: refetching the instant it empties can beat the mutation to the repository
+     * and read back the state we are trying to replace. The menu's exit animation covers most of
+     * that; this covers the rest.
+     */
+    useEffect(() => {
+        // Looked up the way ui-extender looks it up, and created the same way if this runs first -
+        // whichever of us gets there, both then use the one element.
+        let holder = document.getElementById('menuHolder');
+        if (!holder) {
+            holder = document.createElement('div');
+            holder.setAttribute('id', 'menuHolder');
+            document.body.appendChild(holder);
+        }
+
+        let wasOpen = holder.childElementCount > 0;
+        let pending = null;
+
+        const observer = new MutationObserver(() => {
+            const isOpen = holder.childElementCount > 0;
+            if (wasOpen && !isOpen) {
+                clearTimeout(pending);
+                pending = setTimeout(() => refetch(), MENU_SETTLE_MS);
+            }
+
+            wasOpen = isOpen;
+        });
+
+        observer.observe(holder, {childList: true});
+
+        return () => {
+            observer.disconnect();
+            clearTimeout(pending);
+        };
+    }, [refetch]);
 
     // Both follow the interface language. Sorting is unaffected by either: it happens on the server
     // against the stored property, which keeps its full precision whatever is drawn here, so two rows

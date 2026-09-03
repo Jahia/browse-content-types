@@ -212,6 +212,11 @@
       "actionWith": "Undo — {{message}}",
       "dismiss": "Dismiss",
       "failed": "The change could not be undone."
+    },
+    "preview": {
+      "close": "Close preview",
+      "unavailable": "No preview is available for this content.",
+      "inPage": "Shown in the page that displays it, since this content cannot be rendered on its own."
     }
   }
 }

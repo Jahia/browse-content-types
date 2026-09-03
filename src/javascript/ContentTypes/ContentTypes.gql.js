@@ -548,6 +548,45 @@ export const DELETE_TASK = gql`
     }
 `;
 
+/**
+ * What to render for a preview, which is not always the node that was clicked.
+ *
+ * `displayableNode` is core's own answer to "can this be shown on its own, and if not, what shows
+ * it" - it resolves a record with a content template to itself and a sub-component to the page
+ * hosting it. Measured against a site: the render servlet answers 200 for the first and **404** for
+ * the second, so asking the node's own path would leave the panel showing an error for every record
+ * that lives inside a page.
+ *
+ * Null where nothing can display it at all, which is what the panel reports as no preview available.
+ */
+export const GET_PREVIEW_TARGET = gql`
+    query getPreviewTarget($path: String!, $language: String!) {
+        jcr(workspace: EDIT) {
+            nodeByPath(path: $path) {
+                path
+                displayName(language: $language)
+                displayableNode {
+                    path
+                }
+            }
+        }
+    }
+`;
+
+/**
+ * The modification and publication stamps a bulk operation is about to disturb.
+ *
+ * Read alongside the values so an undo can put the record's publication status back, not only its
+ * content. Jahia decides that status by comparing `jcr:lastModified` with `j:lastPublished` - see
+ * JCRPublicationService - and never by comparing what the two workspaces actually hold, so a record
+ * whose values have been restored still reads as Modified until these are restored too.
+ *
+ * The translation subnode is captured with it. An internationalized property's modification date
+ * does not live on the node at all but on a hidden `j:translation_<language>` child with its own
+ * pair of stamps, and that is the one an edit to a translated property moves. Only the language the
+ * operation writes in is asked for, since it is the only one that can be disturbed; `descendants`
+ * cannot see these nodes at all, so the path is asked for directly.
+ */
 export const CAPTURE_TIMESTAMPS = gql`
     query captureTimestamps($paths: [String!]!, $translationPath: String!) {
         jcr(workspace: EDIT) {

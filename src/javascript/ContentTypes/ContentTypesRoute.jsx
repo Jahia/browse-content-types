@@ -8,6 +8,7 @@ import {ContentTypesTable} from './ContentTypesTable';
 import {ContentTypesToolBar} from './ContentTypesToolBar';
 import {useContentTypeColumns} from './useContentTypeColumns';
 import {useColumnFilters} from './useColumnFilters';
+import {ContentTypesPreviewPanel} from './ContentTypesPreviewPanel';
 import {clearUndo} from './useBulkUndo';
 import {NAMESPACE} from '../ContentTypes.register';
 import styles from './ContentTypes.module.scss';
@@ -102,18 +103,23 @@ export const ContentTypesRoute = () => {
                 onClearFilter={clearFilter}
                 onClearAllFilters={clearAll}
             />
-            <ContentTypesTable
-                contentType={contentType}
-                search={search}
-                visibleFields={columns.visibleFields}
-                availableFields={columns.availableFields}
-                selection={selection}
-                filters={filters}
-                fieldsByKey={fieldsByKey}
-                onSelectionChange={setSelection}
-                onSetFilter={setFilter}
-                onClearFilter={clearFilter}
-            />
+            {/* The table and the preview share the remaining height as a row, so opening a
+                preview narrows the table rather than pushing it off the bottom. */}
+            <div className={styles.contentArea}>
+                <ContentTypesTable
+                    contentType={contentType}
+                    search={search}
+                    visibleFields={columns.visibleFields}
+                    availableFields={columns.availableFields}
+                    selection={selection}
+                    filters={filters}
+                    fieldsByKey={fieldsByKey}
+                    onSelectionChange={setSelection}
+                    onSetFilter={setFilter}
+                    onClearFilter={clearFilter}
+                />
+                <ContentTypesPreviewPanel/>
+            </div>
         </div>
     );
 };
