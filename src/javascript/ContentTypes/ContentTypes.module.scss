@@ -595,7 +595,6 @@
     border-top: 1px solid var(--color-gray_light40);
 }
 
-
 .assignCount {
     color: var(--color-gray_dark);
     margin-bottom: var(--spacing-medium);
@@ -665,7 +664,6 @@
     display: block;
     margin-top: var(--spacing-small);
 }
-
 
 .exportSectionLabel {
     display: block;
@@ -901,4 +899,22 @@
 /* The reassurance in a dialog footer, to the left of the buttons it is about. */
 .undoPromise {
     color: var(--color-gray_dark);
+}
+
+/*
+ * The type list, inset from the panel rather than running flush to it.
+ *
+ * Moonstone leaves a tree entirely to its own defaults: a small right padding on each row and a left
+ * indent from `--treeItem-indent`, which at the top level is nearly nothing. The result was a list
+ * pressed against both edges of the side panel, with a long type name - "Référence de fichiers
+ * (Internationalisée)" - running into the right edge and, on a panel narrow enough to scroll, under
+ * the scrollbar.
+ *
+ * The two sides are inset by different amounts on purpose. The left is the larger, so the list reads
+ * as sitting *under* the accordion's own heading rather than beside it; the right only needs enough
+ * to keep a long label off the edge.
+ */
+.typeTree {
+    padding-right: var(--spacing-small);
+    padding-left: var(--spacing-medium);
 }

@@ -8,6 +8,7 @@ import {ContextualMenu, DisplayAction, registry} from '@jahia/ui-extender';
 import {ButtonRendererNoLabel} from '@jahia/jcontent';
 import {buildRecordQuery} from './ContentTypesRecordQuery';
 import {filterFor, labelForValue, matchesPublication, toNodeConstraint} from './ContentTypesFilters';
+import {siteRelativePath} from './ContentTypesPaths';
 import {ContentTypesFilterOverlay} from './ContentTypesFilterOverlay';
 import {NAMESPACE} from '../ContentTypes.register';
 import styles from './ContentTypes.module.scss';
@@ -349,7 +350,11 @@ const COMMON_RENDERERS = {
     tags: data => renderChipList(data.tags?.values),
     categories: data => joinOrDash(data.categories?.refNodes?.map(node => node.displayName)),
     lock: (data, {t}) => renderLock(data, t),
-    path: data => data.path,
+    // Shortened to where it sits inside the site, since every row in this table is in that site by
+    // construction - the prefix would say the same thing on every row while costing the column the
+    // width the distinguishing tail needs. The whole path stays in the tooltip, so nothing is lost
+    // to anyone who wants to copy it.
+    path: (data, {site}) => <span title={data.path}>{siteRelativePath(data.path, site)}</span>,
     systemName: data => data.name,
     id: data => data.uuid
 };
@@ -1031,8 +1036,8 @@ export const ContentTypesTable = ({
     );
 
     const renderContext = useMemo(
-        () => ({t, dateFormat, dateTimeFormat}),
-        [t, dateFormat, dateTimeFormat]
+        () => ({t, dateFormat, dateTimeFormat, site}),
+        [t, dateFormat, dateTimeFormat, site]
     );
 
     // The table is told which rows are ticked in the terms it keys them by; the selection is kept
@@ -1133,6 +1138,9 @@ export const ContentTypesTable = ({
             label: headerLabel(field.label, field.key, Boolean(field.sortJcrProperty || field.sortProperty), field),
             width: columnWidthFor(field),
             isScrollable: true,
+            // A simple text or number value is corrected where it is read; anything else is drawn
+            // exactly as before. The cell wraps the ordinary rendering rather than replacing it, so
+            // a writable column looks no different at rest than a read-only one.
             render: ({value}) => renderDynamicField(field, value, renderContext)
         } : {
             key: field.key,

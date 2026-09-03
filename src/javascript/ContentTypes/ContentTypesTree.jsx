@@ -130,6 +130,7 @@ export const ContentTypesTree = () => {
 
     return (
         <TreeView isReversed
+                  className={styles.typeTree}
                   data={treeData}
                   selectedItems={selected ? [selected] : []}
                   data-sel-role="content-types-tree"
