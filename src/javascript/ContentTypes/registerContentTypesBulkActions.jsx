@@ -14,8 +14,28 @@ import {NAMESPACE} from '../ContentTypes.register';
  *         component: MyBulkThingActionComponent
  *     });
  *
- * An action here is handed the same context every action in the bar gets: `path` for a single
- * selected row, or `paths` for several. Nothing else - it looks up whatever else it needs itself.
+ * An action here is handed `path` for a single selected row, or `paths` for several - the context
+ * every action in jContent's own bars gets, and all most of them need, since each goes and reads
+ * whatever else it wants about those nodes itself.
+ *
+ * This bar adds several things to it, because some operations here cannot be written from paths
+ * alone.
+ * Exporting the table needs the rows *as displayed* - the same columns, in the same order, holding
+ * the same values - and re-reading them from their paths would be a second query whose answer could
+ * honestly differ from what the reader is looking at. So the bar passes what the table already
+ * holds:
+ *
+ *   nodes        the selected rows, in the shape ContentTypesRecordQuery fetched them
+ *   fields       the visible columns, in the reader's own order
+ *   contentType  the type being listed, which names the file
+ *   t            this module's translations, for an action with no React of its own
+ *   openAssign     opens the assign form, which the bar renders - see below
+ *   openBulkField  opens the tag or category form, likewise
+ *   openExport     opens the export form, likewise
+ *   openBulkEdit   opens the replace-a-value form, likewise
+ *
+ * They are additions, not conditions: an action that wants none of them ignores them and behaves
+ * exactly as it would in jContent's bar.
  */
 export const BULK_ACTIONS_TARGET = 'contentTypesBulkActions';
 
@@ -31,16 +51,48 @@ export const BULK_MENU_ACTION = 'contentTypesBulkMenu';
  *
  * Priorities are spaced by ten to leave another module room to slot in between two of them.
  */
-const PLACEHOLDER_ENTRIES = ['tag', 'categorize', 'exportCsv', 'assignTo'];
+const ENTRIES = ['editValue', 'tag', 'categorize', 'export', 'assignTo'];
 
 /**
- * Deliberately inert, and not simply absent: the menu item renderer calls `onClick`, so the handler
- * has to exist for the entry to be clickable at all. Each of these is a piece of work in its own
- * right - reconciling a tag or a category across a set of nodes that may already disagree about it,
- * streaming a CSV of whatever columns happen to be visible, handing content to someone - and the
- * entries are laid out first so that how they are reached is settled once rather than four times.
+ * Kept for an entry another module registers into this target without a handler, and as what a new
+ * entry of this module's own starts as: the menu item renderer calls `onClick`, so the handler has
+ * to exist for the entry to be clickable at all. None of the four uses it any more.
  */
 const notImplementedYet = () => undefined;
+
+/**
+ * Tag and Categorize are the same dialog on two different fields, so they are one handler told which
+ * field it is about rather than two that differ by a string.
+ */
+const openBulkFieldDialog = key => ({openBulkField}) => openBulkField?.(key);
+
+/**
+ * Assigning opens a form, which an onClick cannot render. The bar owns the dialog and passes the way
+ * to open it in the context, so this entry stays a plain handler like the others rather than being
+ * the one action in the menu that is a component.
+ */
+const openAssignDialog = ({openAssign}) => openAssign?.();
+
+/**
+ * Exporting asks two questions first - which format, and which columns - so like the other three it
+ * opens a form the bar renders. It was a straight download while CSV was the only format and the
+ * visible columns the only set; neither is true now.
+ */
+const openExportDialog = ({openExport}) => openExport?.();
+
+/**
+ * Replacing a column's value asks which column first, so it too is a form the bar renders.
+ */
+const openBulkEditDialog = ({openBulkEdit}) => openBulkEdit?.();
+
+/** Every entry now has something behind it. */
+const HANDLERS = {
+    editValue: openBulkEditDialog,
+    tag: openBulkFieldDialog('tag'),
+    categorize: openBulkFieldDialog('categorize'),
+    export: openExportDialog,
+    assignTo: openAssignDialog
+};
 
 export const registerContentTypesBulkActions = () => {
     // The init callback can fire more than once; registering twice would throw on the second pass.
@@ -67,11 +119,13 @@ export const registerContentTypesBulkActions = () => {
         menuEmptyMessage: `${NAMESPACE}:label.bulk.empty`
     });
 
-    PLACEHOLDER_ENTRIES.forEach((key, index) => {
+    ENTRIES.forEach((key, index) => {
         registry.add('action', `contentTypesBulk_${key}`, {
             buttonLabel: `${NAMESPACE}:label.bulk.${key}`,
             targets: [`${BULK_ACTIONS_TARGET}:${(index + 1) * 10}`],
-            onClick: notImplementedYet
+            // The menu item renderer calls this with the item's own props, which carry the bar's
+            // context - so an action needs no React of its own to read the selection.
+            onClick: HANDLERS[key] || notImplementedYet
         });
     });
 };

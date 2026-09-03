@@ -256,6 +256,10 @@ export const useContentTypeColumns = contentType => {
                     propertyName: definition.name,
                     requiredType: definition.requiredType,
                     multiple: definition.multiple,
+                    // Carried for bulk editing, which is the only thing that writes these
+                    // properties - see ContentTypesBulkEdit.
+                    internationalized: definition.internationalized,
+                    mandatory: definition.mandatory,
                     isDynamic: true,
                     // Contributes one of `sortJcrProperty` or `sortProperty`, or neither - which is
                     // what leaves a multi-valued column without a sort arrow. See sortingFor.

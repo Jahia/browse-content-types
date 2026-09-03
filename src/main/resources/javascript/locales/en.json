@@ -19,9 +19,10 @@
     "bulk": {
       "trigger": "Bulk",
       "empty": "No bulk operation is available.",
+      "editValue": "Replace a value",
       "tag": "Tag",
       "categorize": "Categorize",
-      "exportCsv": "Export as CSV",
+      "export": "Export",
       "assignTo": "Assign to"
     },
     "settings": {
@@ -126,6 +127,91 @@
     "sort": {
       "column": "Sort by {{column}}"
     },
-    "noFilterResults": "No content of this type matches the filters."
+    "noFilterResults": "No content of this type matches the filters.",
+    "assign": {
+      "title": "Assign content",
+      "count": "{{count}} record selected",
+      "count_plural": "{{count}} records selected",
+      "taskTitle": "Task title",
+      "description": "Description",
+      "assignee": "Assign to",
+      "assigneePlaceholder": "Search a user who can edit this site",
+      "noEditors": "Nobody on this site has permission to edit its content.",
+      "cancel": "Cancel",
+      "submit": "Create task",
+      "failed": "The task could not be created. Check that you may edit this site, then try again."
+    },
+    "bulkField": {
+      "count": "{{count}} record selected",
+      "count_plural": "{{count}} records selected",
+      "cancel": "Cancel",
+      "apply": "Apply",
+      "failed": "The change could not be applied. Check that you may edit this content, then try again.",
+      "noPicker": "The picker this needs is not available. Content Editor may not be deployed.",
+      "tag": {
+        "title": "Tag content",
+        "label": "Tags",
+        "replaces": "{{count}} of the selected records already has tags, which will be replaced.",
+        "replaces_plural": "{{count}} of the selected records already have tags, which will be replaced.",
+        "clears": "With nothing chosen, applying removes the tags from every selected record."
+      },
+      "categorize": {
+        "title": "Categorize content",
+        "label": "Categories",
+        "replaces": "{{count}} of the selected records is already categorized, and will be replaced.",
+        "replaces_plural": "{{count}} of the selected records are already categorized, and will be replaced.",
+        "clears": "With nothing chosen, applying removes the categories from every selected record."
+      }
+    },
+    "export": {
+      "title": "Export content",
+      "count": "{{count}} record selected",
+      "count_plural": "{{count}} records selected",
+      "format": "Format",
+      "columns": "Columns to export",
+      "columnsNote": "These columns apply to this export only.",
+      "columnsReset": "Match the table",
+      "cancel": "Cancel",
+      "download": "Download",
+      "csv": {
+        "name": "CSV",
+        "hint": "What the table shows, for a spreadsheet."
+      },
+      "json": {
+        "name": "JSON",
+        "hint": "What the repository stores, with numbers, booleans and lists intact."
+      }
+    },
+    "bulkEdit": {
+      "title": "Replace a value",
+      "count": "{{count}} record selected",
+      "count_plural": "{{count}} records selected",
+      "column": "Column",
+      "columnPlaceholder": "Choose a column",
+      "ownPropertiesOnly": "Only this content type's own properties can be changed. Metadata such as the author, the dates and the publication status is maintained by the system.",
+      "newValue": "New value",
+      "choosePlaceholder": "Choose",
+      "onePerLine": "One value per line.",
+      "languageOnly": "This property is translated: only the {{language}} version will be changed.",
+      "clear": "Empty the property instead",
+      "replaces": "{{count}} of the selected records already has a value in this column, which will be replaced.",
+      "replaces_plural": "{{count}} of the selected records already have a value in this column, which will be replaced.",
+      "replacesUnknown": "This column is not shown in the table, so how many records already have a value is not known. Their values will be replaced.",
+      "noFields": "This content type has no property that can be changed this way.",
+      "cancel": "Cancel",
+      "apply": "Replace",
+      "applyClear": "Empty",
+      "failed": "The change could not be applied. Check that you may edit this content, then try again."
+    },
+    "undo": {
+      "property": "{{label}} replaced on {{count}} record.",
+      "property_plural": "{{label}} replaced on {{count}} records.",
+      "task": "Task created for {{count}} record.",
+      "task_plural": "Task created for {{count}} records.",
+      "action": "Undo",
+      "actionWith": "Undo — {{message}}",
+      "dismiss": "Dismiss",
+      "failed": "The change could not be undone."
+    }
   }
 }

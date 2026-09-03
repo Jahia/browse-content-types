@@ -5,6 +5,7 @@ import {Button, Close, CustomDropdown, Filter, SearchInput, Typography} from '@j
 import {ColumnsIcon} from './ColumnsIcon';
 import {ContentTypesColumnsPicker} from './ContentTypesColumnsPicker';
 import {ContentTypesSelectionBar} from './ContentTypesSelectionBar';
+import {ContentTypesUndoAction} from './ContentTypesUndoAction';
 import {describeFilter} from './ContentTypesFilters';
 import {NAMESPACE} from '../ContentTypes.register';
 import styles from './ContentTypes.module.scss';
@@ -33,6 +34,7 @@ import styles from './ContentTypes.module.scss';
 export const ContentTypesToolBar = ({
     search,
     onSearchChange,
+    contentType,
     lockedLabel,
     availableFields,
     visibleFields,
@@ -51,7 +53,14 @@ export const ContentTypesToolBar = ({
     return (
         <div className={styles.toolBar} data-sel-role="content-types-toolbar">
             {selection.length > 0 ? (
-                <ContentTypesSelectionBar nodes={selection} onClear={onClearSelection}/>
+                <ContentTypesSelectionBar
+                    nodes={selection}
+                    fields={visibleFields}
+                    availableFields={availableFields}
+                    fieldsByKey={fieldsByKey}
+                    contentType={contentType}
+                    onClear={onClearSelection}
+                />
             ) : (
                 <>
                     <SearchInput
@@ -139,6 +148,12 @@ export const ContentTypesToolBar = ({
                             </div>
                         </>
                     )}
+
+                    {/* The way back from the last bulk operation, kept in reach once the selection
+                        that raised it has been cleared. Its usual home is beside the Bulk menu in
+                        the selection bar; without it here, clearing a selection would quietly throw
+                        away the only way to undo what was just done to it. */}
+                    <ContentTypesUndoAction/>
                 </>
             )}
 
@@ -168,6 +183,8 @@ export const ContentTypesToolBar = ({
 
 ContentTypesToolBar.propTypes = {
     search: PropTypes.string.isRequired,
+    /** The type being listed. Only the selection bar wants it, to name an exported file. */
+    contentType: PropTypes.string.isRequired,
     lockedLabel: PropTypes.string.isRequired,
     availableFields: PropTypes.array.isRequired,
     visibleFields: PropTypes.array.isRequired,

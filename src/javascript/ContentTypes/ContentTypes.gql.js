@@ -55,6 +55,12 @@ export const GET_CONTENT_TYPE_FIELDS = gql`
                     protected
                     multiple
                     requiredType
+                    # Both are for bulk editing rather than for display. An internationalized
+                    # property *must* be written with a language - without one the server answers
+                    # ConstraintViolationException: no matching property definition found - and a
+                    # mandatory one cannot be cleared, which is worth knowing before offering to.
+                    internationalized
+                    mandatory
                     # What a reference is allowed to point at, which is how an image column is told
                     # from a reference to anything else: an image column constrains its target to
                     # jmix:image.
@@ -174,6 +180,399 @@ export const SET_LISTED_TYPES = gql`
                 addMixins(mixins: ["ct:contentTypesListing"])
                 mutateProperty(name: "ct:listedTypes") {
                     setValues(values: $types)
+                }
+            }
+        }
+    }
+`;
+
+/**
+ * Who may be given a task on this site.
+ *
+ * Two questions in one round trip, because neither answers on its own. The site's access control
+ * says which principal holds which role; the roles tree says which of those roles may actually
+ * change content. `roleGroup` looks like it would answer the second and does not - `privileged` is
+ * declared an `edit-role` and carries no write permission - so the permission names are read
+ * instead, and the tree is read whole because a child role inherits its parent's permissions and
+ * declares none of its own (`/roles/editor/editor-in-chief`).
+ *
+ * `aclEntries` includes entries inherited from above the site, which is how a group granted a role
+ * server-wide still counts here.
+ */
+export const GET_EDITING_PRINCIPALS = gql`
+    query getEditingPrincipals($sitePath: String!) {
+        jcr(workspace: EDIT) {
+            site: nodeByPath(path: $sitePath) {
+                acl {
+                    aclEntries {
+                        aclEntryType
+                        role {
+                            name
+                        }
+                        principal {
+                            name
+                            displayName
+                            node {
+                                path
+                                primaryNodeType {
+                                    name
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            roles: nodeByPath(path: "/roles") {
+                descendants(typesFilter: {types: ["jnt:role"]}) {
+                    nodes {
+                        name
+                        path
+                        permissions: property(name: "j:permissionNames") {
+                            values
+                        }
+                    }
+                }
+            }
+        }
+    }
+`;
+
+/**
+ * The users inside a set of groups.
+ *
+ * A group's membership is kept as `jnt:member` child nodes, each pointing at the principal through
+ * `j:member` - so the member's own node, and with it the path a task needs, only exists once the
+ * reference is resolved. `descendants` rather than `children` because a group's members are nested
+ * one level down when the group holds sub groups.
+ *
+ * Asked separately from the query above rather than folded into it: which groups to expand is only
+ * known once that one has answered.
+ */
+export const GET_GROUP_MEMBERS = gql`
+    query getGroupMembers($paths: [String!]!) {
+        jcr(workspace: EDIT) {
+            nodesByPath(paths: $paths) {
+                path
+                members: descendants(typesFilter: {types: ["jnt:member"]}) {
+                    nodes {
+                        member: property(name: "j:member") {
+                            refNode {
+                                path
+                                name
+                                primaryNodeType {
+                                    name
+                                }
+                                firstName: property(name: "j:firstName") {
+                                    value
+                                }
+                                lastName: property(name: "j:lastName") {
+                                    value
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+`;
+
+/**
+ * The details a directly granted user needs before they can be offered in the list.
+ *
+ * The ACL answers with a principal and its node, which carries the path but not the name a colleague
+ * is recognised by - those are properties of the user node and have to be asked for.
+ */
+export const GET_USERS_BY_PATH = gql`
+    query getUsersByPath($paths: [String!]!) {
+        jcr(workspace: EDIT) {
+            nodesByPath(paths: $paths) {
+                path
+                name
+                firstName: property(name: "j:firstName") {
+                    value
+                }
+                lastName: property(name: "j:lastName") {
+                    value
+                }
+            }
+        }
+    }
+`;
+
+/**
+ * Whether the site already has somewhere to keep its tasks.
+ *
+ * Asked rather than assumed, because `addNode` on an existing node fails and the container is
+ * created by whoever raises the first task on a site. `nodeByPath` on a missing node is an error
+ * rather than a null, so the caller reads the error as "not there yet" - see useAssignTask.
+ */
+export const GET_TASKS_NODE = gql`
+    query getTasksNode($path: String!) {
+        jcr(workspace: EDIT) {
+            nodeByPath(path: $path) {
+                uuid
+            }
+        }
+    }
+`;
+
+/** The container a site keeps its tasks in, created on the first task raised there. */
+export const CREATE_TASKS_NODE = gql`
+    mutation createTasksNode($sitePath: String!) {
+        jcr(workspace: EDIT) {
+            addNode(parentPathOrId: $sitePath, name: "tasks", primaryNodeType: "jnt:tasks") {
+                uuid
+            }
+        }
+    }
+`;
+
+/**
+ * The task itself, in one call.
+ *
+ * `ct:taskTarget` is this module's own mixin and is what carries the records the task was raised
+ * for; `jnt:task` has no property for that, core linking a task to content only on the workflow
+ * subtype. The references travel in `properties` like everything else, typed WEAKREFERENCE so the
+ * server resolves each uuid to the node rather than storing the string - which is what an untyped
+ * entry would do, leaving a reference property holding text that points at nothing.
+ *
+ * `useAvailableNodeName` lets the server settle the collision, so raising a second task on a site
+ * does not fail on the name of the first.
+ */
+export const CREATE_TASK = gql`
+    mutation createTask($tasksPath: String!, $name: String!, $properties: [InputJCRProperty]!) {
+        jcr(workspace: EDIT) {
+            addNode(
+                parentPathOrId: $tasksPath,
+                name: $name,
+                primaryNodeType: "jnt:task",
+                useAvailableNodeName: true,
+                mixins: ["ct:taskTarget"],
+                properties: $properties
+            ) {
+                uuid
+                node {
+                    path
+                }
+            }
+        }
+    }
+`;
+
+/**
+ * Setting one multi-valued property across every ticked row, in one call.
+ *
+ * `mutateNodes` takes the whole selection, so a hundred records cost one round trip rather than a
+ * hundred. The mixin is added on the way past: a node that has never carried a tag has neither the
+ * mixin nor the property, and setting a property its type does not declare is an error.
+ *
+ * `setValues` rather than `addValues` - partly because replacing is what the dialog offers, and
+ * partly because `addValues` on a property that does not exist yet fails outright, the mixin having
+ * defined the property without creating it.
+ */
+export const SET_BULK_FIELD = gql`
+    mutation setBulkField(
+        $paths: [String]!,
+        $mixins: [String]!,
+        $property: String!,
+        $type: JCRPropertyType!,
+        $values: [String]!
+    ) {
+        jcr(workspace: EDIT) {
+            mutateNodes(pathsOrIds: $paths) {
+                addMixins(mixins: $mixins)
+                mutateProperty(name: $property) {
+                    setValues(type: $type, values: $values)
+                }
+            }
+        }
+    }
+`;
+
+/**
+ * Replacing one of a content type's own properties across every ticked row.
+ *
+ * Four documents rather than one with optional arguments, because the two axes that vary cannot be
+ * expressed as a nullable variable:
+ *
+ * - **single against multiple** is `setValue` against `setValues`, two different fields;
+ * - **per-language against not** is whether `language` is passed at all. Passing it as null is not
+ *   the same as omitting it: an internationalized property has one definition per language and the
+ *   server answers `ConstraintViolationException: no matching property definition found` without
+ *   one, while a property that is not internationalized has no per-language definition to find.
+ *
+ * `mutateNodes` takes the whole selection, so the cost is one round trip whatever the size of it.
+ * Clearing is its own mutation below - `delete` takes no value and no type.
+ */
+export const SET_PROPERTY = gql`
+    mutation setProperty($paths: [String]!, $property: String!, $type: JCRPropertyType!, $value: String!) {
+        jcr(workspace: EDIT) {
+            mutateNodes(pathsOrIds: $paths) {
+                mutateProperty(name: $property) {
+                    setValue(type: $type, value: $value)
+                }
+            }
+        }
+    }
+`;
+
+export const SET_PROPERTY_I18N = gql`
+    mutation setPropertyI18n($paths: [String]!, $property: String!, $type: JCRPropertyType!, $value: String!, $language: String!) {
+        jcr(workspace: EDIT) {
+            mutateNodes(pathsOrIds: $paths) {
+                mutateProperty(name: $property) {
+                    setValue(type: $type, value: $value, language: $language)
+                }
+            }
+        }
+    }
+`;
+
+export const SET_PROPERTY_VALUES = gql`
+    mutation setPropertyValues($paths: [String]!, $property: String!, $type: JCRPropertyType!, $values: [String]!) {
+        jcr(workspace: EDIT) {
+            mutateNodes(pathsOrIds: $paths) {
+                mutateProperty(name: $property) {
+                    setValues(type: $type, values: $values)
+                }
+            }
+        }
+    }
+`;
+
+export const SET_PROPERTY_VALUES_I18N = gql`
+    mutation setPropertyValuesI18n($paths: [String]!, $property: String!, $type: JCRPropertyType!, $values: [String]!, $language: String!) {
+        jcr(workspace: EDIT) {
+            mutateNodes(pathsOrIds: $paths) {
+                mutateProperty(name: $property) {
+                    setValues(type: $type, values: $values, language: $language)
+                }
+            }
+        }
+    }
+`;
+
+/**
+ * Emptying a property across the selection.
+ *
+ * The server refuses this on a property the definition makes mandatory - it answers "This field is
+ * mandatory" and rejects the whole mutation - so the dialog does not offer it there. See
+ * `canApplyEdit`.
+ */
+export const CLEAR_PROPERTY = gql`
+    mutation clearProperty($paths: [String]!, $property: String!) {
+        jcr(workspace: EDIT) {
+            mutateNodes(pathsOrIds: $paths) {
+                mutateProperty(name: $property) {
+                    delete
+                }
+            }
+        }
+    }
+`;
+
+export const CLEAR_PROPERTY_I18N = gql`
+    mutation clearPropertyI18n($paths: [String]!, $property: String!, $language: String!) {
+        jcr(workspace: EDIT) {
+            mutateNodes(pathsOrIds: $paths) {
+                mutateProperty(name: $property) {
+                    delete(language: $language)
+                }
+            }
+        }
+    }
+`;
+
+/**
+ * What the selected records hold, read just before a bulk operation replaces it.
+ *
+ * The snapshot an undo is written from. Read from the repository rather than taken from the rows on
+ * screen, because the table cannot answer two of the cases: a column the reader has hidden has no
+ * values in the rows at all, and the category column carries display names where a restore needs
+ * uuids.
+ *
+ * `value` and `values` are both asked for and one of them answers - checked against a site, a
+ * single-valued property returns its `value` with `values` null. That is what lets one document
+ * serve both shapes instead of the caller having to know which it is asking about.
+ *
+ * The language is always passed. It is what an internationalized property is read through, and it is
+ * simply ignored by one that is not - the record query already reads every common property this way.
+ */
+export const CAPTURE_VALUES = gql`
+    query captureValues($paths: [String!]!, $property: String!, $language: String!) {
+        jcr(workspace: EDIT) {
+            nodesByPath(paths: $paths) {
+                path
+                property(name: $property, language: $language) {
+                    value
+                    values
+                }
+            }
+        }
+    }
+`;
+
+/**
+ * The same, for a property that holds references.
+ *
+ * Separate because `refNodes` cannot simply be added to the query above: asking it of a property
+ * that is not a reference makes the server report an internal error on every request - the field
+ * still resolves to null and the response arrives intact, so it is easy to miss and is a real error
+ * the platform logs. See the same note in ContentTypesRecordQuery.
+ *
+ * The uuid is what is captured, since that is what the property stores and what putting it back
+ * means; the display names the table shows would restore nothing.
+ */
+export const CAPTURE_REFERENCES = gql`
+    query captureReferences($paths: [String!]!, $property: String!, $language: String!) {
+        jcr(workspace: EDIT) {
+            nodesByPath(paths: $paths) {
+                path
+                property(name: $property, language: $language) {
+                    refNodes {
+                        uuid
+                    }
+                }
+            }
+        }
+    }
+`;
+
+/** Removing the task an Assign to raised, which is how that operation is taken back. */
+export const DELETE_TASK = gql`
+    mutation deleteTask($uuid: String!) {
+        jcr(workspace: EDIT) {
+            deleteNode(pathOrId: $uuid)
+        }
+    }
+`;
+
+export const CAPTURE_TIMESTAMPS = gql`
+    query captureTimestamps($paths: [String!]!, $translationPath: String!) {
+        jcr(workspace: EDIT) {
+            nodesByPath(paths: $paths) {
+                path
+                lastModified: property(name: "jcr:lastModified") {
+                    value
+                }
+                lastModifiedBy: property(name: "jcr:lastModifiedBy") {
+                    value
+                }
+                lastPublished: property(name: "j:lastPublished") {
+                    value
+                }
+                translation: descendant(relPath: $translationPath) {
+                    path
+                    lastModified: property(name: "jcr:lastModified") {
+                        value
+                    }
+                    lastModifiedBy: property(name: "jcr:lastModifiedBy") {
+                        value
+                    }
+                    lastPublished: property(name: "j:lastPublished") {
+                        value
+                    }
                 }
             }
         }

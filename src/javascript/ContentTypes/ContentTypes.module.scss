@@ -594,3 +594,371 @@
 
     border-top: 1px solid var(--color-gray_light40);
 }
+
+
+.assignCount {
+    color: var(--color-gray_dark);
+    margin-bottom: var(--spacing-medium);
+}
+
+.assignField {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-nano);
+    margin-bottom: var(--spacing-medium);
+
+    /* The suggestions hang off this, so it is what they are positioned against. */
+    position: relative;
+}
+
+/*
+ * The names the box is offering.
+ *
+ * Positioned over what follows rather than pushing it down: a list that grows as it is typed into
+ * would otherwise move the buttons under the pointer while somebody is reaching for them.
+ */
+.assignSuggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 1;
+
+    margin: 0;
+    padding: var(--spacing-nano) 0;
+    list-style: none;
+
+    max-height: 220px;
+    overflow-y: auto;
+
+    background-color: var(--color-light);
+    border: 1px solid var(--color-gray_light);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-low);
+}
+
+.assignSuggestion {
+    display: block;
+    width: 100%;
+    padding: var(--spacing-nano) var(--spacing-small);
+
+    border: none;
+    background: none;
+    text-align: left;
+    cursor: pointer;
+    font: inherit;
+    color: var(--color-gray_dark);
+
+    &:hover,
+    &:focus-visible {
+        background-color: var(--color-gray_light40);
+    }
+}
+
+.assignError {
+    color: var(--color-danger);
+}
+
+/* What replacing is about to cost, said before the fact rather than after. */
+.bulkFieldWarning {
+    color: var(--color-warning_dark);
+    display: block;
+    margin-top: var(--spacing-small);
+}
+
+
+.exportSectionLabel {
+    display: block;
+    margin: var(--spacing-medium) 0 var(--spacing-nano);
+}
+
+.exportFormats {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-nano);
+}
+
+/*
+ * One format. The radio and its description sit on a row so the hint reads as belonging to the name
+ * above it rather than to the next option down.
+ */
+.exportFormat {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-small);
+    padding: var(--spacing-nano) var(--spacing-small);
+    border: 1px solid var(--color-gray_light);
+    border-radius: var(--border-radius);
+    cursor: pointer;
+
+    &:hover {
+        background-color: var(--color-gray_light40);
+    }
+
+    span {
+        display: flex;
+        flex-direction: column;
+    }
+}
+
+/* The controls in the replace-a-value form fill their row, whatever kind they are. */
+.bulkEditControl {
+    width: 100%;
+}
+
+/*
+ * Lifting Moonstone's modal overlay above the page.
+ *
+ * `Modal` portals to the end of `<body>` through floating-ui, but its overlay carries **no z-index
+ * at all** - the class sets only `background`, `display: grid` and `place-items: center`. A portal
+ * at the end of the document still loses to any positioned element that declares one, because a
+ * positioned box with `z-index: 1` paints in a later layer than one left at `auto`. So the dialogs
+ * came up *underneath* the toolbar and underneath the pinned last column, which are exactly the two
+ * things in this module that declare one (`.table tr > :last-child`, and its header at 6).
+ *
+ * The class name is Moonstone's, not this module's, because the overlay's className is fixed inside
+ * the component - a `className` passed to `Modal` lands on the inner box instead, and a z-index
+ * there would raise the dialog while leaving its own backdrop behind the toolbar. `n.n()` puts the
+ * unhashed name on the element alongside the hashed one, which is what makes this selectable at all.
+ *
+ * 8500 places it at Moonstone's own menu-overlay layer: above everything this module and jContent
+ * draw, and deliberately *below* the 9000 its menus use, so a dropdown opened inside one of these
+ * dialogs - the column picker, the value list on a bulk edit - still comes up over the dialog rather
+ * than behind it.
+ *
+ * This is broader than this module: it raises every Moonstone Modal in the app. That is the
+ * intended reading - an overlay with no z-index cannot work in any application that declares one
+ * anywhere - but it is worth knowing it is not scoped to these five dialogs.
+ */
+:global(.moonstone-modal_overlay) {
+    z-index: 8500;
+}
+
+/*
+ * Putting the dialog back in the middle.
+ *
+ * Moonstone's modal box is `position: inherit`, and it inherits `fixed` from the overlay, which
+ * floating-ui gives `position: fixed; inset: 0`. A fixed box's containing block is the viewport
+ * rather than the grid it sits in, so the overlay's `place-items: center` has nothing to act on and
+ * the dialog falls to its static position - hard against the top of the screen.
+ *
+ * `relative` makes it an ordinary grid item again, which is all the centring needs. This is the one
+ * thing the component's own `className` can reach: it lands on this box rather than on the overlay,
+ * which is why the z-index above had to be done the other way round.
+ *
+ * The width lives here rather than on a wrapper inside the modal, and that matters more than it
+ * looks. This box is the flex column - `flex-flow: column`, `max-height: 80vh` - that ModalHeader,
+ * ModalBody and ModalFooter are built to sit in directly: the body is `flex: 1; overflow: hidden
+ * auto`, so it is the part meant to scroll while the other two hold their place. Wrapping the three
+ * in a div of this module's own made them one flex child instead of three, so the wrapper outgrew
+ * the box, the header scrolled out of sight and the footer was left outside it.
+ */
+.dialogBox {
+    position: relative;
+    min-width: 480px;
+
+    /*
+     * Near the top of the page rather than centred in it.
+     *
+     * A dialog holding a picker is only half the height that matters: the list it opens is the other
+     * half, and it opens *downwards*. Centred, a category list on a site with hundreds of them has
+     * only half the window to grow into before it runs off the bottom. Started near the top of the
+     * table, it has almost all of it.
+     *
+     * `align-self` rather than a position change, because the overlay lays this out with
+     * `place-items: center` on a grid - moving the item is the grid's own vocabulary, and it leaves
+     * the horizontal centring alone.
+     */
+    align-self: start;
+    margin-top: 96px;
+
+    /* Replaces Moonstone's own 80vh, which no longer fits once this starts 96px down. */
+    max-height: calc(100vh - 128px);
+}
+
+/* The export form carries a format list and a column picker side by side with its own footer. */
+.dialogBoxWide {
+    composes: dialogBox;
+    min-width: 560px;
+}
+
+/*
+ * The way back from the last bulk operation, in the toolbar beside the menu that raised it.
+ *
+ * Kept together so the dismiss reads as belonging to the undo rather than to whatever follows it on
+ * the line, and given a little air on the left so it is not mistaken for another Bulk affordance.
+ */
+.undoAction {
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
+    gap: var(--spacing-nano);
+    margin-left: var(--spacing-small);
+}
+
+/*
+ * Lifting Moonstone's modal overlay above the page.
+ *
+ * `Modal` portals to the end of `<body>` through floating-ui, but its overlay carries **no z-index
+ * at all** - the class sets only `background`, `display: grid` and `place-items: center`. A portal
+ * at the end of the document still loses to any positioned element that declares one, because a
+ * positioned box with `z-index: 1` paints in a later layer than one left at `auto`. So the dialogs
+ * came up *underneath* the toolbar and underneath the pinned last column, which are exactly the two
+ * things in this module that declare one (`.table tr > :last-child`, and its header at 6).
+ *
+ * The class name is Moonstone's, not this module's, because the overlay's className is fixed inside
+ * the component - a `className` passed to `Modal` lands on the inner box instead, and a z-index
+ * there would raise the dialog while leaving its own backdrop behind the toolbar. `n.n()` puts the
+ * unhashed name on the element alongside the hashed one, which is what makes this selectable at all.
+ *
+ * 8500 places it at Moonstone's own menu-overlay layer: above everything this module and jContent
+ * draw, and deliberately *below* the 9000 its menus use, so a dropdown opened inside one of these
+ * dialogs - the column picker, the value list on a bulk edit - still comes up over the dialog rather
+ * than behind it.
+ *
+ * This is broader than this module: it raises every Moonstone Modal in the app. That is the
+ * intended reading - an overlay with no z-index cannot work in any application that declares one
+ * anywhere - but it is worth knowing it is not scoped to these five dialogs.
+ */
+:global(.moonstone-modal_overlay) {
+    z-index: 8500;
+}
+
+/*
+ * Putting the dialog back in the middle.
+ *
+ * Moonstone's modal box is `position: inherit`, and it inherits `fixed` from the overlay, which
+ * floating-ui gives `position: fixed; inset: 0`. A fixed box's containing block is the viewport
+ * rather than the grid it sits in, so the overlay's `place-items: center` has nothing to act on and
+ * the dialog falls to its static position - hard against the top of the screen.
+ *
+ * `relative` makes it an ordinary grid item again, which is all the centring needs. This is the one
+ * thing the component's own `className` can reach: it lands on this box rather than on the overlay,
+ * which is why the z-index above had to be done the other way round.
+ *
+ * The width lives here rather than on a wrapper inside the modal, and that matters more than it
+ * looks. This box is the flex column - `flex-flow: column`, `max-height: 80vh` - that ModalHeader,
+ * ModalBody and ModalFooter are built to sit in directly: the body is `flex: 1; overflow: hidden
+ * auto`, so it is the part meant to scroll while the other two hold their place. Wrapping the three
+ * in a div of this module's own made them one flex child instead of three, so the wrapper outgrew
+ * the box, the header scrolled out of sight and the footer was left outside it.
+ */
+.dialogBox {
+    position: relative;
+    min-width: 480px;
+
+    /*
+     * Near the top of the page rather than centred in it.
+     *
+     * A dialog holding a picker is only half the height that matters: the list it opens is the other
+     * half, and it opens *downwards*. Centred, a category list on a site with hundreds of them has
+     * only half the window to grow into before it runs off the bottom. Started near the top of the
+     * table, it has almost all of it.
+     *
+     * `align-self` rather than a position change, because the overlay lays this out with
+     * `place-items: center` on a grid - moving the item is the grid's own vocabulary, and it leaves
+     * the horizontal centring alone.
+     */
+    align-self: start;
+    margin-top: 96px;
+
+    /* Replaces Moonstone's own 80vh, which no longer fits once this starts 96px down. */
+    max-height: calc(100vh - 128px);
+}
+
+/* The export form carries a format list and a column picker side by side with its own footer. */
+.dialogBoxWide {
+    composes: dialogBox;
+    min-width: 560px;
+}
+
+/*
+ * The way back from the last bulk operation, in the toolbar beside the menu that raised it.
+ *
+ * Kept together so the dismiss reads as belonging to the undo rather than to whatever follows it on
+ * the line, and given a little air on the left so it is not mistaken for another Bulk affordance.
+ */
+.undoAction {
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
+    gap: var(--spacing-nano);
+    margin-left: var(--spacing-small);
+}
+
+/* The table and the preview side by side, sharing whatever height the toolbar leaves. */
+.contentArea {
+    display: flex;
+    flex: 1 1 0;
+    min-height: 0;
+    min-width: 0;
+    gap: var(--spacing-medium);
+}
+
+/*
+ * The preview, beside the table rather than over it.
+ *
+ * A fixed width with `flex-shrink: 0`: the table beside it already carries `min-width: 0` and so
+ * gives way, which is the right way round - a narrower table still reads, while a narrower preview
+ * stops being a preview.
+ */
+.previewPanel {
+    display: flex;
+    flex: 0 0 420px;
+    flex-direction: column;
+    min-height: 0;
+
+    border: 1px solid var(--color-gray_light);
+    border-radius: var(--border-radius);
+    background-color: var(--color-light);
+    overflow: hidden;
+}
+
+.previewHeader {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: var(--spacing-small);
+    padding: var(--spacing-nano) var(--spacing-nano) var(--spacing-nano) var(--spacing-small);
+    border-bottom: 1px solid var(--color-gray_light40);
+}
+
+.previewNote {
+    flex: 0 0 auto;
+    padding: var(--spacing-nano) var(--spacing-small);
+    color: var(--color-gray_dark);
+    background-color: var(--color-gray_light40);
+}
+
+/*
+ * The rendered page. `border: 0` because an iframe carries one by default, and a white background
+ * so a page with no background of its own does not show this panel's through it.
+ */
+.previewFrame {
+    flex: 1 1 auto;
+    width: 100%;
+    min-height: 0;
+    border: 0;
+    background-color: #fff;
+}
+
+/*
+ * Giving a dropdown list somewhere to stop.
+ *
+ * Moonstone's menu is `overflow: hidden auto` and carries **no max-height** - the cap is an inline
+ * style set only when a `maxHeight` prop is passed, and `Dropdown` does not expose one. ChoiceTree,
+ * which is what the Category picker is built on, passes nothing. So the overflow never engages: a
+ * list of a few hundred categories simply grows past the bottom of the window, and the entries below
+ * the fold cannot be reached at all.
+ *
+ * The class is Moonstone's own, for the same reason the modal overlay's z-index had to be - the
+ * element is rendered inside the component and takes no class of ours. `n.n()` puts the unhashed
+ * name on alongside the hashed one, which is what makes it selectable.
+ *
+ * Like that rule, this is broader than this module: it caps every uncapped Moonstone menu in the
+ * app. An unbounded list is unusable in any of them, so that is the intended reading - but it is
+ * worth knowing it is not scoped to the category picker.
+ */
+:global(.moonstone-menu) {
+    max-height: 60vh;
+}

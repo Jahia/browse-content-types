@@ -21,7 +21,12 @@ export const ContentTypesColumnsPicker = ({
     visibleFields,
     toggleField,
     moveField,
-    resetToDefaults
+    resetToDefaults,
+    // The footer states what happens to a change, and that differs by where the picker is used: the
+    // table keeps one for good, while an export dialog's lasts as long as the dialog. Overridable
+    // rather than hardcoded, so neither host has to say something untrue about the other's.
+    footerNoteKey = 'label.columns.autoSaved',
+    resetLabelKey = 'label.columns.reset'
 }) => {
     const {t} = useTranslation(NAMESPACE);
     const [filter, setFilter] = useState('');
@@ -167,13 +172,13 @@ export const ContentTypesColumnsPicker = ({
                 stuck with on every later visit. */}
             <footer className={styles.columnsFooter}>
                 <Typography className={styles.subtitle} variant="caption">
-                    {t('label.columns.autoSaved')}
+                    {t(footerNoteKey)}
                 </Typography>
                 <div className={styles.toolBarSpacer}/>
                 <Button
                     size="big"
                     variant="ghost"
-                    label={t('label.columns.reset')}
+                    label={t(resetLabelKey)}
                     data-sel-role="columns-reset"
                     onClick={resetToDefaults}
                 />
@@ -188,7 +193,10 @@ ContentTypesColumnsPicker.propTypes = {
     visibleFields: PropTypes.array.isRequired,
     toggleField: PropTypes.func.isRequired,
     moveField: PropTypes.func.isRequired,
-    resetToDefaults: PropTypes.func.isRequired
+    resetToDefaults: PropTypes.func.isRequired,
+    /** What the footer says becomes of a change, and what the way back is called. */
+    footerNoteKey: PropTypes.string,
+    resetLabelKey: PropTypes.string
 };
 
 export default ContentTypesColumnsPicker;

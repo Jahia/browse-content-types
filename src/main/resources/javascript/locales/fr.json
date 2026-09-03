@@ -19,9 +19,10 @@
     "bulk": {
       "trigger": "Actions groupées",
       "empty": "Aucune action groupée n'est disponible.",
+      "editValue": "Remplacer une valeur",
       "tag": "Ajouter des tags",
       "categorize": "Catégoriser",
-      "exportCsv": "Exporter en CSV",
+      "export": "Exporter",
       "assignTo": "Assigner à"
     },
     "settings": {
@@ -126,6 +127,91 @@
     "sort": {
       "column": "Trier par {{column}}"
     },
-    "noFilterResults": "Aucun contenu de ce type ne correspond aux filtres."
+    "noFilterResults": "Aucun contenu de ce type ne correspond aux filtres.",
+    "assign": {
+      "title": "Assigner du contenu",
+      "count": "{{count}} enregistrement sélectionné",
+      "count_plural": "{{count}} enregistrements sélectionnés",
+      "taskTitle": "Titre de la tâche",
+      "description": "Description",
+      "assignee": "Assigner à",
+      "assigneePlaceholder": "Rechercher un utilisateur pouvant modifier ce site",
+      "noEditors": "Personne sur ce site n'a le droit d'en modifier le contenu.",
+      "cancel": "Annuler",
+      "submit": "Créer la tâche",
+      "failed": "La tâche n'a pas pu être créée. Vérifiez que vous pouvez modifier ce site, puis réessayez."
+    },
+    "bulkField": {
+      "count": "{{count}} enregistrement sélectionné",
+      "count_plural": "{{count}} enregistrements sélectionnés",
+      "cancel": "Annuler",
+      "apply": "Appliquer",
+      "failed": "La modification n'a pas pu être appliquée. Vérifiez que vous pouvez modifier ce contenu, puis réessayez.",
+      "noPicker": "Le sélecteur nécessaire n'est pas disponible. Content Editor n'est peut-être pas déployé.",
+      "tag": {
+        "title": "Étiqueter le contenu",
+        "label": "Étiquettes",
+        "replaces": "{{count}} des enregistrements sélectionnés a déjà des étiquettes, qui seront remplacées.",
+        "replaces_plural": "{{count}} des enregistrements sélectionnés ont déjà des étiquettes, qui seront remplacées.",
+        "clears": "Sans sélection, appliquer supprime les étiquettes de tous les enregistrements sélectionnés."
+      },
+      "categorize": {
+        "title": "Catégoriser le contenu",
+        "label": "Catégories",
+        "replaces": "{{count}} des enregistrements sélectionnés est déjà catégorisé, et sera remplacé.",
+        "replaces_plural": "{{count}} des enregistrements sélectionnés sont déjà catégorisés, et seront remplacés.",
+        "clears": "Sans sélection, appliquer supprime les catégories de tous les enregistrements sélectionnés."
+      }
+    },
+    "export": {
+      "title": "Exporter le contenu",
+      "count": "{{count}} enregistrement sélectionné",
+      "count_plural": "{{count}} enregistrements sélectionnés",
+      "format": "Format",
+      "columns": "Colonnes à exporter",
+      "columnsNote": "Ces colonnes ne s'appliquent qu'à cet export.",
+      "columnsReset": "Reprendre le tableau",
+      "cancel": "Annuler",
+      "download": "Télécharger",
+      "csv": {
+        "name": "CSV",
+        "hint": "Ce que le tableau affiche, pour un tableur."
+      },
+      "json": {
+        "name": "JSON",
+        "hint": "Ce que le référentiel stocke, nombres, booléens et listes préservés."
+      }
+    },
+    "bulkEdit": {
+      "title": "Remplacer une valeur",
+      "count": "{{count}} enregistrement sélectionné",
+      "count_plural": "{{count}} enregistrements sélectionnés",
+      "column": "Colonne",
+      "columnPlaceholder": "Choisir une colonne",
+      "ownPropertiesOnly": "Seules les propriétés propres à ce type de contenu peuvent être modifiées. Les métadonnées telles que l'auteur, les dates et le statut de publication sont gérées par le système.",
+      "newValue": "Nouvelle valeur",
+      "choosePlaceholder": "Choisir",
+      "onePerLine": "Une valeur par ligne.",
+      "languageOnly": "Cette propriété est traduite : seule la version {{language}} sera modifiée.",
+      "clear": "Vider la propriété à la place",
+      "replaces": "{{count}} des enregistrements sélectionnés a déjà une valeur dans cette colonne, qui sera remplacée.",
+      "replaces_plural": "{{count}} des enregistrements sélectionnés ont déjà une valeur dans cette colonne, qui sera remplacée.",
+      "replacesUnknown": "Cette colonne n'est pas affichée dans le tableau : le nombre d'enregistrements ayant déjà une valeur est inconnu. Leurs valeurs seront remplacées.",
+      "noFields": "Ce type de contenu n'a aucune propriété modifiable de cette façon.",
+      "cancel": "Annuler",
+      "apply": "Remplacer",
+      "applyClear": "Vider",
+      "failed": "La modification n'a pas pu être appliquée. Vérifiez que vous pouvez modifier ce contenu, puis réessayez."
+    },
+    "undo": {
+      "property": "{{label}} remplacé sur {{count}} enregistrement.",
+      "property_plural": "{{label}} remplacé sur {{count}} enregistrements.",
+      "task": "Tâche créée pour {{count}} enregistrement.",
+      "task_plural": "Tâche créée pour {{count}} enregistrements.",
+      "action": "Annuler",
+      "actionWith": "Annuler — {{message}}",
+      "dismiss": "Fermer",
+      "failed": "La modification n'a pas pu être annulée."
+    }
   }
 }

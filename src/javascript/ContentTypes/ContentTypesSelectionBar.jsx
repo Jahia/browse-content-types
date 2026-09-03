@@ -1,9 +1,16 @@
-import React, {useMemo} from 'react';
+import React, {useCallback, useMemo, useState} from 'react';
 import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
+import {shallowEqual, useSelector} from 'react-redux';
 import {Button, ButtonGroup, Cancel, ChevronDown, Separator, Typography} from '@jahia/moonstone';
 import {DisplayAction, DisplayActions} from '@jahia/ui-extender';
 import {ButtonRenderer, ButtonRendererNoLabel, ButtonRendererShortLabel} from '@jahia/jcontent';
+import {ContentTypesAssignDialog} from './ContentTypesAssignDialog';
+import {ContentTypesBulkFieldDialog} from './ContentTypesBulkFieldDialog';
+import {ContentTypesBulkEditDialog} from './ContentTypesBulkEditDialog';
+import {ContentTypesUndoAction} from './ContentTypesUndoAction';
+import {ContentTypesExportDialog} from './ContentTypesExportDialog';
+import {BULK_FIELDS} from './ContentTypesBulkFields';
 import {BULK_MENU_ACTION} from './registerContentTypesBulkActions';
 import {NAMESPACE} from '../ContentTypes.register';
 import styles from './ContentTypes.module.scss';
@@ -30,11 +37,36 @@ const publishActionFor = nodes => (
  * this module's: the target is a registry key rather than an imported component, and jContent's bar
  * is not part of its public API.
  *
- * Each action goes and fetches whatever it needs to know about the nodes itself, given nothing but
- * the paths below - which is why the selection needs to carry nothing on their account.
+ * Each of jContent's actions goes and fetches whatever it needs to know about the nodes itself,
+ * given nothing but the paths below - which is why the selection needs to carry nothing on their
+ * account. This module's own bulk menu is handed more, since exporting the table means exporting it
+ * as displayed; see `bulkContext` below and the contract in registerContentTypesBulkActions.
  */
-export const ContentTypesSelectionBar = ({nodes, onClear}) => {
+export const ContentTypesSelectionBar = ({nodes, fields, availableFields, fieldsByKey, contentType, onClear}) => {
     const {t} = useTranslation(NAMESPACE);
+    const {site} = useSelector(state => ({site: state.site}), shallowEqual);
+
+    // Assign opens a form, and an action's onClick has no React of its own to render one in. So the
+    // bar owns the dialog and hands the action the way to ask for it - which keeps every entry in
+    // the menu a plain onClick, the way Export as CSV is, rather than making one of the four a
+    // component and the rest not.
+    const [isAssigning, setIsAssigning] = useState(false);
+    const openAssign = useCallback(() => setIsAssigning(true), []);
+    const closeAssign = useCallback(() => setIsAssigning(false), []);
+
+    // Tag and Categorize open the same dialog on different fields, so one piece of state holds
+    // which of the two is open rather than two booleans that must never both be true.
+    const [bulkFieldKey, setBulkFieldKey] = useState(null);
+    const openBulkField = useCallback(key => setBulkFieldKey(key), []);
+    const closeBulkField = useCallback(() => setBulkFieldKey(null), []);
+
+    const [isExporting, setIsExporting] = useState(false);
+    const openExport = useCallback(() => setIsExporting(true), []);
+    const closeExport = useCallback(() => setIsExporting(false), []);
+
+    const [isEditing, setIsEditing] = useState(false);
+    const openBulkEdit = useCallback(() => setIsEditing(true), []);
+    const closeBulkEdit = useCallback(() => setIsEditing(false), []);
 
     // Every action branches on which of these two it was handed: a single `path` for one row, or
     // `paths` for several. Passing an array of one is not the same thing and makes some of them
@@ -48,6 +80,17 @@ export const ContentTypesSelectionBar = ({nodes, onClear}) => {
     const context = useMemo(
         () => (paths.length === 1 ? {path: paths[0]} : {paths}),
         [paths]
+    );
+
+    // What this module's own operations get on top of the paths, and only they: jContent's actions
+    // below are handed the plain context, since an action written against its bar has no idea what
+    // these are and there is nothing to gain from surprising it with four extra props.
+    //
+    // Memoised for the same reason `paths` is - the menu is a PureComponent, and an object rebuilt
+    // on every render would reopen its whole item list each time anything above this re-rendered.
+    const bulkContext = useMemo(
+        () => ({...context, nodes, fields, contentType, t, openAssign, openBulkField, openExport, openBulkEdit}),
+        [context, nodes, fields, contentType, t, openAssign, openBulkField, openExport, openBulkEdit]
     );
 
     return (
@@ -102,7 +145,7 @@ export const ContentTypesSelectionBar = ({nodes, onClear}) => {
                 <DisplayAction
                     menuUseElementAnchor
                     actionKey={BULK_MENU_ACTION}
-                    {...context}
+                    {...bulkContext}
                     render={ButtonRenderer}
                     buttonProps={{
                         size: 'default',
@@ -111,6 +154,9 @@ export const ContentTypesSelectionBar = ({nodes, onClear}) => {
                         'data-sel-role': 'bulk-actions'
                     }}
                 />
+                {/* Beside the menu that raised the operation, which is where an editor looks to
+                    take it back. Draws nothing until there is something to undo. */}
+                <ContentTypesUndoAction/>
             </div>
 
             <Separator variant="vertical"/>
@@ -131,6 +177,45 @@ export const ContentTypesSelectionBar = ({nodes, onClear}) => {
             </ButtonGroup>
             <DisplayAction actionKey="publishDeletion" {...context} render={ButtonRendererShortLabel}/>
             <DisplayAction actionKey="deletePermanently" {...context} render={ButtonRendererShortLabel}/>
+
+            {/* Mounted only while open, so the queries behind it are not run for a menu nobody
+                opened, and so a cancelled form does not keep what was typed into it. */}
+            {isAssigning && (
+                <ContentTypesAssignDialog
+                    isOpen
+                    nodes={nodes}
+                    siteKey={site}
+                    onClose={closeAssign}
+                />
+            )}
+            {isEditing && (
+                <ContentTypesBulkEditDialog
+                    isOpen
+                    nodes={nodes}
+                    availableFields={availableFields}
+                    visibleFields={fields}
+                    onClose={closeBulkEdit}
+                />
+            )}
+            {isExporting && (
+                <ContentTypesExportDialog
+                    isOpen
+                    nodes={nodes}
+                    contentType={contentType}
+                    visibleFields={fields}
+                    availableFields={availableFields}
+                    fieldsByKey={fieldsByKey}
+                    onClose={closeExport}
+                />
+            )}
+            {bulkFieldKey && (
+                <ContentTypesBulkFieldDialog
+                    isOpen
+                    field={BULK_FIELDS[bulkFieldKey]}
+                    nodes={nodes}
+                    onClose={closeBulkField}
+                />
+            )}
         </div>
     );
 };
@@ -139,6 +224,13 @@ ContentTypesSelectionBar.propTypes = {
     /** The rows currently ticked, in the shape the table fetched them. Never empty: the bar is not
      *  rendered without a selection, and the publish choice below has no answer for no rows. */
     nodes: PropTypes.array.isRequired,
+    /** The visible columns, in the reader's order - what an export starts from. */
+    fields: PropTypes.array.isRequired,
+    /** The whole catalog, so a column can be exported without being shown in the table first. */
+    availableFields: PropTypes.array.isRequired,
+    fieldsByKey: PropTypes.instanceOf(Map).isRequired,
+    /** The type being listed, which names an exported file. */
+    contentType: PropTypes.string.isRequired,
     onClear: PropTypes.func.isRequired
 };
 

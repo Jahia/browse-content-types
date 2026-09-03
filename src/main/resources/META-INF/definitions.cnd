@@ -11,3 +11,22 @@
  */
 [ct:contentTypesListing] mixin
  - ct:listedTypes (string) multiple
+
+/**
+ * What a task raised from the Content Types accordion is about.
+ *
+ * `jnt:task` carries a title, a description, an assignee and a state, but nothing that says which
+ * content the task concerns - core only links a task to content on `jnt:workflowTask`, through a
+ * `targetNode` that a plain task does not have. The content-review module answers the same gap the
+ * same way, with a mixin of its own (`rvwmix:taskTarget`).
+ *
+ * Multiple, unlike content-review's, because a task raised here is raised from a selection: an
+ * editor ticks the rows that need attention and describes the job once, so one task points at every
+ * record it was raised for rather than the selection being split into one task each.
+ *
+ * A weak reference, so that deleting a record leaves the task standing rather than refusing the
+ * deletion. A task outliving the content it named is a loose end somebody can close; content that
+ * cannot be deleted because an old task mentions it is a problem with no way out.
+ */
+[ct:taskTarget] mixin
+ - targetNode (weakreference) multiple

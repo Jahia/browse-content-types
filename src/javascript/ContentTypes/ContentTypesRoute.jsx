@@ -8,6 +8,7 @@ import {ContentTypesTable} from './ContentTypesTable';
 import {ContentTypesToolBar} from './ContentTypesToolBar';
 import {useContentTypeColumns} from './useContentTypeColumns';
 import {useColumnFilters} from './useColumnFilters';
+import {clearUndo} from './useBulkUndo';
 import {NAMESPACE} from '../ContentTypes.register';
 import styles from './ContentTypes.module.scss';
 
@@ -29,9 +30,11 @@ export const ContentTypesRoute = () => {
     const [search, setSearch] = useState('');
 
     // A term typed for one type means nothing for the next, and leaving it in the box while the
-    // table ignored it would be worse than clearing it.
+    // table ignored it would be worse than clearing it. The undo goes with it: an offer to take
+    // back an operation on records no longer listed is one nobody can check before accepting.
     useEffect(() => {
         setSearch('');
+        clearUndo();
     }, [contentType]);
 
     // Apollo already has this from the side panel, so naming the type costs no extra request.
@@ -84,6 +87,7 @@ export const ContentTypesRoute = () => {
             </header>
             <ContentTypesToolBar
                 search={search}
+                contentType={contentType}
                 lockedLabel={t('label.table.name')}
                 availableFields={columns.availableFields}
                 visibleFields={columns.visibleFields}
