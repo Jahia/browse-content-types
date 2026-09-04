@@ -1005,12 +1005,6 @@
 .dialogBox[data-sel-role='assign-dialog'] :global(.moonstone-modalBody) {
     overflow: visible;
 }
-
-/* The reassurance in a dialog footer, to the left of the buttons it is about. */
-.undoPromise {
-    color: var(--color-gray_dark);
-}
-
 /*
  * The note beside the search box while a term is too short to be searched for.
  *

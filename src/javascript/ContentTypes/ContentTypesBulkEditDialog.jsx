@@ -250,9 +250,10 @@ export const ContentTypesBulkEditDialog = ({isOpen, nodes, availableFields, visi
             onOpenChange={open => !open && close()}
         >
             <>
-                <ModalHeader>
-                    <Typography variant="heading" weight="bold">{t('label.bulkEdit.title')}</Typography>
-                </ModalHeader>
+                {/* The heading is ModalHeader's `title` PROP. Moonstone's component is
+                    `({title, children}) => title && <header>`, so a heading passed as a child
+                    renders nothing at all - silently, a component returning false being no error. */}
+                <ModalHeader title={t('label.bulkEdit.title')}/>
                 <ModalBody>
                     <Typography className={styles.assignCount} variant="caption">
                         {t('label.bulkEdit.count', {count: nodes.length})}
@@ -350,14 +351,12 @@ export const ContentTypesBulkEditDialog = ({isOpen, nodes, availableFields, visi
                         </Typography>
                     )}
                 </ModalBody>
+                {/* Just the two buttons. Moonstone's footer is `alignCenter flexRow_reverse`,
+                    so they sit on one line at the right and the footer is one control tall. The
+                    undo promise and a spacer used to sit beside them, wrapped to two lines, and
+                    took enough height off an 80vh-capped box to cut the form above it. The promise
+                    itself is not lost - the undo bar says the same thing after the fact. */}
                 <ModalFooter>
-                    {/* Said before the button rather than discovered after it: an editor deciding
-                        whether to change a hundred records is deciding under a different risk if
-                        they know it can be taken back. */}
-                    <Typography variant="caption" className={styles.undoPromise} data-sel-role="undo-promise">
-                        {t('label.undo.promise')}
-                    </Typography>
-                    <div className={styles.toolBarSpacer}/>
                     <Button size="big" variant="ghost" label={t('label.bulkEdit.cancel')} onClick={close}/>
                     <Button
                         size="big"

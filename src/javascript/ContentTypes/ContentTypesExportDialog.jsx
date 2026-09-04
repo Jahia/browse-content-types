@@ -106,9 +106,9 @@ export const ContentTypesExportDialog = ({
             onOpenChange={open => !open && onClose()}
         >
             <>
-                <ModalHeader>
-                    <Typography variant="heading" weight="bold">{t('label.export.title')}</Typography>
-                </ModalHeader>
+                {/* See the note in ContentTypesBulkEditDialog: the heading is the `title`
+                    prop, and passed as a child it renders nothing. */}
+                <ModalHeader title={t('label.export.title')}/>
                 <ModalBody>
                     <Typography className={styles.assignCount} variant="caption">
                         {t('label.export.count', {count: nodes.length})}
