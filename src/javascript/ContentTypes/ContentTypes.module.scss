@@ -473,6 +473,7 @@
 
     /* Set off from the category title above it, which `.category`'s 4px gap alone left sitting
        almost on top of the first type. */
+    margin-top: 8px;
 }
 
 .dialogFooter {
@@ -1009,6 +1010,45 @@
 .undoPromise {
     color: var(--color-gray_dark);
 }
+/*
+ * A content type the site holds nothing of.
+ *
+ * Dimmed rather than hidden or disabled: it is still a legitimate choice - a type has to be listed
+ * before the first record of it can be created through the accordion - so the row stays selectable
+ * and only stops competing for attention with the types that carry the site. Applied to the label
+ * as well as the description, since the point is to be able to skim past the whole row.
+ */
+.typeUnused {
+    /*
+     * Enough to fall back, not enough to be unreadable. 0.55 was too far: it multiplies the
+     * description's own colour as well, and that is already `rgba(122, 127, 136, 0.6)` from
+     * Moonstone, so the second line came out around a third of full strength - washed out rather
+     * than de-emphasised.
+     */
+    opacity: 0.8;
+}
+
+/*
+ * The technical name under each type, darkened.
+ *
+ * Moonstone gives a CheckboxItem's description `rgba(122, 127, 136, 0.6)` - a mid grey already at
+ * 60% alpha, which on white lands near #b9bcc1 and is below any reasonable reading contrast. The
+ * node type is not decoration: it is how somebody tells `jnt:imageReference` from
+ * `jnt:imageReferenceLink`, both of which are called "Image (Internationalized)" here.
+ *
+ * `--color-gray` (#7a7f88) is the SOLID form of the colour Moonstone was already using at 60%
+ * alpha, so this darkens the line without changing its hue - readable at about 4.2:1 while staying
+ * plainly secondary. `--color-gray_dark` was tried first and is wrong: it is #293136, the same
+ * near-black as the label, which flattens the two lines into one block of text.
+ *
+ * Scoped to this panel rather than applied to Moonstone's class everywhere - unlike the overlay
+ * z-index and the menu height cap, which are app-wide because they are defects. This is a local
+ * judgement about one dense list.
+ */
+.settingsCategories :global(.moonstone-checkboxItem_description) {
+    color: var(--color-gray);
+}
+
 /*
  * The type list, inset from the panel rather than running flush to it.
  *

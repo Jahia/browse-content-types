@@ -4,6 +4,7 @@ import {shallowEqual, useSelector} from 'react-redux';
 import {useTranslation} from 'react-i18next';
 import {Button, Checkbox, CheckboxItem, Loader, Typography} from '@jahia/moonstone';
 import {GET_CONTENT_TYPE_TREE, GET_LISTED_TYPES, GET_SITE_CONTENT_TYPES, SET_LISTED_TYPES} from './ContentTypes.gql';
+import {useTypeCounts} from './useTypeCounts';
 import {NAMESPACE} from '../ContentTypes.register';
 import styles from './ContentTypes.module.scss';
 
@@ -52,6 +53,11 @@ export const ContentTypesSettingsPanel = () => {
 
     const types = useMemo(() => available.data?.jcr?.nodeTypes?.nodes || [], [available.data]);
     const allTypes = useMemo(() => types.map(type => type.name), [types]);
+
+    // How many records of each type the site actually holds, so an administrator can tell the types
+    // that carry the site from the ones that would only lengthen the accordion. Measured against a
+    // real site, 36 of the 57 on offer held nothing at all.
+    const {counts} = useTypeCounts(allTypes, sitePath);
 
     // The types Jahia flags as editorial, which is what the accordion lists when nobody has
     // chosen. Saving exactly this set is therefore the same as making no choice at all.
@@ -148,6 +154,27 @@ export const ContentTypesSettingsPanel = () => {
         return <Loader size="big" classNameWrapper={styles.centered}/>;
     }
 
+    /*
+     * The type's name, and how many records of it the site holds, in brackets at the end.
+     *
+     * On the label line rather than down in the description with the technical name: the count is
+     * there to be skimmed down the column while deciding what to tick, and a second line does not
+     * read as a column. `[0]` is stated rather than written out, which is what makes a run of unused
+     * types visible at a glance.
+     *
+     * Nothing is said about the count until it has arrived. A type with no answer yet is not a type
+     * with no records, and `[0]` against a type that in fact carries the site is the one wrong thing
+     * this could say - `readTypeCounts` leaves an unanswered type out of the map rather than
+     * recording it as zero, which is what makes that distinction available here.
+     */
+    const typeLabel = child => {
+        const name = isEditorial.has(child.name) ?
+            `${child.label} (${t('label.settings.editorial')})` :
+            child.label;
+
+        return counts.has(child.name) ? `${name} [${counts.get(child.name)}]` : name;
+    };
+
     return (
         <div className={styles.settingsPanel}>
             <Typography className={styles.subtitle} variant="caption">
@@ -177,11 +204,11 @@ export const ContentTypesSettingsPanel = () => {
                                     <CheckboxItem key={child.name}
                                                   id={`ct-${child.name}`}
                                                   checked={selected.includes(child.name)}
-                                                  label={isEditorial.has(child.name) ?
-                                                      `${child.label} (${t('label.settings.editorial')})` :
-                                                      child.label}
+                                                  label={typeLabel(child)}
                                                   description={child.name}
+                                                  className={counts.get(child.name) === 0 ? styles.typeUnused : undefined}
                                                   data-sel-type={child.name}
+                                                  data-sel-count={counts.has(child.name) ? counts.get(child.name) : undefined}
                                                   onChange={(event, value, isChecked) => toggleType(child.name, isChecked)}
                                     />
                                 ))}
