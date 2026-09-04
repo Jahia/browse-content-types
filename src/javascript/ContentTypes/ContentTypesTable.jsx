@@ -421,6 +421,26 @@ const WIDE_COMMON_FIELDS = new Set(['path', 'tags', 'categories']);
  */
 const SHORT_COMMON_FIELDS = new Set(['createdBy', 'lastModifiedBy', 'publishedBy', 'lock']);
 
+/**
+ * Narrower still, for the heading that is a single short word in every language.
+ *
+ * The 12ch above is not what the values need - a user name measured five characters at the longest
+ * here - it is what the HEADINGS needed. "Creator"/"Créateur" are seven and eight, so that column
+ * can give the room back.
+ *
+ * **`publishedBy` is deliberately NOT in here, though "Publisher" would fit.** A column width is
+ * shared by every language, and the French label is "Publié par" - ten characters. Measured at this
+ * width it came out as "Publicat…", so the column keeps the wider one and only English would have
+ * benefited. ("Publicateur" was tried as a one-word French heading and dropped: it is not a word
+ * French Jahia uses, and at eleven characters it truncated too.) "Modified by" stays wide for the
+ * same reason.
+ *
+ * The column keeps `isScrollable`, so a login longer than it can still be read by hovering.
+ */
+const ONE_WORD_COMMON_FIELDS = new Set(['createdBy']);
+
+const ONE_WORD_COLUMN_WIDTH = 'calc(10ch + 32px)';
+
 /** Common fields holding a date. */
 const DATE_COMMON_FIELDS = new Set(['createdDate', 'lastModified', 'publishedOn']);
 
@@ -440,6 +460,10 @@ const commonColumnWidth = key => {
 
     if (DATE_COMMON_FIELDS.has(key)) {
         return DATE_COLUMN_WIDTH;
+    }
+
+    if (ONE_WORD_COMMON_FIELDS.has(key)) {
+        return ONE_WORD_COLUMN_WIDTH;
     }
 
     return SHORT_COMMON_FIELDS.has(key) ? NARROW_COLUMN_WIDTH : COMMON_COLUMN_WIDTH;

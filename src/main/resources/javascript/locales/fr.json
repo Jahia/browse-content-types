@@ -41,7 +41,7 @@
     },
     "field": {
       "type": "Type de contenu",
-      "createdBy": "Créé par",
+      "createdBy": "Créateur",
       "createdDate": "Date de création",
       "lastModified": "Dernière modification",
       "lastModifiedBy": "Modifié par",

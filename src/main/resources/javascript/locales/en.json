@@ -41,7 +41,7 @@
     },
     "field": {
       "type": "Content Type",
-      "createdBy": "Created by",
+      "createdBy": "Creator",
       "createdDate": "Created date",
       "lastModified": "Last modification",
       "lastModifiedBy": "Modified by",
@@ -51,7 +51,7 @@
       "categories": "Categories",
       "lock": "Lock",
       "publishedOn": "Published on",
-      "publishedBy": "Published by",
+      "publishedBy": "Publisher",
       "path": "Path",
       "systemName": "System name",
       "id": "ID"
