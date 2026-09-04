@@ -204,17 +204,20 @@ describe('ContentTypesTasks', () => {
     });
 
     describe('taskDescription', () => {
-        it('follows what was typed with the records it was raised for', () => {
-            expect(taskDescription('Please review', ['/a', '/b'])).toBe('Please review\n\n/a\n/b');
+        // The paths used to be appended here so the task board could name the content. It reads
+        // targetNode now, so the description is only what the person wrote.
+        it('is what the person typed', () => {
+            expect(taskDescription('Please review')).toBe('Please review');
         });
 
-        // The description is optional; the paths alone already say what the task is about.
-        it('is just the records when nothing was typed', () => {
-            expect(taskDescription('', ['/a'])).toBe('/a');
+        it('trims it', () => {
+            expect(taskDescription('  Please review  ')).toBe('Please review');
         });
 
-        it('is just the text when there are no records', () => {
-            expect(taskDescription('Please review', [])).toBe('Please review');
+        it('is empty when nothing was typed', () => {
+            expect(taskDescription('')).toBe('');
+            expect(taskDescription(null)).toBe('');
+            expect(taskDescription(undefined)).toBe('');
         });
     });
 
@@ -223,7 +226,6 @@ describe('ContentTypesTasks', () => {
             title: 'Check these',
             description: 'Before Friday',
             assigneePath: '/users/jb/ac/eh/pam',
-            paths: ['/sites/luxe/contents/a'],
             uuids: ['uuid-a', 'uuid-b']
         };
 
@@ -261,7 +263,7 @@ describe('ContentTypesTasks', () => {
         });
 
         it('omits the description rather than sending an empty one', () => {
-            const properties = taskProperties({...form, description: '', paths: []});
+            const properties = taskProperties({...form, description: ''});
             expect(byName(properties).description).toBeUndefined();
         });
 

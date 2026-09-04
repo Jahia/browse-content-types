@@ -188,18 +188,18 @@ export const tasksPath = siteKey => `/sites/${siteKey}/tasks`;
 export const TASK_NODE_NAME = 'assigned-task';
 
 /**
- * What the description records beyond what the reader typed.
+ * The description, as the person typed it and nothing more.
  *
- * The paths are written into the text as well as being referenced by the mixin, because the two are
- * read by different things: the reference is what a tool can follow, and the text is what the person
- * opening the task in the My Tasks dashboard actually sees - that dashboard knows nothing of this
- * module's mixin and would show a task naming no content at all.
+ * The selected records' paths used to be appended to this text as well as being referenced by the
+ * mixin, because the My Tasks board showed nothing else about what a task was for and would
+ * otherwise have named no content at all. It reads `targetNode` now and shows each record by its
+ * display name and type, so the paths in the text were the same information twice - in its least
+ * readable form, and stale the moment a record was moved or renamed.
+ *
+ * Nothing is lost by dropping them: the references are still on the node, which is what any
+ * consumer should read.
  */
-export const taskDescription = (description, paths) => {
-    const body = String(description || '').trim();
-    const listed = (paths || []).join('\n');
-    return [body, listed].filter(Boolean).join('\n\n');
-};
+export const taskDescription = description => String(description || '').trim();
 
 /**
  * A picked calendar day, as the instant the repository will accept for it.
@@ -288,7 +288,7 @@ export const assigneeSuggestions = (users, term, assignee) => {
  * A property is omitted rather than sent empty when there is nothing to put in it, so a task with no
  * description carries no description instead of carrying an empty one.
  */
-export const taskProperties = ({title, description, assigneePath, paths, uuids, dueDate}) => {
+export const taskProperties = ({title, description, assigneePath, uuids, dueDate}) => {
     const properties = [
         {name: 'jcr:title', value: String(title || '').trim()},
         {name: 'state', value: 'active'},
@@ -301,7 +301,7 @@ export const taskProperties = ({title, description, assigneePath, paths, uuids, 
         properties.push({name: 'dueDate', type: 'DATE', value: due});
     }
 
-    const body = taskDescription(description, paths);
+    const body = taskDescription(description);
     if (body) {
         properties.push({name: 'description', value: body});
     }

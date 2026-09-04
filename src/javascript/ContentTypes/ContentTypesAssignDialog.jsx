@@ -95,7 +95,6 @@ export const ContentTypesAssignDialog = ({isOpen, nodes, siteKey, onClose}) => {
                         description,
                         assigneePath: assignee.path,
                         dueDate,
-                        paths: nodes.map(node => node.path),
                         uuids: nodes.map(node => node.uuid).filter(Boolean)
                     })
                 }
