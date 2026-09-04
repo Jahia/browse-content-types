@@ -4,10 +4,19 @@ import {useTranslation} from 'react-i18next';
 import {useApolloClient} from '@apollo/client';
 import {shallowEqual, useSelector} from 'react-redux';
 import {registry} from '@jahia/ui-extender';
-import {Button, Modal, ModalBody, ModalFooter, ModalHeader, Typography} from '@jahia/moonstone';
+import {Button, Modal, ModalBody, ModalFooter, ModalHeader, RadioGroup, RadioItem, Typography} from '@jahia/moonstone';
 import {ContentEditorContext} from '@jahia/jcontent';
 import {CAPTURE_REFERENCES, CAPTURE_TIMESTAMPS, CAPTURE_VALUES, SET_BULK_FIELD} from './ContentTypes.gql';
-import {bulkFieldVariables, canApply, pickerField, recordsWithValues} from './ContentTypesBulkFields';
+import {
+    BULK_MODES,
+    addRecords,
+    buildAddDocument,
+    buildAddVariables,
+    bulkFieldVariables,
+    canApply,
+    pickerField,
+    recordsWithValues
+} from './ContentTypesBulkFields';
 import {buildSnapshot, snapshotEntries, timestampEntries} from './ContentTypesUndo';
 import {recordUndo} from './useBulkUndo';
 import {NAMESPACE} from '../ContentTypes.register';
@@ -19,10 +28,15 @@ import styles from './ContentTypes.module.scss';
  * One dialog for both, because the two differ only in which picker collects the value and which
  * property it lands in - see BULK_FIELDS.
  *
- * **The values replace what each record holds** rather than being added to it. That is the chosen
- * behaviour and it is the one that can destroy work on a record nobody looked at, so how many
- * records stand to lose something is said before the fact rather than after - the table has already
- * fetched their current values for its own columns, so saying it costs no request.
+ * **Two modes, and Replace is the default** so the dialog behaves as it always did unless asked
+ * otherwise. Replace makes each record hold exactly what was picked, which is the one behaviour that
+ * can destroy work on a record nobody looked at - so how many records stand to lose something is
+ * still said before the fact, from values the table already fetched for its own columns. Add keeps
+ * what is there; picking something a record already carries is a silent no-op.
+ *
+ * The two are different writes, not one write with a flag: Replace sends one value list for the
+ * whole selection in a single `mutateNodes`, while Add gives every record its own final list and so
+ * needs one `mutateNode` each. See BULK_MODES.
  *
  * The picker is Content Editor's own, taken from the registry rather than imported: jContent
  * federates no picker at all, but Content Editor registers its selector types on the same registry
@@ -38,6 +52,7 @@ export const ContentTypesBulkFieldDialog = ({isOpen, field, nodes, onClose}) => 
     }), shallowEqual);
 
     const [values, setValues] = useState([]);
+    const [mode, setMode] = useState(BULK_MODES.REPLACE);
     const [isSaving, setIsSaving] = useState(false);
     const [failed, setFailed] = useState(false);
 
@@ -48,6 +63,7 @@ export const ContentTypesBulkFieldDialog = ({isOpen, field, nodes, onClose}) => 
 
     const close = () => {
         setValues([]);
+        setMode(BULK_MODES.REPLACE);
         setFailed(false);
         onClose();
     };
@@ -56,9 +72,16 @@ export const ContentTypesBulkFieldDialog = ({isOpen, field, nodes, onClose}) => 
         setIsSaving(true);
         setFailed(false);
         try {
-            // Read what is there before replacing it, so the operation can be taken back. A failure
-            // to capture is not a reason to refuse the operation - it costs the undo, not the edit -
-            // so it is caught separately and leaves the snapshot empty.
+            // Read what is there before writing, so the operation can be taken back. When
+            // replacing, a failure to capture is not a reason to refuse the operation - it costs
+            // the undo, not the edit - so it is caught separately and leaves the snapshot empty.
+            //
+            // **Adding cannot go ahead without it.** The values it writes are each record's own
+            // plus the chosen ones, so with nothing captured there is no union to compute, and the
+            // only thing left to send would be the chosen values alone - which is replacing. Doing
+            // that silently would destroy exactly the values the reader asked to keep, so an Add
+            // whose capture failed reports a failure instead.
+            const isAdding = mode === BULK_MODES.ADD;
             const isReference = field.valueType === 'WEAKREFERENCE';
             let entries = null;
             try {
@@ -94,7 +117,27 @@ export const ContentTypesBulkFieldDialog = ({isOpen, field, nodes, onClose}) => 
                 timestamps = null;
             }
 
-            await client.mutate({
+            if (isAdding && !entries) {
+                setFailed(true);
+                return;
+            }
+
+            // Which records an Add actually writes, and what each ends up holding. A record that
+            // already carries everything picked is not written at all - see addRecords.
+            const records = isAdding ? addRecords({entries, values}) : null;
+
+            // Nothing to do: every record already had it. Closing quietly is the honest outcome -
+            // there is no edit to report and nothing to undo.
+            if (isAdding && records.length === 0) {
+                close();
+                return;
+            }
+
+            await client.mutate(isAdding ? {
+                mutation: buildAddDocument({records}),
+                variables: buildAddVariables({field, records}),
+                refetchQueries: ['getContentByType']
+            } : {
                 mutation: SET_BULK_FIELD,
                 variables: bulkFieldVariables({field, nodes, values}),
                 // The table is showing these very rows and their tag and category columns, so it has
@@ -102,6 +145,14 @@ export const ContentTypesBulkFieldDialog = ({isOpen, field, nodes, onClose}) => 
                 // reaching into the cache for properties this dialog does not own.
                 refetchQueries: ['getContentByType']
             });
+
+            // An Add only wrote some of the records, so the undo must only put those back - a
+            // record left untouched has nothing to restore and restoring it would be a write of
+            // its own.
+            if (isAdding && entries) {
+                const written = new Set(records.map(record => record.path));
+                entries = entries.filter(entry => written.has(entry.path));
+            }
 
             if (entries) {
                 recordUndo(buildSnapshot({
@@ -142,6 +193,32 @@ export const ContentTypesBulkFieldDialog = ({isOpen, field, nodes, onClose}) => 
                         {t('label.bulkField.count', {count: nodes.length})}
                     </Typography>
 
+                    {/* The mode comes before the picker because it is the bigger decision: the
+                        same set of categories means two different outcomes depending on it, and one
+                        of them is destructive. RadioItem's own `description` carries the
+                        consequence, so the choice explains itself rather than needing a note
+                        underneath. */}
+                    <RadioGroup
+                        className={styles.bulkFieldMode}
+                        name={`bulk-field-mode-${field.key}`}
+                        value={mode}
+                        data-sel-role="bulk-field-mode"
+                        onChange={event => setMode(event.target.value)}
+                    >
+                        <RadioItem
+                            id={`bulk-field-mode-replace-${field.key}`}
+                            value={BULK_MODES.REPLACE}
+                            label={t(`label.bulkField.${field.key}.mode.replace`)}
+                            description={t(`label.bulkField.${field.key}.mode.replaceHint`)}
+                        />
+                        <RadioItem
+                            id={`bulk-field-mode-add-${field.key}`}
+                            value={BULK_MODES.ADD}
+                            label={t(`label.bulkField.${field.key}.mode.add`)}
+                            description={t(`label.bulkField.${field.key}.mode.addHint`)}
+                        />
+                    </RadioGroup>
+
                     <div className={styles.assignField}>
                         {Picker ? (
                             /*
@@ -175,7 +252,7 @@ export const ContentTypesBulkFieldDialog = ({isOpen, field, nodes, onClose}) => 
                         Said before the fact, not after. Replacing is what this does, and a record
                         whose tags are about to go is one the editor may never have opened.
                     */}
-                    {atRisk > 0 && (
+                    {mode === BULK_MODES.REPLACE && atRisk > 0 && (
                         <Typography
                             variant="caption"
                             className={styles.bulkFieldWarning}
@@ -186,7 +263,10 @@ export const ContentTypesBulkFieldDialog = ({isOpen, field, nodes, onClose}) => 
                         </Typography>
                     )}
 
-                    {values.length === 0 && (
+                    {/* Only when replacing does an empty selection mean anything: it is how a set
+                        of records is cleared. Adding nothing to them is simply nothing to do, and
+                        the button says as much by staying out of the way. */}
+                    {mode === BULK_MODES.REPLACE && values.length === 0 && (
                         <Typography variant="caption" data-sel-role="bulk-field-clears">
                             {t(`label.bulkField.${field.key}.clears`)}
                         </Typography>
@@ -212,7 +292,14 @@ export const ContentTypesBulkFieldDialog = ({isOpen, field, nodes, onClose}) => 
                         variant="default"
                         color="accent"
                         label={t('label.bulkField.apply')}
-                        disabled={!Picker || !canApply(nodes) || isSaving}
+                        disabled={
+                            !Picker ||
+                            !canApply(nodes) ||
+                            isSaving ||
+                            // Adding nothing is not an operation. Replacing with nothing is - it
+                            // clears the selection - so the guard is on this mode only.
+                            (mode === BULK_MODES.ADD && values.length === 0)
+                        }
                         data-sel-role="bulk-field-apply"
                         onClick={apply}
                     />

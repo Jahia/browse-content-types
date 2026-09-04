@@ -1,3 +1,5 @@
+import {parse} from 'graphql';
+
 /**
  * Setting a tag list or a category list across the ticked rows.
  *
@@ -94,6 +96,99 @@ export const bulkFieldVariables = ({field, nodes, values}) => ({
     type: field.valueType,
     values: values || []
 });
+
+/**
+ * The two ways the chosen values can meet what a record already holds.
+ *
+ * `REPLACE` is the original behaviour and stays the default: each record ends up holding exactly
+ * what was picked, and whatever it held before is gone. `ADD` keeps what is there and adds to it.
+ *
+ * They are not the same operation underneath. Replacing sends one value list for the whole
+ * selection, so it is a single `mutateNodes`. Adding gives every record a **different** final list -
+ * its own values plus the chosen ones - so it needs one `mutateNode` per record, the same shape the
+ * undo uses for the same reason.
+ */
+export const BULK_MODES = {
+    REPLACE: 'replace',
+    ADD: 'add'
+};
+
+/**
+ * What a record ends up holding when the chosen values are added to it.
+ *
+ * A set, so a value the record already has is not stored twice - which is what makes picking a
+ * category some of the selection already carries a silent no-op rather than an error. Existing
+ * values keep their order and the new ones follow, so adding to a record does not reshuffle what was
+ * already there.
+ */
+export const unionValues = (existing, selected) => [
+    ...new Set([...(existing || []), ...(selected || [])])
+];
+
+/**
+ * The records an "add" actually has to write, and what each should end up holding.
+ *
+ * `entries` are `{path, values}` as captured from the repository before the operation - the same
+ * capture the undo takes, reused rather than re-queried. **The repository, not the table rows:** a
+ * category cell carries display names, and what has to go back into the property is uuids.
+ *
+ * A record that already holds everything that was picked is left out entirely rather than written
+ * with an identical list. Writing it would change nothing a reader can see, but it would still bump
+ * `jcr:lastModified` and so flag the record as Modified for publication - a visible consequence for
+ * an operation that did nothing.
+ */
+export const addRecords = ({entries, values}) => (entries || [])
+    .map(entry => ({path: entry.path, values: unionValues(entry.values, values)}))
+    .filter((record, index) => record.values.length > (entries[index].values || []).length);
+
+/**
+ * The mutation an "add" needs: one aliased `mutateNode` per record, each with its own list.
+ *
+ * The mixin is added on every one of them, exactly as the replace path does: a record that never
+ * carried the mixin has no such property, and adding the mixin is what defines it.
+ *
+ * `setValues` with the union rather than `addValues` with the difference. `addValues` looks like the
+ * natural fit and is the wrong tool twice over: measured against a site it fails outright with
+ * `PathNotFoundException` on a record whose property does not exist yet - the mixin defines the
+ * property without creating it - which is precisely the "record has no categories" case this mode
+ * exists to serve. Sending the whole intended list sidesteps that, and makes the result independent
+ * of what the property held a moment ago.
+ */
+export const buildAddDocument = ({records}) => {
+    const declarations = ['$property: String!', '$type: JCRPropertyType!', '$mixins: [String]!'];
+
+    const selections = (records || []).map((record, index) => {
+        declarations.push(`$p${index}: String!`, `$v${index}: [String]!`);
+        return `n${index}: mutateNode(pathOrId: $p${index}) {
+                addMixins(mixins: $mixins)
+                mutateProperty(name: $property) { setValues(type: $type, values: $v${index}) }
+            }`;
+    });
+
+    return parse(`
+        mutation addBulkField(${declarations.join(', ')}) {
+            jcr(workspace: EDIT) {
+                ${selections.join('\n                ')}
+            }
+        }
+    `);
+};
+
+/** The variables that go with it, named to match. */
+export const buildAddVariables = ({field, records}) => {
+    const variables = {
+        property: field.property,
+        type: field.valueType,
+        mixins: [field.mixin]
+    };
+
+    (records || []).forEach((record, index) => {
+        variables[`p${index}`] = record.path;
+        variables[`v${index}`] = record.values;
+    });
+
+    return variables;
+};
 
 /**
  * Whether there is anything to apply.

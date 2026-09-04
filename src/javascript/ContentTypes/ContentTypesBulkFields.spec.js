@@ -1,4 +1,16 @@
-import {BULK_FIELDS, bulkFieldVariables, canApply, pickerField, recordsWithValues} from './ContentTypesBulkFields';
+import {print} from 'graphql';
+import {
+    BULK_FIELDS,
+    BULK_MODES,
+    addRecords,
+    buildAddDocument,
+    buildAddVariables,
+    bulkFieldVariables,
+    canApply,
+    pickerField,
+    recordsWithValues,
+    unionValues
+} from './ContentTypesBulkFields';
 
 const {tag, categorize} = BULK_FIELDS;
 
@@ -115,6 +127,139 @@ describe('ContentTypesBulkFields', () => {
         it('sends an empty list rather than nothing, which is how a selection is cleared', () => {
             expect(bulkFieldVariables({field: tag, nodes, values: []}).values).toEqual([]);
             expect(bulkFieldVariables({field: tag, nodes, values: undefined}).values).toEqual([]);
+        });
+    });
+
+    describe('BULK_MODES', () => {
+        it('names the two ways values can meet what a record holds', () => {
+            expect(BULK_MODES).toEqual({REPLACE: 'replace', ADD: 'add'});
+        });
+    });
+
+    describe('unionValues', () => {
+        it('keeps what is there and appends what is new', () => {
+            expect(unionValues(['a'], ['b'])).toEqual(['a', 'b']);
+        });
+
+        // The silent no-op the whole mode rests on: picking something a record already carries is
+        // not an error and does not store it twice.
+        it('stores a value the record already has only once', () => {
+            expect(unionValues(['a', 'b'], ['b', 'c'])).toEqual(['a', 'b', 'c']);
+        });
+
+        it('does not reshuffle what was already there', () => {
+            expect(unionValues(['z', 'a'], ['m'])).toEqual(['z', 'a', 'm']);
+        });
+
+        it('handles a record that held nothing', () => {
+            expect(unionValues(null, ['a'])).toEqual(['a']);
+            expect(unionValues([], ['a'])).toEqual(['a']);
+        });
+
+        it('handles nothing being added', () => {
+            expect(unionValues(['a'], [])).toEqual(['a']);
+            expect(unionValues(['a'], null)).toEqual(['a']);
+        });
+    });
+
+    describe('addRecords', () => {
+        // The live shape: two records carrying one category, two carrying none.
+        const entries = [
+            {path: '/mykonos', values: ['featured']},
+            {path: '/geneva', values: ['featured']},
+            {path: '/paris', values: null},
+            {path: '/new-york', values: null}
+        ];
+
+        it('gives every record its own final list', () => {
+            expect(addRecords({entries, values: ['provence']})).toEqual([
+                {path: '/mykonos', values: ['featured', 'provence']},
+                {path: '/geneva', values: ['featured', 'provence']},
+                {path: '/paris', values: ['provence']},
+                {path: '/new-york', values: ['provence']}
+            ]);
+        });
+
+        // Writing an identical list would change nothing visible but would still bump
+        // jcr:lastModified and flag the record Modified for publication.
+        it('leaves out a record that already holds everything picked', () => {
+            expect(addRecords({entries, values: ['featured']}).map(r => r.path))
+                .toEqual(['/paris', '/new-york']);
+        });
+
+        it('writes nothing at all when the whole selection already has it', () => {
+            const held = [{path: '/a', values: ['featured']}, {path: '/b', values: ['featured']}];
+            expect(addRecords({entries: held, values: ['featured']})).toEqual([]);
+        });
+
+        it('survives having nothing captured', () => {
+            expect(addRecords({entries: [], values: ['a']})).toEqual([]);
+            expect(addRecords({entries: null, values: ['a']})).toEqual([]);
+        });
+    });
+
+    describe('buildAddDocument', () => {
+        const records = [
+            {path: '/mykonos', values: ['featured', 'provence']},
+            {path: '/paris', values: ['provence']}
+        ];
+
+        // One mutateNode per record, because each ends up with a different list - a single
+        // mutateNodes applies one list to all of them.
+        it('builds one aliased mutateNode per record', () => {
+            const text = print(buildAddDocument({records}));
+            expect(text).toContain('n0: mutateNode(pathOrId: $p0)');
+            expect(text).toContain('n1: mutateNode(pathOrId: $p1)');
+            expect(text).not.toContain('mutateNodes');
+        });
+
+        // A record that never carried the mixin has no such property, and the mixin is what
+        // defines it.
+        it('adds the mixin on every record', () => {
+            expect(print(buildAddDocument({records})).match(/addMixins/g)).toHaveLength(2);
+        });
+
+        // An addValues call fails with PathNotFoundException on a record whose property does not
+        // exist yet - exactly the "no categories" case this mode serves.
+        it('sets the whole intended list rather than adding to it', () => {
+            const text = print(buildAddDocument({records}));
+            expect(text).toContain('setValues');
+            expect(text).not.toContain('addValues');
+        });
+
+        it('declares every variable it reads, and no others', () => {
+            const text = print(buildAddDocument({records}));
+            expect(text).toContain('$p0: String!');
+            expect(text).toContain('$v0: [String]!');
+            expect(text).toContain('$p1: String!');
+            expect(text).toContain('$v1: [String]!');
+            expect(text).not.toContain('$p2');
+        });
+
+        it('is a parseable document', () => {
+            expect(() => print(buildAddDocument({records}))).not.toThrow();
+        });
+    });
+
+    describe('buildAddVariables', () => {
+        it('names the variables to match the document', () => {
+            const records = [{path: '/mykonos', values: ['featured', 'provence']}];
+            expect(buildAddVariables({field: categorize, records})).toEqual({
+                property: 'j:defaultCategory',
+                type: 'WEAKREFERENCE',
+                mixins: ['jmix:categorized'],
+                p0: '/mykonos',
+                v0: ['featured', 'provence']
+            });
+        });
+
+        it('works for tags too', () => {
+            const records = [{path: '/a', values: ['news']}];
+            expect(buildAddVariables({field: tag, records})).toMatchObject({
+                property: 'j:tagList',
+                type: 'STRING',
+                mixins: ['jmix:tagged']
+            });
         });
     });
 
