@@ -1,3 +1,4 @@
+import {missingTranslations} from './ContentTypesTranslations';
 import {PUBLICATION_STATUSES, labelForValue} from './ContentTypesFilters';
 
 /**
@@ -99,6 +100,12 @@ const COMMON_VALUES = {
     lastModified: node => node.lastModified?.value || '',
     lastModifiedBy: node => node.lastModifiedBy?.value || '',
     publicationStatus: (node, {publicationLabel}) => publicationLabel(node.aggregatedPublicationInfo?.publicationStatus),
+    // The same gaps the column shows, flattened to one cell: "fr: Title, Subtitle; de: Body".
+    // Property LABELS, like everything else in a CSV - the JSON export writes the stored names
+    // instead, which is the documented difference between the two.
+    missingTranslations: (node, {languages, translatableFields}) => missingTranslations(node, languages, translatableFields)
+        .map(gap => `${gap.language}: ${gap.properties.join(', ')}`)
+        .join('; '),
     publishedOn: node => node.publishedOn?.value || '',
     publishedBy: node => node.publishedBy?.value || '',
     tags: node => joinValues(node.tags?.values),

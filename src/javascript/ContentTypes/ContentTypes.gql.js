@@ -301,6 +301,30 @@ export const GET_USERS_BY_PATH = gql`
 `;
 
 /**
+ * The languages a site has switched on, for the missing-translations column.
+ *
+ * `activeInEdit` rather than every language declared: a language that has been turned off is not one
+ * anybody is expected to have translated into, and counting it would flag every record on the site.
+ * Ordered as the site orders them, so the column reads in the same order everywhere.
+ */
+export const GET_SITE_LANGUAGES = gql`
+    query getSiteLanguages($sitePath: String!) {
+        jcr {
+            nodeByPath(path: $sitePath) {
+                site {
+                    defaultLanguage
+                    languages {
+                        language
+                        displayName
+                        activeInEdit
+                    }
+                }
+            }
+        }
+    }
+`;
+
+/**
  * The signed-in person, and whether they may write on this site.
  *
  * Needed because the ACL is not the whole answer to "who may edit". `root` holds

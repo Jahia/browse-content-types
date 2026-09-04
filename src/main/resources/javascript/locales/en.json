@@ -13,7 +13,8 @@
       "notPublished": "Never published"
     },
     "toolbar": {
-      "searchPlaceholder": "Search",
+      "searchPlaceholder": "Search all text and tags",
+      "searchTooShort": "Type at least {{count}} characters to search",
       "columns": "Columns"
     },
     "bulk": {
@@ -44,6 +45,7 @@
       "createdDate": "Created date",
       "lastModified": "Last modification",
       "lastModifiedBy": "Modified by",
+      "missingTranslations": "Missing translations",
       "publicationStatus": "Publication",
       "tags": "Tags",
       "categories": "Categories",

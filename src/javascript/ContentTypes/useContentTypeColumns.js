@@ -4,6 +4,8 @@ import {useSelector} from 'react-redux';
 import {useTranslation} from 'react-i18next';
 import {GET_CONTENT_TYPE_FIELDS, GET_CONTENT_TYPE_VALUE_LABELS} from './ContentTypes.gql';
 import {FILTER_BOOLEAN, FILTER_CHOICE, FILTER_DATE, FILTER_IMAGE, FILTER_NUMBER, FILTER_PUBLICATION, FILTER_TEXT, publicationOptions} from './ContentTypesFilters';
+import {GET_SITE_LANGUAGES} from './ContentTypes.gql';
+import {translatableProperties} from './ContentTypesTranslations';
 import {NAMESPACE} from '../ContentTypes.register';
 
 const STORAGE_PREFIX = 'content-types:columns:';
@@ -31,6 +33,14 @@ const COMMON_FILTERS = {
     publicationStatus: {filterType: FILTER_PUBLICATION},
     systemName: {jcrProperty: 'j:nodename', filterType: FILTER_TEXT}
 };
+
+/**
+ * The property types a substring search can usefully run against.
+ *
+ * Text only. A number or a date is not something a reader searches by fragment, and both are absent
+ * from the full text index anyway - a price of 6560000 finds nothing however it is asked for.
+ */
+const TEXT_SEARCH_TYPES = new Set(['STRING', 'NAME', 'PATH', 'URI']);
 
 /** Reference types, which hold a uuid rather than anything a reader would recognise. */
 const REFERENCE_TYPES = new Set(['REFERENCE', 'WEAKREFERENCE']);
@@ -87,6 +97,13 @@ export const COMMON_FIELDS = [
     // that has it. Neither is sortable: both are multi-valued, with no single value to order by.
     {key: 'tags', labelKey: 'label.field.tags'},
     {key: 'categories', labelKey: 'label.field.categories'},
+    // Which properties are filled in one language and not another. Computed from the per-language
+    // translation subnodes the record query fetches, so - like the publication column - it has no
+    // `jcrProperty` and no `sortProperty`: there is nothing on the record for `nodeConstraint` to
+    // constrain or for `fieldSorter` to order on. Off by default. On a single-language site it is
+    // still offered but always empty - there is no second language for anything to be missing from,
+    // and the record query asks for no translation subnodes at all in that case.
+    {key: 'missingTranslations', labelKey: 'label.field.missingTranslations'},
     // Locking is a state of the node rather than a property of any type, so it belongs here too.
     // Not sortable: what would be compared is a list of lock holders, and neither of the two fields
     // behind the column is a JCR property the repository could order on.
@@ -242,6 +259,67 @@ export const useContentTypeColumns = contentType => {
 
         return {labelsByProperty: byProperty, optionsByProperty: optionsFor};
     }, [labelData, contentType]);
+
+    /*
+     * The languages the missing-translations column compares, and the only new request this column
+     * costs - the per-record values ride along in the table's own query.
+     *
+     * Only those active in edit: a language that has been switched off is not one anybody is
+     * expected to have translated into, and counting it would flag every record on the site.
+     *
+     * Here rather than in the table, because the export dialog needs the same list and reaches it
+     * through this hook; two components querying it separately would ask twice for one answer.
+     */
+    const {data: languageData} = useQuery(GET_SITE_LANGUAGES, {
+        variables: {sitePath: `/sites/${site}`},
+        skip: !site
+    });
+
+    const languages = useMemo(
+        () => (languageData?.jcr?.nodeByPath?.site?.languages || [])
+            .filter(entry => entry.activeInEdit)
+            .map(entry => entry.language),
+        [languageData]
+    );
+
+    /*
+     * The type's own text properties, so a search can match INSIDE a word.
+     *
+     * The full-text arm matches a whole word or a prefix - `(provence OR provence*)` - so a
+     * fragment from the middle finds nothing: measured on a site, "rovenc" returned 0 records while
+     * "provence" returned 27. Only the system name had a substring match, which made mid-word search
+     * appear to work on records whose node name happened to contain the fragment and not otherwise.
+     * A `LIKE %fragment%` arm per text property closes that: the same "rovenc" then returned 21.
+     *
+     * From the unfiltered definitions, so inherited properties count - `jcr:title` is declared by
+     * `mix:title` and is the only text a `luxe:section` has. Single-valued only: the multi-valued
+     * text that matters is the tag list, which already has an arm of its own.
+     *
+     * Cost, measured: ten arms on 161 records took 0.42s against 0.20s without them, and a
+     * whole-word search was unchanged at 0.07s. `%fragment%` cannot use an index, so this grows with
+     * both the property count and the record count - it is the part to look at first if search ever
+     * feels slow on a large site.
+     */
+    const searchableTextProperties = useMemo(
+        () => (data?.jcr?.nodeTypeByName?.properties || [])
+            .filter(definition => TEXT_SEARCH_TYPES.has(definition.requiredType) &&
+                !definition.hidden && !definition.multiple)
+            .map(definition => definition.name),
+        [data]
+    );
+
+    /*
+     * Every property of the type that can be translated, for the missing-translations column.
+     *
+     * From the unfiltered definitions on purpose. `contentTypeFields` below keeps only what the
+     * selected type declares ITSELF, because that is what makes sense as a column - but `jcr:title`
+     * is declared by `mix:title`, and measured against a site it is where 10 of the 15 real
+     * translation gaps were. Reusing the column list here would miss nearly all of them.
+     */
+    const translatableFields = useMemo(
+        () => translatableProperties(data?.jcr?.nodeTypeByName?.properties || []),
+        [data]
+    );
 
     const contentTypeFields = useMemo(() => {
         const definitions = data?.jcr?.nodeTypeByName?.properties || [];
@@ -416,7 +494,19 @@ export const useContentTypeColumns = contentType => {
         return visibleKeys.map(key => byKey.get(key)).filter(Boolean);
     }, [availableFields, visibleKeys]);
 
-    return {availableFields, nameField, visibleFields, visibleKeys, toggleField, moveField, resetToDefaults, loading};
+    return {
+        availableFields,
+        nameField,
+        visibleFields,
+        visibleKeys,
+        translatableFields,
+        searchableTextProperties,
+        languages,
+        toggleField,
+        moveField,
+        resetToDefaults,
+        loading
+    };
 };
 
 export default useContentTypeColumns;

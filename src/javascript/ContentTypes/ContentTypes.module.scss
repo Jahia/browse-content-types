@@ -1010,6 +1010,47 @@
 .undoPromise {
     color: var(--color-gray_dark);
 }
+
+/*
+ * The note beside the search box while a term is too short to be searched for.
+ *
+ * In the toolbar rather than under the table: it is about what has been typed, so it belongs beside
+ * the box it is about. `white-space: nowrap` because the toolbar is a flex row - allowed to wrap, the
+ * sentence would push the filter controls onto a second line as it appeared and back as it went.
+ */
+.searchHint {
+    color: var(--color-gray);
+    white-space: nowrap;
+}
+
+/*
+ * The missing-translations cell: one line per language that is short of something.
+ *
+ * Stacked rather than run together, because a record short in two languages is two separate pieces
+ * of work and "fr: Title, Subtitle de: Body" on one line invites mis-reading where one ends. The
+ * property list is allowed to be clipped - the full text is on the cell's own title attribute -
+ * since the language chip is what has to survive a narrow column.
+ */
+.missingTranslations {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.missingTranslationLine {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-nano);
+    min-width: 0;
+
+    > :last-child {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+}
+
 /*
  * A content type the site holds nothing of.
  *

@@ -38,7 +38,17 @@ const downloadFile = (text, fileName, mimeType) => {
  * picker is left alone. Both use the same component - it is fully controlled, so it serves a local
  * selection as readily as the table's persisted one.
  */
-export const ContentTypesExportDialog = ({isOpen, nodes, contentType, visibleFields, availableFields, fieldsByKey, onClose}) => {
+export const ContentTypesExportDialog = ({
+    isOpen,
+    nodes,
+    contentType,
+    visibleFields,
+    availableFields,
+    fieldsByKey,
+    languages,
+    translatableFields,
+    onClose
+}) => {
     const {t} = useTranslation(NAMESPACE);
 
     const [format, setFormat] = useState('csv');
@@ -77,7 +87,10 @@ export const ContentTypesExportDialog = ({isOpen, nodes, contentType, visibleFie
             nodes,
             fields: chosen,
             nameLabel: t('label.table.name'),
-            t
+            t,
+            // Only the missing-translations column reads these; every other value is on the node.
+            languages,
+            translatableFields
         });
 
         downloadFile(text, exportFileName(contentType, chosenFormat.extension), chosenFormat.mimeType);
@@ -166,7 +179,16 @@ ContentTypesExportDialog.propTypes = {
     /** The whole catalog, so a column can be exported without being shown first. */
     availableFields: PropTypes.array.isRequired,
     fieldsByKey: PropTypes.instanceOf(Map).isRequired,
+    /** The site's active languages and the type's translatable properties, which the
+     *  missing-translations column is computed from - it reads nothing off the node alone. */
+    languages: PropTypes.array,
+    translatableFields: PropTypes.array,
     onClose: PropTypes.func.isRequired
+};
+
+ContentTypesExportDialog.defaultProps = {
+    languages: [],
+    translatableFields: []
 };
 
 export default ContentTypesExportDialog;

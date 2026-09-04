@@ -46,11 +46,11 @@ export const EXPORT_FORMATS = {
         extension: 'csv',
         mimeType: 'text/csv;charset=utf-8',
         // What the table shows, without the styling - see ContentTypesCsv.
-        build: ({nodes, fields, nameLabel, t}) => buildRecordsCsv({
+        build: ({nodes, fields, nameLabel, t, languages, translatableFields}) => buildRecordsCsv({
             nodes,
             fields,
             nameLabel,
-            context: csvContextFor(t)
+            context: {...csvContextFor(t), languages, translatableFields}
         })
     },
     json: {
@@ -59,7 +59,8 @@ export const EXPORT_FORMATS = {
         mimeType: 'application/json',
         // What the repository stores, with the types intact - see ContentTypesJson. `t` is unused
         // here on purpose: nothing in a JSON export is translated, which is the point of it.
-        build: ({nodes, fields, nameLabel}) => buildRecordsJson({nodes, fields, nameLabel})
+        build: ({nodes, fields, nameLabel, languages, translatableFields}) =>
+            buildRecordsJson({nodes, fields, nameLabel, context: {languages, translatableFields}})
     }
 };
 

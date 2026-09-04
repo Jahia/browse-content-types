@@ -1,3 +1,4 @@
+import {missingTranslations} from './ContentTypesTranslations';
 /**
  * The same rows as JSON.
  *
@@ -58,6 +59,21 @@ const COMMON_VALUES = {
     lastModified: node => node.lastModified?.value || null,
     lastModifiedBy: node => node.lastModifiedBy?.value || null,
     publicationStatus: node => node.aggregatedPublicationInfo?.publicationStatus || null,
+    /*
+     * The gaps as an object keyed by language, or null where there are none.
+     *
+     * Stored property NAMES rather than the labels the column and the CSV show, which is this
+     * export's whole convention: a label belongs to a resource bundle and moves with the reader's
+     * language, while `jcr:title` is what the repository holds. Achieved by handing
+     * missingTranslations a property list whose label IS the name.
+     */
+    missingTranslations: (node, {languages, translatableFields}) => {
+        const byName = (translatableFields || []).map(field => ({name: field.name, label: field.name}));
+        const gaps = missingTranslations(node, languages, byName);
+        return gaps.length === 0 ?
+            null :
+            Object.fromEntries(gaps.map(gap => [gap.language, gap.properties]));
+    },
     publishedOn: node => node.publishedOn?.value || null,
     publishedBy: node => node.publishedBy?.value || null,
     tags: node => [...new Set(node.tags?.values || [])],
@@ -101,14 +117,20 @@ const dynamicValue = (field, payload) => {
     return typedValue(field.requiredType, payload.value);
 };
 
-/** One field of one row, as the value it really holds. */
-export const jsonValue = (field, node) => {
+/**
+ * One field of one row, as the value it really holds.
+ *
+ * `context` carries what a computed column cannot read off the node alone - the site's languages and
+ * the type's translatable properties, for the missing-translations column. Nothing else needs it,
+ * and a JSON export still translates nothing, which is the point of it.
+ */
+export const jsonValue = (field, node, context = {}) => {
     if (field.isDynamic) {
         return dynamicValue(field, node[field.key]);
     }
 
     const read = COMMON_VALUES[field.key];
-    return read ? read(node) : null;
+    return read ? read(node, context) : null;
 };
 
 /**
@@ -121,11 +143,11 @@ export const jsonValue = (field, node) => {
  * Indented, because a file somebody chose to download is a file somebody may open and read. The size
  * cost is a compression artefact away and the readability is not.
  */
-export const buildRecordsJson = ({nodes, fields, nameLabel}) => {
+export const buildRecordsJson = ({nodes, fields, nameLabel, context}) => {
     const rows = (nodes || []).map(node => {
         const row = {[nameLabel]: node.displayName || node.name || null};
         (fields || []).forEach(field => {
-            row[field.label] = jsonValue(field, node);
+            row[field.label] = jsonValue(field, node, context);
         });
         return row;
     });

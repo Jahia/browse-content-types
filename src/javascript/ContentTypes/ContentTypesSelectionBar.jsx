@@ -42,7 +42,16 @@ const publishActionFor = nodes => (
  * account. This module's own bulk menu is handed more, since exporting the table means exporting it
  * as displayed; see `bulkContext` below and the contract in registerContentTypesBulkActions.
  */
-export const ContentTypesSelectionBar = ({nodes, fields, availableFields, fieldsByKey, contentType, onClear}) => {
+export const ContentTypesSelectionBar = ({
+    nodes,
+    fields,
+    availableFields,
+    fieldsByKey,
+    contentType,
+    translatableFields,
+    languages,
+    onClear
+}) => {
     const {t} = useTranslation(NAMESPACE);
     const {site} = useSelector(state => ({site: state.site}), shallowEqual);
 
@@ -205,6 +214,8 @@ export const ContentTypesSelectionBar = ({nodes, fields, availableFields, fields
                     visibleFields={fields}
                     availableFields={availableFields}
                     fieldsByKey={fieldsByKey}
+                    translatableFields={translatableFields}
+                    languages={languages}
                     onClose={closeExport}
                 />
             )}
@@ -221,6 +232,8 @@ export const ContentTypesSelectionBar = ({nodes, fields, availableFields, fields
 };
 
 ContentTypesSelectionBar.propTypes = {
+    translatableFields: PropTypes.array,
+    languages: PropTypes.array,
     /** The rows currently ticked, in the shape the table fetched them. Never empty: the bar is not
      *  rendered without a selection, and the publish choice below has no answer for no rows. */
     nodes: PropTypes.array.isRequired,

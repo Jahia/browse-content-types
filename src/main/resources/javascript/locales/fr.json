@@ -13,7 +13,8 @@
       "notPublished": "Jamais publié"
     },
     "toolbar": {
-      "searchPlaceholder": "Rechercher",
+      "searchPlaceholder": "Rechercher dans le texte et les tags",
+      "searchTooShort": "Saisissez au moins {{count}} caractères pour rechercher",
       "columns": "Colonnes"
     },
     "bulk": {
@@ -44,6 +45,7 @@
       "createdDate": "Date de création",
       "lastModified": "Dernière modification",
       "lastModifiedBy": "Modifié par",
+      "missingTranslations": "Traductions manquantes",
       "publicationStatus": "Publication",
       "tags": "Tags",
       "categories": "Catégories",

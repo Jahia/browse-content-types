@@ -6,7 +6,7 @@ import {ColumnsIcon} from './ColumnsIcon';
 import {ContentTypesColumnsPicker} from './ContentTypesColumnsPicker';
 import {ContentTypesSelectionBar} from './ContentTypesSelectionBar';
 import {ContentTypesUndoAction} from './ContentTypesUndoAction';
-import {describeFilter} from './ContentTypesFilters';
+import {MIN_SEARCH_LENGTH, describeFilter, isSearchTooShort} from './ContentTypesFilters';
 import {NAMESPACE} from '../ContentTypes.register';
 import styles from './ContentTypes.module.scss';
 
@@ -45,6 +45,8 @@ export const ContentTypesToolBar = ({
     onClearSelection,
     filters,
     fieldsByKey,
+    translatableFields,
+    languages,
     onClearFilter,
     onClearAllFilters
 }) => {
@@ -58,6 +60,8 @@ export const ContentTypesToolBar = ({
                     fields={visibleFields}
                     availableFields={availableFields}
                     fieldsByKey={fieldsByKey}
+                    translatableFields={translatableFields}
+                    languages={languages}
                     contentType={contentType}
                     onClear={onClearSelection}
                 />
@@ -72,6 +76,20 @@ export const ContentTypesToolBar = ({
                         onChange={event => onSearchChange(event.target.value)}
                         onClear={() => onSearchChange('')}
                     />
+                    {/* Said while it is true, which is the only moment it helps. A term shorter than
+                        MIN_SEARCH_LENGTH is held back so it costs no query, and the table simply
+                        does not change - indistinguishable, from the reader's side, from a search
+                        that ran and matched everything. The placeholder cannot cover this: it is
+                        gone the moment anything is typed. */}
+                    {isSearchTooShort(search) && (
+                        <Typography
+                            variant="caption"
+                            className={styles.searchHint}
+                            data-sel-role="search-too-short"
+                        >
+                            {t('label.toolbar.searchTooShort', {count: MIN_SEARCH_LENGTH})}
+                        </Typography>
+                    )}
                     {/* Nothing about filters is drawn until one is in force. Conditions are
                         created from the column headers, not from here, so an empty Filter control
                         would only invite a click that leads nowhere. Once something is narrowing the
@@ -182,6 +200,8 @@ export const ContentTypesToolBar = ({
 };
 
 ContentTypesToolBar.propTypes = {
+    translatableFields: PropTypes.array,
+    languages: PropTypes.array,
     search: PropTypes.string.isRequired,
     /** The type being listed. Only the selection bar wants it, to name an exported file. */
     contentType: PropTypes.string.isRequired,

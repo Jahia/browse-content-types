@@ -1,3 +1,4 @@
+import {translationAlias} from './ContentTypesTranslations';
 import {buildRecordsJson, jsonValue} from './ContentTypesJson';
 
 const OPTIONS = 'ct_options';
@@ -125,6 +126,28 @@ describe('ContentTypesJson', () => {
             const text = buildRecordsJson({nodes: [node()], fields, nameLabel: 'Name'});
             expect(text).toContain('\n  {');
             expect(text.endsWith('\n')).toBe(true);
+        });
+    });
+
+    describe('the missing-translations column', () => {
+        const props = [{name: 'jcr:title', label: 'Title'}, {name: 'subtitle', label: 'Subtitle'}];
+        const subnode = values => ({properties: values.map(([name, value]) => ({name, value}))});
+        const row = {
+            [translationAlias('en')]: subnode([['jcr:title', 'Mykonos'], ['subtitle', 'Greek']]),
+            [translationAlias('fr')]: subnode([['jcr:title', 'Mykonos']])
+        };
+        const field = {key: 'missingTranslations'};
+        const context = {languages: ['en', 'fr'], translatableFields: props};
+
+        // The stored name, not the label: a label lives in a resource bundle and moves with the
+        // reader's language, which is exactly what a JSON export must not do.
+        it('writes the stored property names, keyed by language', () => {
+            expect(jsonValue(field, row, context)).toEqual({fr: ['subtitle']});
+        });
+
+        it('is null for a complete record, not an empty object', () => {
+            const shared = row[translationAlias('en')];
+            expect(jsonValue(field, {[translationAlias('en')]: shared, [translationAlias('fr')]: shared}, context)).toBeNull();
         });
     });
 });

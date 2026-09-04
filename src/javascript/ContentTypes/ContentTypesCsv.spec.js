@@ -1,3 +1,4 @@
+import {translationAlias} from './ContentTypesTranslations';
 import {
     UTF8_BOM,
     buildRecordsCsv,
@@ -240,6 +241,40 @@ describe('ContentTypesCsv', () => {
             const rows = [node({path: '/a'}), node({path: '/b'}), node({path: '/c'})];
             const csv = buildRecordsCsv({nodes: rows, fields: withLabels, nameLabel: 'Name', context});
             expect(csv.trimEnd().split('\r\n')).toHaveLength(4);
+        });
+    });
+
+    describe('the missing-translations column', () => {
+        const props = [{name: 'jcr:title', label: 'Title'}, {name: 'subtitle', label: 'Subtitle'}];
+        // Keys built from translationAlias rather than written out, so the fixture cannot drift
+        // from the aliases the record query actually uses.
+        const subnode = values => ({properties: values.map(([name, value]) => ({name, value}))});
+        const row = {
+            [translationAlias('en')]: subnode([['jcr:title', 'Mykonos'], ['subtitle', 'Greek']]),
+            [translationAlias('fr')]: subnode([['jcr:title', 'Mykonos']])
+        };
+        const field = {key: 'missingTranslations'};
+        const context = {languages: ['en', 'fr'], translatableFields: props};
+
+        // Labels, like the rest of the CSV - the JSON export writes the stored names instead.
+        it('writes the gaps as one cell, by label', () => {
+            expect(csvValue(field, row, context)).toBe('fr: Subtitle');
+        });
+
+        it('writes nothing for a complete record', () => {
+            const shared = row[translationAlias('en')];
+            const complete = {[translationAlias('en')]: shared, [translationAlias('fr')]: shared};
+            expect(csvValue(field, complete, context)).toBe('');
+        });
+
+        it('separates several languages', () => {
+            const three = {
+                [translationAlias('en')]: subnode([['jcr:title', 'a'], ['subtitle', 'b']]),
+                [translationAlias('fr')]: subnode([['jcr:title', 'a']]),
+                [translationAlias('de')]: subnode([['subtitle', 'b']])
+            };
+            expect(csvValue(field, three, {languages: ['en', 'fr', 'de'], translatableFields: props}))
+                .toBe('fr: Subtitle; de: Title');
         });
     });
 });

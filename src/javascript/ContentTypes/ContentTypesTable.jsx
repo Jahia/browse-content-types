@@ -7,7 +7,8 @@ import {Button, Chip, DataTable, Loader, Lock, Menu, Pagination, SortIndicator, 
 import {ContextualMenu, DisplayAction, registry} from '@jahia/ui-extender';
 import {ButtonRendererNoLabel} from '@jahia/jcontent';
 import {buildRecordQuery} from './ContentTypesRecordQuery';
-import {filterFor, labelForValue, matchesPublication, toNodeConstraint} from './ContentTypesFilters';
+import {missingTranslations} from './ContentTypesTranslations';
+import {MIN_SEARCH_LENGTH, filterFor, labelForValue, matchesPublication, sanitiseTokens, toNodeConstraint} from './ContentTypesFilters';
 import {siteRelativePath} from './ContentTypesPaths';
 import {ContentTypesFilterOverlay} from './ContentTypesFilterOverlay';
 import {NAMESPACE} from '../ContentTypes.register';
@@ -15,9 +16,6 @@ import styles from './ContentTypes.module.scss';
 
 const DEFAULT_ITEMS_PER_PAGE = 25;
 const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50, 100];
-
-/** Nothing is searched for until the fourth character, so short terms cost no query. */
-const MIN_SEARCH_LENGTH = 4;
 
 /** Pause after the last keystroke before searching, so a typed word is one query, not several. */
 const SEARCH_DEBOUNCE_MS = 300;
@@ -340,6 +338,34 @@ const COMMON_RENDERERS = {
                   label={chip ? t(chip.labelKey) : humanise(status)}
                   data-sel-publication-status={status}
             />
+        );
+    },
+    /*
+     * The properties this record has in one language and not in another, grouped by the language
+     * that is missing them.
+     *
+     * One line per language rather than one run-on string: a record short in two languages is two
+     * separate pieces of work, and reading "fr: Title, Subtitle de: Body" as one line invites
+     * mis-parsing it. A complete record shows nothing at all - not a dash - because a dash reads as
+     * "no value here" where the truth is "nothing missing", which is the opposite.
+     */
+    missingTranslations: (data, {languages, translatableFields}) => {
+        const gaps = missingTranslations(data, languages, translatableFields);
+        if (gaps.length === 0) {
+            return null;
+        }
+
+        return (
+            <span className={styles.missingTranslations} data-sel-missing-languages={gaps.length}>
+                {gaps.map(gap => (
+                    <span key={gap.language} className={styles.missingTranslationLine} data-sel-missing-language={gap.language}>
+                        <Chip color="warning" label={gap.language}/>
+                        <Typography variant="caption" title={gap.properties.join(', ')}>
+                            {gap.properties.join(', ')}
+                        </Typography>
+                    </span>
+                ))}
+            </span>
         );
     },
     publishedOn: (data, context) => renderDate(data.publishedOn?.value, context),
@@ -735,21 +761,6 @@ const PUBLICATION_FILTER_KEY = 'publicationStatus';
 const PUBLICATION_FILTER_CEILING = 2000;
 
 /**
- * Characters the full text parser reads as syntax. Left in a term they change the query, and a
- * stray quote makes it invalid outright: the server answers with a RepositoryException rather
- * than an empty result.
- */
-const FULLTEXT_OPERATORS = /["'()[\]^~?:\\*%]/g;
-
-/** Words the parser reads as operators rather than as something to look for. */
-const BOOLEAN_WORDS = new Set(['and', 'or', 'not']);
-
-const sanitiseTokens = term => term
-    .split(/\s+/)
-    .map(token => token.replace(FULLTEXT_OPERATORS, '').replace(/^-+/, ''))
-    .filter(token => token.length > 0 && !BOOLEAN_WORDS.has(token.toLowerCase()));
-
-/**
  * Each word matched two ways at once, as `(word OR word*)`.
  *
  * The index stores analysed, stemmed words, so a bare term matches whole words and their
@@ -797,6 +808,9 @@ export const ContentTypesTable = ({
     visibleFields,
     filters,
     fieldsByKey,
+    translatableFields,
+    searchableTextProperties,
+    languages,
     selection,
     onSelectionChange,
     onSetFilter,
@@ -867,8 +881,14 @@ export const ContentTypesTable = ({
     // Rebuilt only when the set of content-type-specific columns actually shown changes - not on
     // every render, and not when a common field becomes visible, since those are always fetched.
     const dynamicFieldsKey = dynamicFields.map(field => field.key).join(',');
+    // Joined for the same reason: the language list is a fresh array out of a query result, and the
+    // document only changes when the set of languages does.
+    const languagesKey = languages.join(',');
+    // Joined for the same reason as the others: a fresh array of the same names must not rebuild
+    // the constraint on every render.
+    const searchablePropertiesKey = searchableTextProperties.join(',');
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    const recordQuery = useMemo(() => buildRecordQuery(dynamicFields), [dynamicFieldsKey]);
+    const recordQuery = useMemo(() => buildRecordQuery(dynamicFields, languages), [dynamicFieldsKey, languagesKey]);
 
     /**
      * The sort, as one of the two things the query can be asked for - never both.
@@ -918,12 +938,23 @@ export const ContentTypesTable = ({
                 {contains: terms, property: 'j:tagList'},
                 // LOWER_CASE lowercases the column server-side, so an upper-case pattern would never
                 // match. jContent lowercases the pattern here for the same reason.
-                {like: nameTerms, property: 'j:nodename', function: 'LOWER_CASE'}
+                {like: nameTerms, property: 'j:nodename', function: 'LOWER_CASE'},
+                // One substring arm per text property, so a fragment from the middle of a word
+                // matches. The full-text arms above are whole-word-or-prefix, which is why "rovenc"
+                // found nothing while "provence" found 27 - and why the only mid-word matching there
+                // used to be on the system name, making it look arbitrary. See
+                // searchableTextProperties for what this costs.
+                ...searchableTextProperties.map(property => ({
+                    like: nameTerms,
+                    property,
+                    function: 'LOWER_CASE'
+                }))
             ]
         } : null;
 
         return toNodeConstraint(filters, fieldsByKey, searchConstraint);
-    }, [isSearching, terms, nameTerms, filters, fieldsByKey]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isSearching, terms, nameTerms, filters, fieldsByKey, searchablePropertiesKey]);
 
     /**
      * The publication filter, when one is set.
@@ -1036,8 +1067,9 @@ export const ContentTypesTable = ({
     );
 
     const renderContext = useMemo(
-        () => ({t, dateFormat, dateTimeFormat, site}),
-        [t, dateFormat, dateTimeFormat, site]
+        () => ({t, dateFormat, dateTimeFormat, site, languages, translatableFields}),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [t, dateFormat, dateTimeFormat, site, languagesKey, translatableFields]
     );
 
     // The table is told which rows are ticked in the terms it keys them by; the selection is kept
@@ -1323,6 +1355,13 @@ ContentTypesTable.propTypes = {
      *  column is hidden, since a filter in a shared link outlives a column choice held in a browser. */
     filters: PropTypes.array.isRequired,
     fieldsByKey: PropTypes.instanceOf(Map).isRequired,
+    /** Every translatable property of the type, for the missing-translations column. Inherited ones
+     *  included, which is why it comes from the type definition rather than from the columns. */
+    translatableFields: PropTypes.array,
+    /** The site's languages active in edit, which the column compares. */
+    languages: PropTypes.array,
+    /** The type's text properties, each given a substring arm so a search matches inside a word. */
+    searchableTextProperties: PropTypes.array,
     onSetFilter: PropTypes.func.isRequired,
     onClearFilter: PropTypes.func.isRequired,
     /** The ticked rows, held above so the toolbar can act on them. Whole rows rather than paths,
@@ -1333,7 +1372,10 @@ ContentTypesTable.propTypes = {
 
 ContentTypesTable.defaultProps = {
     search: '',
-    visibleFields: []
+    visibleFields: [],
+    translatableFields: [],
+    languages: [],
+    searchableTextProperties: []
 };
 
 export default ContentTypesTable;

@@ -98,6 +98,8 @@ export const ContentTypesRoute = () => {
                 selection={selection}
                 filters={filters}
                 fieldsByKey={fieldsByKey}
+                translatableFields={columns.translatableFields}
+                languages={columns.languages}
                 onSearchChange={setSearch}
                 onClearSelection={clearSelection}
                 onClearFilter={clearFilter}
@@ -114,6 +116,9 @@ export const ContentTypesRoute = () => {
                     selection={selection}
                     filters={filters}
                     fieldsByKey={fieldsByKey}
+                    translatableFields={columns.translatableFields}
+                    languages={columns.languages}
+                    searchableTextProperties={columns.searchableTextProperties}
                     onSelectionChange={setSelection}
                     onSetFilter={setFilter}
                     onClearFilter={clearFilter}
