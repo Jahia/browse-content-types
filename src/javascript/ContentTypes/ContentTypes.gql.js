@@ -301,6 +301,43 @@ export const GET_USERS_BY_PATH = gql`
 `;
 
 /**
+ * The signed-in person, and whether they may write on this site.
+ *
+ * Needed because the ACL is not the whole answer to "who may edit". `root` holds
+ * `jcr:write_default` on every site and appears in **no** ACL entry anywhere - not on the site and
+ * not on the repository root, whose only grants are `reader` and `privileged`. Its rights come from
+ * being the JCR super-user, which no query over access control can discover. So the site's own
+ * grants under-report the editors by exactly the people whose rights do not come from a grant.
+ *
+ * `hasPermission` is asked of the site node instead: it is the server's own answer, arrived at
+ * however the reader's rights happen to arise, so it covers the super-user and any future
+ * server-level role without this module having to model either.
+ *
+ * Only the current user is resolved this way, not every administrator. Asking the same question of
+ * somebody else is not possible - `hasPermission` answers for the session making the call - so a
+ * second administrator who holds no site grant is still missing from the list. That is a known
+ * limit, written down in useEditableUsers.
+ */
+export const GET_CURRENT_ASSIGNEE = gql`
+    query getCurrentAssignee($sitePath: String!) {
+        currentUser {
+            username
+            firstname
+            lastname
+            node {
+                path
+                name
+            }
+        }
+        jcr(workspace: EDIT) {
+            site: nodeByPath(path: $sitePath) {
+                hasPermission(permissionName: "jcr:write_default")
+            }
+        }
+    }
+`;
+
+/**
  * Whether the site already has somewhere to keep its tasks.
  *
  * Asked rather than assumed, because `addNode` on an existing node fails and the container is

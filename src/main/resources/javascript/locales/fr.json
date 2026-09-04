@@ -134,6 +134,7 @@
       "count_plural": "{{count}} enregistrements sélectionnés",
       "taskTitle": "Titre de la tâche",
       "description": "Description",
+      "dueDate": "Échéance (facultative)",
       "assignee": "Assigner à",
       "assigneePlaceholder": "Rechercher un utilisateur pouvant modifier ce site",
       "noEditors": "Personne sur ce site n'a le droit d'en modifier le contenu.",

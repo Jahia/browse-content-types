@@ -470,6 +470,9 @@
     flex-direction: column;
     gap: 4px;
     padding-left: 28px;
+
+    /* Set off from the category title above it, which `.category`'s 4px gap alone left sitting
+       almost on top of the first type. */
 }
 
 .dialogFooter {
@@ -606,8 +609,50 @@
     gap: var(--spacing-nano);
     margin-bottom: var(--spacing-medium);
 
-    /* The suggestions hang off this, so it is what they are positioned against. */
+}
+/*
+ * The assignee box and the list that drops out of it.
+ *
+ * The positioning context for the suggestions - deliberately this, and not the whole `.assignField`,
+ * so an upward-opening list sits immediately on top of the box rather than above the caption with
+ * the caption's height as a gap.
+ */
+.assignCombo {
     position: relative;
+}
+
+/*
+ * The due date box.
+ *
+ * A native date input rather than a Moonstone one, there being no date picker in the package this
+ * module depends on. Styled to sit with the Inputs around it instead of looking like the browser
+ * default: same border, radius, height and font as Moonstone's own control, taken from the same
+ * custom properties so it follows the theme rather than restating its colours.
+ *
+ * `width: fit-content` because a date input has a fixed amount to show and stretching it to the
+ * dialog's width leaves a wide empty field next to a calendar icon pinned at the far end.
+ */
+.assignDueDate {
+    width: fit-content;
+    padding: 0 var(--spacing-small);
+    height: var(--sizing-medium, 32px);
+
+    /* Matched to Moonstone's own text inputs, which set `font-size: 12px; line-height: 16px` on
+       `.moonstone-baseInput-element`. `font: inherit` looked like the safe choice and was not: it
+       inherits the DIALOG's font, a couple of sizes larger, so the date sat visibly bigger than
+       every other field in the same form. The family is left inherited, which is what Moonstone
+       does too - only the size and line-height are its own. */
+    font-size: 12px;
+    line-height: 16px;
+    color: var(--color-gray_dark);
+    background-color: var(--color-light);
+    border: 1px solid var(--color-gray_light);
+    border-radius: 2px;
+
+    &:focus-visible {
+        outline: 2px solid var(--color-accent);
+        outline-offset: -1px;
+    }
 }
 
 /*
@@ -618,11 +663,36 @@
  */
 .assignSuggestions {
     position: absolute;
+
+    /*
+     * Below the box, where a suggestion list belongs.
+     *
+     * It hung below originally, was moved above to escape the ModalBody's `overflow: hidden auto`
+     * clipping it, and is back below because that is where a reader looks for it. The clipping is
+     * dealt with at its source instead - see the `overflow: visible` rule on this dialog's body -
+     * rather than by moving the list somewhere it is not expected.
+     *
+     * The z-index has to clear the footer, not just the fields: the list now reaches past the
+     * bottom of the body and over the buttons, "Assign to" being the last field in the form.
+     */
     top: 100%;
     left: 0;
     right: 0;
-    z-index: 1;
+    z-index: 10;
 
+    /*
+     * Deliberately shaped like the browser's own autofill dropdown, which is the look Clement
+     * preferred out of the two that were briefly on screen at once (ours and Chrome's - see the
+     * autoComplete="off" note in ContentTypesAssignDialog). That one could not be kept: it is
+     * browser chrome rather than part of the document, and choosing from it only writes text into
+     * the box, so the person was never actually recorded. This is ours, so it works; it just wears
+     * the same clothes.
+     *
+     * What makes that look, as against Moonstone's own menus: it sits FLUSH under the box with no
+     * gap and no top border, so the two read as one control continuing downward; rows are tight and
+     * set in the system UI font rather than the app's; the border is hairline and the shadow soft
+     * and short, so the panel looks laid on the page rather than lifted off it.
+     */
     margin: 0;
     padding: var(--spacing-nano) 0;
     list-style: none;
@@ -632,20 +702,27 @@
 
     background-color: var(--color-light);
     border: 1px solid var(--color-gray_light);
-    border-radius: var(--border-radius);
-    box-shadow: var(--shadow-low);
+    border-top: none;
+    border-radius: 0 0 2px 2px;
+    box-shadow: 0 2px 6px rgb(0 0 0 / 18%);
 }
 
 .assignSuggestion {
     display: block;
     width: 100%;
-    padding: var(--spacing-nano) var(--spacing-small);
+
+    /* Tight rows in the system UI font: the two things that most carry the native look. `font`
+       rather than `font-family` alone so the app's own line-height does not stretch the row. */
+    padding: 3px var(--spacing-small);
+    font: 13px/20px system-ui, -apple-system, 'Segoe UI', roboto, sans-serif;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 
     border: none;
     background: none;
     text-align: left;
     cursor: pointer;
-    font: inherit;
     color: var(--color-gray_dark);
 
     &:hover,
@@ -896,11 +973,29 @@
     max-height: 60vh;
 }
 
+/*
+ * Letting the assignee suggestions out of the dialog body.
+ *
+ * Moonstone's ModalBody is the box's scrolling middle child - `flex: 1; overflow: hidden auto` -
+ * which is what keeps a tall dialog inside its 80vh cap. It also clips anything absolutely
+ * positioned inside it, and the assignee list is the last field's dropdown, so it was cut in half by
+ * the body's bottom edge.
+ *
+ * Scoped to THIS dialog by its own box class and role, not applied to Moonstone's body everywhere:
+ * turning off the clipping also turns off the scrolling, which is only safe because this form's
+ * height is fixed - four fields, a fixed-row textarea, no list that grows - so it never comes near
+ * the cap. The other dialogs keep their scroll. `className` lands on the box rather than the body,
+ * hence the descendant selector onto Moonstone's own unhashed class, the same approach as the
+ * overlay z-index above.
+ */
+.dialogBox[data-sel-role='assign-dialog'] :global(.moonstone-modalBody) {
+    overflow: visible;
+}
+
 /* The reassurance in a dialog footer, to the left of the buttons it is about. */
 .undoPromise {
     color: var(--color-gray_dark);
 }
-
 /*
  * The type list, inset from the panel rather than running flush to it.
  *

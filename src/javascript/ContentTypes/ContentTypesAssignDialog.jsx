@@ -4,15 +4,12 @@ import {useTranslation} from 'react-i18next';
 import {useApolloClient} from '@apollo/client';
 import {Button, Input, Loader, Modal, ModalBody, ModalFooter, ModalHeader, Textarea, Typography} from '@jahia/moonstone';
 import {CREATE_TASK, CREATE_TASKS_NODE, GET_TASKS_NODE} from './ContentTypes.gql';
-import {TASK_NODE_NAME, canSubmit, matchesTerm, taskProperties, tasksPath, userLabel} from './ContentTypesTasks';
+import {TASK_NODE_NAME, assigneeSuggestions, canSubmit, taskProperties, tasksPath, userLabel} from './ContentTypesTasks';
 import {useEditableUsers} from './useEditableUsers';
 import {taskSnapshot} from './ContentTypesUndo';
 import {recordUndo} from './useBulkUndo';
 import {NAMESPACE} from '../ContentTypes.register';
 import styles from './ContentTypes.module.scss';
-
-/** How many names the box offers at once, so a large site does not drop a list over the form. */
-const MAX_SUGGESTIONS = 8;
 
 /**
  * Raising one task for the ticked rows.
@@ -34,6 +31,7 @@ export const ContentTypesAssignDialog = ({isOpen, nodes, siteKey, onClose}) => {
 
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
+    const [dueDate, setDueDate] = useState('');
     const [term, setTerm] = useState('');
     const [assignee, setAssignee] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
@@ -43,16 +41,17 @@ export const ContentTypesAssignDialog = ({isOpen, nodes, siteKey, onClose}) => {
     // to assign something.
     const {users, loading} = useEditableUsers(siteKey, {skip: !isOpen});
 
-    // The box shows the chosen person's own label once somebody is chosen, and no list with it:
-    // suggestions under a filled box invite a second choice nobody asked to make.
+    // Only what has been typed matches, and only while nobody is chosen - see assigneeSuggestions
+    // for why this is an autocomplete rather than a list that opens on focus.
     const suggestions = useMemo(
-        () => (assignee ? [] : users.filter(user => matchesTerm(user, term)).slice(0, MAX_SUGGESTIONS)),
+        () => assigneeSuggestions(users, term, assignee),
         [users, term, assignee]
     );
 
     const reset = () => {
         setTitle('');
         setDescription('');
+        setDueDate('');
         setTerm('');
         setAssignee(null);
         setFailed(false);
@@ -95,6 +94,7 @@ export const ContentTypesAssignDialog = ({isOpen, nodes, siteKey, onClose}) => {
                         title,
                         description,
                         assigneePath: assignee.path,
+                        dueDate,
                         paths: nodes.map(node => node.path),
                         uuids: nodes.map(node => node.uuid).filter(Boolean)
                     })
@@ -127,9 +127,13 @@ export const ContentTypesAssignDialog = ({isOpen, nodes, siteKey, onClose}) => {
             onOpenChange={open => !open && close()}
         >
             <>
-                <ModalHeader>
-                    <Typography variant="heading" weight="bold">{t('label.assign.title')}</Typography>
-                </ModalHeader>
+                {/* The title goes in `title`, not in children. Moonstone's ModalHeader is
+                    `({title, children}) => title && <header>...</header>`: with no `title` it
+                    renders nothing at all, and children are its optional subtitle rather than its
+                    heading. Passing the heading as a child therefore showed no header whatsoever -
+                    silently, since a component returning false is not an error. It also builds its
+                    own Typography, so wrapping the string in one is neither needed nor honoured. */}
+                <ModalHeader title={t('label.assign.title')}/>
                 <ModalBody>
                     <Typography className={styles.assignCount} variant="caption">
                         {t('label.assign.count', {count: nodes.length})}
@@ -156,40 +160,77 @@ export const ContentTypesAssignDialog = ({isOpen, nodes, siteKey, onClose}) => {
                         />
                     </label>
 
+                    {/* A native date input: Moonstone publishes no date picker (its DatePicker
+                        lives in moonstone-alpha, which this module does not depend on), and a
+                        due date is a day rather than an instant. Optional - `dueDate` is not
+                        mandatory on `jnt:task`, and the property is simply omitted when this is
+                        left empty, the same way the description is. `min` stops yesterday being
+                        chosen by accident; a due date already past helps nobody. */}
+                    <label className={styles.assignField} htmlFor="assign-due-date">
+                        <Typography variant="caption" weight="bold">{t('label.assign.dueDate')}</Typography>
+                        <input
+                            id="assign-due-date"
+                            type="date"
+                            className={styles.assignDueDate}
+                            value={dueDate}
+                            min={new Date().toISOString().slice(0, 10)}
+                            data-sel-role="assign-due-date"
+                            onChange={event => setDueDate(event.target.value)}
+                        />
+                    </label>
+
                     <label className={styles.assignField} htmlFor="assign-assignee">
                         <Typography variant="caption" weight="bold">{t('label.assign.assignee')}</Typography>
-                        <Input
-                            id="assign-assignee"
-                            value={assignee ? userLabel(assignee) : term}
-                            placeholder={t('label.assign.assigneePlaceholder')}
-                            data-sel-role="assign-assignee"
-                            onChange={event => {
-                                // Typing over a chosen name puts the choice back, so the box is
-                                // never showing one person while the form holds another.
-                                setAssignee(null);
-                                setTerm(event.target.value);
-                            }}
-                        />
+                        {/* The box and its list share a wrapper of their own, and it is that -
+                            rather than the whole labelled field - the list is positioned against.
+                            Anchored to the field group instead, an upward-opening list sits above
+                            the caption, with the caption's height as a gap between it and the box
+                            it belongs to, which reads as though it belongs to the field above. */}
+                        <div className={styles.assignCombo}>
+                            <Input
+                                id="assign-assignee"
+                                value={assignee ? userLabel(assignee) : term}
+                                placeholder={t('label.assign.assigneePlaceholder')}
+                                /*
+                                    Off, or the browser offers a SECOND list of its own.
+                                    Chrome remembers what has been typed into a named text box and
+                                    offers it back below the field - browser chrome, not in the
+                                    document, so nothing here can style or suppress it except this
+                                    attribute. Two lists appeared at once, and only one of them
+                                    worked: picking from Chrome's sets the text and nothing else, so
+                                    `assignee` stayed null and Create task stayed disabled, while
+                                    picking from ours records the person. One list, and it is ours.
+                                */
+                                autoComplete="off"
+                                data-sel-role="assign-assignee"
+                                onChange={event => {
+                                    // Typing over a chosen name puts the choice back, so the box is
+                                    // never showing one person while the form holds another.
+                                    setAssignee(null);
+                                    setTerm(event.target.value);
+                                }}
+                            />
+                            {!loading && suggestions.length > 0 && (
+                                <ul className={styles.assignSuggestions} data-sel-role="assign-suggestions">
+                                    {suggestions.map(user => (
+                                        <li key={user.path}>
+                                            <button
+                                                type="button"
+                                                className={styles.assignSuggestion}
+                                                data-sel-user={user.name}
+                                                onClick={() => {
+                                                    setAssignee(user);
+                                                    setTerm('');
+                                                }}
+                                            >
+                                                {userLabel(user)}
+                                            </button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
                         {loading && <Loader size="small"/>}
-                        {!loading && suggestions.length > 0 && (
-                            <ul className={styles.assignSuggestions} data-sel-role="assign-suggestions">
-                                {suggestions.map(user => (
-                                    <li key={user.path}>
-                                        <button
-                                            type="button"
-                                            className={styles.assignSuggestion}
-                                            data-sel-user={user.name}
-                                            onClick={() => {
-                                                setAssignee(user);
-                                                setTerm('');
-                                            }}
-                                        >
-                                            {userLabel(user)}
-                                        </button>
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
                         {/* Only once the list has arrived: "nobody can edit this site" is a strong
                             thing to say while the answer is still being fetched. */}
                         {!loading && users.length === 0 && (
@@ -205,14 +246,12 @@ export const ContentTypesAssignDialog = ({isOpen, nodes, siteKey, onClose}) => {
                         </Typography>
                     )}
                 </ModalBody>
+                {/* Just the two buttons, as the Export dialog has: Moonstone's footer is
+                    `alignCenter flexRow_reverse`, so they sit on one line at the right and the
+                    footer is one control tall. It used to carry the undo promise and a spacer
+                    beside them, which wrapped to two lines and took enough height off an
+                    80vh-capped box to cut the form above it. */}
                 <ModalFooter>
-                    {/* Said before the button rather than discovered after it: an editor deciding
-                        whether to change a hundred records is deciding under a different risk if
-                        they know it can be taken back. */}
-                    <Typography variant="caption" className={styles.undoPromise} data-sel-role="undo-promise">
-                        {t('label.undo.promise')}
-                    </Typography>
-                    <div className={styles.toolBarSpacer}/>
                     <Button size="big" variant="ghost" label={t('label.assign.cancel')} onClick={close}/>
                     <Button
                         size="big"

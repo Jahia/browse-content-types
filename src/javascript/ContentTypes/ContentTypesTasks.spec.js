@@ -1,6 +1,9 @@
 import {
+    MAX_SUGGESTIONS,
     TASK_NODE_NAME,
+    assigneeSuggestions,
     canSubmit,
+    dueDateValue,
     editableUsers,
     editingPrincipals,
     matchesTerm,
@@ -9,7 +12,8 @@ import {
     taskDescription,
     taskProperties,
     tasksPath,
-    userLabel
+    userLabel,
+    withCurrentUser
 } from './ContentTypesTasks';
 
 /** A role node as the roles query returns one. */
@@ -261,6 +265,24 @@ describe('ContentTypesTasks', () => {
             expect(byName(properties).description).toBeUndefined();
         });
 
+        it('sends the due date as a typed DATE when one was chosen', () => {
+            const due = byName(taskProperties({...form, dueDate: '2026-09-15'})).dueDate;
+            expect(due.type).toBe('DATE');
+            expect(due.value).toBe('2026-09-15T12:00:00.000Z');
+        });
+
+        // The Due column on the tasks dashboard was empty for every task this module raised,
+        // because the CND's now()+1day default is an initial value the content UI offers rather
+        // than an autocreated one - a mutation has to send the property itself.
+        it('omits the due date rather than sending an empty one', () => {
+            expect(byName(taskProperties({...form, dueDate: ''})).dueDate).toBeUndefined();
+            expect(byName(taskProperties(form)).dueDate).toBeUndefined();
+        });
+
+        it('omits a due date that is not a real day', () => {
+            expect(byName(taskProperties({...form, dueDate: '2026-02-31'})).dueDate).toBeUndefined();
+        });
+
         it('omits the references when there is nothing to point at', () => {
             expect(byName(taskProperties({...form, uuids: []})).targetNode).toBeUndefined();
         });
@@ -279,6 +301,114 @@ describe('ContentTypesTasks', () => {
 
         it('refuses with nobody chosen', () => {
             expect(canSubmit({title: 'Check these', assignee: null})).toBe(false);
+        });
+    });
+
+    describe('withCurrentUser', () => {
+        const pam = {name: 'pam', path: '/users/jb/ac/eh/pam', firstName: 'Pam', lastName: 'Beesly'};
+        const root = {name: 'root', path: '/users/root', firstName: 'Klem', lastName: 'Root'};
+
+        // The reason this exists: root may write on every site and is in no ACL entry anywhere, so
+        // a list built from the site's grants leaves out the very person usually raising the task.
+        it('adds the reader when the site granted them nothing', () => {
+            // Ordered by the label shown, so "Klem Root (root)" sorts before "Pam Beesly (pam)".
+            expect(withCurrentUser([pam], root).map(user => user.name)).toEqual(['root', 'pam']);
+        });
+
+        it('does not list somebody twice when they are also a granted editor', () => {
+            expect(withCurrentUser([pam], pam).map(user => user.path)).toEqual([pam.path]);
+        });
+
+        it('keeps the list in name order rather than appending', () => {
+            const zoe = {name: 'zoe', path: '/users/zoe'};
+            const amy = {name: 'amy', path: '/users/amy'};
+            expect(withCurrentUser([zoe], amy).map(user => user.name)).toEqual(['amy', 'zoe']);
+        });
+
+        // Nothing is added when the server said the reader may not write here.
+        it('leaves the list alone when there is no current user to add', () => {
+            expect(withCurrentUser([pam], null).map(user => user.name)).toEqual(['pam']);
+        });
+
+        it('survives an empty granted list', () => {
+            expect(withCurrentUser([], root).map(user => user.name)).toEqual(['root']);
+        });
+    });
+
+    describe('dueDateValue', () => {
+        // The one format the repository accepts, verified live: an offset form and a bare day are
+        // both refused with ValueFormatException.
+        it('turns a picked day into midday UTC in the accepted format', () => {
+            expect(dueDateValue('2026-09-15')).toBe('2026-09-15T12:00:00.000Z');
+        });
+
+        // Midday rather than midnight so the stored instant names the same calendar day for a
+        // reader in any timezone, rather than the day before east of UTC.
+        it('names the same calendar day it was given', () => {
+            expect(dueDateValue('2026-09-15').slice(0, 10)).toBe('2026-09-15');
+        });
+
+        it('handles the turn of a year', () => {
+            expect(dueDateValue('2026-12-31')).toBe('2026-12-31T12:00:00.000Z');
+        });
+
+        it('accepts a real leap day', () => {
+            expect(dueDateValue('2028-02-29')).toBe('2028-02-29T12:00:00.000Z');
+        });
+
+        // Date.UTC rolls an impossible day into the next month rather than refusing it, which
+        // would store a due date that is not the one asked for.
+        it('refuses a day that does not exist', () => {
+            expect(dueDateValue('2026-02-31')).toBeNull();
+        });
+
+        it('refuses anything that is not a plain day', () => {
+            expect(dueDateValue('2026-09-15T12:00:00.000Z')).toBeNull();
+            expect(dueDateValue('15/09/2026')).toBeNull();
+            expect(dueDateValue('not a date')).toBeNull();
+        });
+
+        it('treats nothing chosen as nothing to store', () => {
+            expect(dueDateValue('')).toBeNull();
+            expect(dueDateValue(null)).toBeNull();
+            expect(dueDateValue(undefined)).toBeNull();
+        });
+    });
+
+    describe('assigneeSuggestions', () => {
+        const users = [
+            {name: 'pam', path: '/users/pam', firstName: 'Pam', lastName: 'Pasteur'},
+            {name: 'penny', path: '/users/penny', firstName: 'Penny', lastName: 'Galileo'},
+            {name: 'root', path: '/users/root', firstName: 'Klem', lastName: 'Root'}
+        ];
+
+        // The point of the change: focusing the box used to drop the whole list over the form.
+        it('offers nothing until something has been typed', () => {
+            expect(assigneeSuggestions(users, '', null)).toEqual([]);
+            expect(assigneeSuggestions(users, '   ', null)).toEqual([]);
+            expect(assigneeSuggestions(users, null, null)).toEqual([]);
+        });
+
+        it('offers what the typed text matches', () => {
+            expect(assigneeSuggestions(users, 'pen', null).map(u => u.name)).toEqual(['penny']);
+        });
+
+        it('matches a real name, not only the login', () => {
+            expect(assigneeSuggestions(users, 'galileo', null).map(u => u.name)).toEqual(['penny']);
+        });
+
+        it('offers nothing once somebody is chosen', () => {
+            expect(assigneeSuggestions(users, 'pen', users[1])).toEqual([]);
+        });
+
+        it('caps how many it offers, so the list cannot cover the form', () => {
+            const many = Array.from({length: 40}, (_, i) => ({name: `user${i}`, path: `/users/user${i}`}));
+            expect(assigneeSuggestions(many, 'user', null)).toHaveLength(MAX_SUGGESTIONS);
+        });
+
+        it('survives having no users to offer', () => {
+            expect(assigneeSuggestions([], 'pam', null)).toEqual([]);
+            expect(assigneeSuggestions(null, 'pam', null)).toEqual([]);
         });
     });
 

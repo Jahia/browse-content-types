@@ -134,6 +134,7 @@
       "count_plural": "{{count}} records selected",
       "taskTitle": "Task title",
       "description": "Description",
+      "dueDate": "Due date (optional)",
       "assignee": "Assign to",
       "assigneePlaceholder": "Search a user who can edit this site",
       "noEditors": "Nobody on this site has permission to edit its content.",

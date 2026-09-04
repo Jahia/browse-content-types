@@ -110,6 +110,28 @@ export const editableUsers = (directUsers, groupMembers) => {
 };
 
 /**
+ * The signed-in person, added to the list of people a task may be given to.
+ *
+ * Because the site's access control does not know about all of them. `root` may write on every site
+ * and is granted that by no ACL entry at all - it is the JCR super-user - so a list built from
+ * grants alone leaves out the very person most likely to be raising the task. The server is asked
+ * `hasPermission` on the site instead, and this puts the answer into the list.
+ *
+ * Nothing here excludes the current user, and nothing ever did: assigning a task to yourself is an
+ * ordinary thing to want, and the absence of `root` from the box was the ACL, not a filter.
+ *
+ * Deduplicated by path, so somebody who is both the reader and a granted editor appears once, and
+ * re-sorted, so the addition lands in order rather than on the end.
+ */
+export const withCurrentUser = (users, currentUser) => {
+    if (!currentUser?.path) {
+        return users || [];
+    }
+
+    return editableUsers(users, [currentUser]);
+};
+
+/**
  * How a person is named in the list.
  *
  * Their real name where the repository has one, since that is what a colleague is recognised by, and
@@ -180,6 +202,73 @@ export const taskDescription = (description, paths) => {
 };
 
 /**
+ * A picked calendar day, as the instant the repository will accept for it.
+ *
+ * `jnt:task` declares `dueDate (date, datetimepicker)`, so the value is an instant rather than a
+ * day, and the property is optional and unprotected - a mutation may set it. (Its CND default,
+ * `now('1000*60*60*24')`, is an initial value the content UI offers; it is not `autocreated`, so a
+ * task raised through a mutation carries no due date at all unless one is sent. That is why every
+ * task this module has raised so far has an empty Due column.)
+ *
+ * **Only one format is accepted.** Verified against the live repository: `2026-09-15T12:00:00.000Z`
+ * is stored, while `2026-09-15T12:00:00+02:00` and a bare `2026-09-15` are both refused with
+ * `ValueFormatException: not a valid date format`. So an offset form cannot be sent, and the day
+ * out of a date input cannot be sent as it stands - which is exactly what `toISOString()` produces.
+ *
+ * Fixed at **midday UTC** rather than at midnight anywhere. Midnight local converts to the previous
+ * day for any reader east of UTC (a due date of the 15th, entered here at UTC+2, would store as the
+ * 14th at 22:00Z and read as the 14th to anything showing UTC), and midnight UTC has the mirror
+ * problem going west. Midday UTC names the same calendar day everywhere from UTC-12 to UTC+11,
+ * which is every timezone a reader is actually in.
+ */
+export const dueDateValue = day => {
+    const parts = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(day || '').trim());
+    if (!parts) {
+        return null;
+    }
+
+    const [, year, month, date] = parts.map(Number);
+    const instant = new Date(Date.UTC(year, month - 1, date, 12, 0, 0));
+
+    // A date input cannot offer the 31st of February, but a shared link or a typed value can, and
+    // Date.UTC rolls such a day into the next month rather than refusing it. Rejected instead: a
+    // due date that is not the day that was asked for is worse than none.
+    if (instant.getUTCFullYear() !== year || instant.getUTCMonth() !== month - 1 || instant.getUTCDate() !== date) {
+        return null;
+    }
+
+    return instant.toISOString();
+};
+
+/**
+ * How many names the box offers at once.
+ *
+ * A cap rather than a scrolling list: the suggestions hang over the form, so a long one covers the
+ * fields under it, and a reader who can see eight and does not recognise one should type another
+ * letter rather than scroll.
+ */
+export const MAX_SUGGESTIONS = 8;
+
+/**
+ * The names to offer under the box.
+ *
+ * **Nothing until something has been typed.** Offering the whole list on focus put a block of names
+ * over the form the moment the box was touched, and it only gets worse as a site grows - a site with
+ * hundreds of editors would drop a wall over the dialog. So this is an autocomplete, not a dropdown:
+ * it answers a typed prefix and stays out of the way otherwise.
+ *
+ * Nothing once somebody is chosen either - suggestions under a filled box invite a second choice
+ * nobody asked to make, and the box is showing that person's name rather than a search term.
+ */
+export const assigneeSuggestions = (users, term, assignee) => {
+    if (assignee || !String(term || '').trim()) {
+        return [];
+    }
+
+    return (users || []).filter(user => matchesTerm(user, term)).slice(0, MAX_SUGGESTIONS);
+};
+
+/**
  * The properties of the task node, ready for the mutation.
  *
  * `assigneeUserKey` holds the assignee's **path**, despite the name - which is what core writes into
@@ -199,13 +288,18 @@ export const taskDescription = (description, paths) => {
  * A property is omitted rather than sent empty when there is nothing to put in it, so a task with no
  * description carries no description instead of carrying an empty one.
  */
-export const taskProperties = ({title, description, assigneePath, paths, uuids}) => {
+export const taskProperties = ({title, description, assigneePath, paths, uuids, dueDate}) => {
     const properties = [
         {name: 'jcr:title', value: String(title || '').trim()},
         {name: 'state', value: 'active'},
         {name: 'priority', value: 'normal'},
         {name: 'assigneeUserKey', value: assigneePath}
     ];
+
+    const due = dueDateValue(dueDate);
+    if (due) {
+        properties.push({name: 'dueDate', type: 'DATE', value: due});
+    }
 
     const body = taskDescription(description, paths);
     if (body) {
