@@ -51,16 +51,18 @@ export const ContentTypesTree = () => {
 
     // Read from the store rather than window.contextJsParameters: jContent is a single page app,
     // so the site can change without a page load, and the global would then be stale.
-    const {site, language, path} = useSelector(state => ({
+    // `uilang` rather than `language`, for the reason given in ContentTypesRoute: these are the
+    // types' display names, which are labels and belong in the language of the interface.
+    const {site, uilang, path} = useSelector(state => ({
         site: state.site,
-        language: state.language,
+        uilang: state.uilang,
         path: state.jcontent.path
     }), shallowEqual);
 
     const goto = useGoto(site);
 
     const {data, loading, error} = useQuery(GET_SITE_CONTENT_TYPES, {
-        variables: {siteKey: site, language},
+        variables: {siteKey: site, language: uilang || 'en'},
         skip: !site
     });
 

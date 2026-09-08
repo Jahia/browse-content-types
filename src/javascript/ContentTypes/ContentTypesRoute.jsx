@@ -21,9 +21,20 @@ import styles from './ContentTypes.module.scss';
  */
 export const ContentTypesRoute = () => {
     const {t} = useTranslation(NAMESPACE);
-    const {site, language, path} = useSelector(state => ({
+    /*
+     * `uilang`, not `language`: a content type's display name is a label out of a resource bundle,
+     * so it belongs in the language the interface is in, like every other label on screen. The
+     * content language is what the VALUES are read in, and it is a different question - a reader
+     * looking at French content through an English interface wants an English type name and French
+     * values, which is exactly what they get from the table.
+     *
+     * This is what the columns picker and the settings panel already did for their own labels; the
+     * heading and the create button were the two places still asking in the content language, so
+     * the button read "New Bien immobilier" to an English reader.
+     */
+    const {site, uilang, path} = useSelector(state => ({
         site: state.site,
-        language: state.language,
+        uilang: state.uilang,
         path: state.jcontent.path
     }), shallowEqual);
 
@@ -40,7 +51,7 @@ export const ContentTypesRoute = () => {
 
     // Apollo already has this from the side panel, so naming the type costs no extra request.
     const {data} = useQuery(GET_SITE_CONTENT_TYPES, {
-        variables: {siteKey: site, language},
+        variables: {siteKey: site, language: uilang || 'en'},
         skip: !site
     });
 
