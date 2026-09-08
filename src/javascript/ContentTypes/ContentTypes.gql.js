@@ -609,45 +609,6 @@ export const DELETE_TASK = gql`
     }
 `;
 
-/**
- * What to render for a preview, which is not always the node that was clicked.
- *
- * `displayableNode` is core's own answer to "can this be shown on its own, and if not, what shows
- * it" - it resolves a record with a content template to itself and a sub-component to the page
- * hosting it. Measured against a site: the render servlet answers 200 for the first and **404** for
- * the second, so asking the node's own path would leave the panel showing an error for every record
- * that lives inside a page.
- *
- * Null where nothing can display it at all, which is what the panel reports as no preview available.
- */
-export const GET_PREVIEW_TARGET = gql`
-    query getPreviewTarget($path: String!, $language: String!) {
-        jcr(workspace: EDIT) {
-            nodeByPath(path: $path) {
-                path
-                displayName(language: $language)
-                displayableNode {
-                    path
-                }
-            }
-        }
-    }
-`;
-
-/**
- * The modification and publication stamps a bulk operation is about to disturb.
- *
- * Read alongside the values so an undo can put the record's publication status back, not only its
- * content. Jahia decides that status by comparing `jcr:lastModified` with `j:lastPublished` - see
- * JCRPublicationService - and never by comparing what the two workspaces actually hold, so a record
- * whose values have been restored still reads as Modified until these are restored too.
- *
- * The translation subnode is captured with it. An internationalized property's modification date
- * does not live on the node at all but on a hidden `j:translation_<language>` child with its own
- * pair of stamps, and that is the one an edit to a translated property moves. Only the language the
- * operation writes in is asked for, since it is the only one that can be disturbed; `descendants`
- * cannot see these nodes at all, so the path is asked for directly.
- */
 export const CAPTURE_TIMESTAMPS = gql`
     query captureTimestamps($paths: [String!]!, $translationPath: String!) {
         jcr(workspace: EDIT) {
@@ -723,6 +684,63 @@ export const GET_CREATABLE_TYPES = gql`
  * the folder is created by whoever adds the first record of that type. `nodeByPath` on a missing node
  * answers with an error rather than a null, so the caller reads the error as "not there yet".
  */
+/**
+ * Where records of one type already live, so a home can be found for a new one.
+ *
+ * Only the parents' TYPES are wanted, but a type cannot be asked "what holds you" - there is no such
+ * field - so the records are asked instead and their parents reported. See
+ * ContentTypesCreateTarget for why the type is what gets inferred rather than the parents
+ * themselves.
+ *
+ * A small page of records is enough: what is being looked for is which KINDS of node hold this type,
+ * and a type held by two kinds will show both within a handful of rows. Reading every record of the
+ * type to answer that would be a page of hundreds for one distinct value.
+ */
+export const GET_TYPE_PARENTS = gql`
+    query getTypeParents($sitePath: String!, $type: String!, $language: String!) {
+        jcr(workspace: EDIT) {
+            nodesByCriteria(criteria: {language: $language, nodeType: $type, paths: [$sitePath]}, offset: 0, limit: 50) {
+                nodes {
+                    parent {
+                        primaryNodeType {
+                            name
+                        }
+                    }
+                }
+            }
+        }
+    }
+`;
+
+/**
+ * Every node of one type in the site, as the containers a record could be filed into.
+ *
+ * Asked for the type rather than for the parents already in use, which is what makes a container
+ * holding none of this type yet reachable - the empty agency somebody is about to file their first
+ * estate into.
+ *
+ * **One type, because the criteria take one.** `nodesByCriteria` has a single `nodeType`, so where a
+ * type is held by more than one kind of node this asks about the first kind found and the others go
+ * unoffered. Left as it is deliberately: a type constrained to a declaring parent normally has
+ * exactly one, and building a document with an alias per type - the way buildRecordQuery does - is
+ * the answer if a real case ever turns up rather than a complication to carry for a hypothetical
+ * one. A subtype is matched too, so a family of container types with a common supertype is already
+ * covered by its supertype.
+ */
+export const GET_NODES_OF_TYPES = gql`
+    query getNodesOfTypes($sitePath: String!, $type: String!, $language: String!) {
+        jcr(workspace: EDIT) {
+            nodesByCriteria(criteria: {language: $language, nodeType: $type, paths: [$sitePath]}, offset: 0, limit: 200) {
+                nodes {
+                    name
+                    path
+                    displayName(language: $language)
+                }
+            }
+        }
+    }
+`;
+
 export const GET_CONTENT_FOLDER = gql`
     query getContentFolder($path: String!) {
         jcr(workspace: EDIT) {

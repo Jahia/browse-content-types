@@ -243,10 +243,14 @@
       "refused": "This type cannot be stored in a content folder.",
       "failed": "The record could not be created. Try again."
     },
-    "preview": {
-      "close": "Close preview",
-      "unavailable": "No preview is available for this content.",
-      "inPage": "Shown in the page that displays it, since this content cannot be rendered on its own."
+    "createTarget": {
+      "title": "New {{type}}",
+      "explanation": "A {{type}} cannot be stored in a content folder, so it has to go inside content that accepts it. Choose where this one belongs.",
+      "container": "Where it goes",
+      "placeholder": "Choose",
+      "confirm": "Continue",
+      "tooltip": "A {{type}} goes inside content that accepts it, not in a folder.",
+      "resolving": "Working out where this can go…"
     }
   }
 }
