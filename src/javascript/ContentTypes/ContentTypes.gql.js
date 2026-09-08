@@ -678,3 +678,61 @@ export const CAPTURE_TIMESTAMPS = gql`
         }
     }
 `;
+
+/**
+ * A sample of where records of one type actually sit, to propose a parent for the next one.
+ *
+ * Paths only, and only a sample: the answer wanted is which folder this type tends to live in, and
+ * that is legible from a few dozen records without reading the whole set. The query string is the
+ * same one the counts use - see `typeCountQuery` - so a type means the same thing here as it does
+ * there, subtypes excluded.
+ */
+export const GET_RECORD_PARENTS = gql`
+    query getRecordParents($query: String!, $limit: Int!) {
+        jcr {
+            nodesByQuery(query: $query, limit: $limit) {
+                nodes {
+                    uuid
+                    path
+                }
+            }
+        }
+    }
+`;
+
+/**
+ * Which types may be created at a given path, as Content Editor itself resolves it.
+ *
+ * `forms.contentTypesAsTree` is the API behind Content Editor's own create flow, so asking it is how
+ * this module gets the same answer the editor would act on rather than a second opinion of its own.
+ * Only the names are selected - the labels and icons the editor's type selector draws are of no use
+ * to a caller that just needs to know whether the answer is empty.
+ *
+ * `excludedNodeTypes` is passed explicitly rather than left to default, because the default lives in
+ * Content Editor and this query is asked separately from the call that uses its answer; the two
+ * would drift apart the moment one of them changed.
+ */
+export const GET_CREATABLE_TYPES = gql`
+    query getCreatableTypes(
+        $nodeTypes: [String],
+        $includeSubTypes: Boolean,
+        $path: String!,
+        $uilang: String!,
+        $excludedNodeTypes: [String]
+    ) {
+        forms {
+            contentTypesAsTree(
+                nodeTypes: $nodeTypes,
+                includeSubTypes: $includeSubTypes,
+                uuidOrPath: $path,
+                uiLocale: $uilang,
+                excludedNodeTypes: $excludedNodeTypes
+            ) {
+                name
+                children {
+                    name
+                }
+            }
+        }
+    }
+`;

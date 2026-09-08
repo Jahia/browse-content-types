@@ -4,6 +4,7 @@ import {useTranslation} from 'react-i18next';
 import {Button, Close, CustomDropdown, Filter, SearchInput, Typography} from '@jahia/moonstone';
 import {ColumnsIcon} from './ColumnsIcon';
 import {ContentTypesColumnsPicker} from './ContentTypesColumnsPicker';
+import {ContentTypesCreateAction} from './ContentTypesCreateAction';
 import {ContentTypesSelectionBar} from './ContentTypesSelectionBar';
 import {ContentTypesUndoAction} from './ContentTypesUndoAction';
 import {MIN_SEARCH_LENGTH, describeFilter, isSearchTooShort} from './ContentTypesFilters';
@@ -13,8 +14,9 @@ import styles from './ContentTypes.module.scss';
 /**
  * The row of controls between the type heading and the table.
  *
- * The search box narrows the table across every field at once, and the columns icon opens the picker
- * for which fields the table shows, and in what order.
+ * The create action opens a new record of the listed type, the search box narrows the table across
+ * every field at once, and the columns icon opens the picker for which fields the table shows, and
+ * in what order.
  *
  * Filter is the summary, not the way in, and it appears only once there is something to summarise.
  * Conditions are set from the column headers, where the column is; this gathers up whatever is in
@@ -67,6 +69,9 @@ export const ContentTypesToolBar = ({
                 />
             ) : (
                 <>
+                    {/* First on the line, and only while nothing is ticked: creating a record is
+                        about the type being listed, not about the rows that happen to be selected. */}
+                    <ContentTypesCreateAction contentType={contentType}/>
                     <SearchInput
                         className={styles.search}
                         variant="ghost"
@@ -203,7 +208,10 @@ ContentTypesToolBar.propTypes = {
     translatableFields: PropTypes.array,
     languages: PropTypes.array,
     search: PropTypes.string.isRequired,
-    /** The type being listed. Only the selection bar wants it, to name an exported file. */
+    /**
+     * The type being listed. The selection bar names an exported file with it, and the create
+     * action creates one of it.
+     */
     contentType: PropTypes.string.isRequired,
     lockedLabel: PropTypes.string.isRequired,
     availableFields: PropTypes.array.isRequired,

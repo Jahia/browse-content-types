@@ -228,6 +228,11 @@
       "dismiss": "Dismiss",
       "failed": "The change could not be undone."
     },
+    "create": {
+      "action": "Create",
+      "actionAt": "Create a record in {{path}}",
+      "refused": "This type cannot be created in {{path}}. Pick another location."
+    },
     "preview": {
       "close": "Close preview",
       "unavailable": "No preview is available for this content.",

@@ -1101,3 +1101,19 @@
     padding-right: var(--spacing-small);
     padding-left: var(--spacing-medium);
 }
+
+/*
+ * The refusal, when a type may not be created at the path that was picked.
+ *
+ * Beside the create button rather than in a dialog: the editor is mid-decision about where the
+ * record goes, and a message they have to dismiss before they can pick again puts a click between
+ * them and the fix. Danger rather than gray - unlike the search hint, this is an action that did not
+ * happen, not a note about what was typed.
+ *
+ * `nowrap` for the same reason the search hint has it: the toolbar is a flex row, and a sentence
+ * allowed to wrap would push the controls beside it onto a second line as it appeared.
+ */
+.createRefused {
+    color: var(--color-danger);
+    white-space: nowrap;
+}
