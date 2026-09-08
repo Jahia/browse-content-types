@@ -229,8 +229,6 @@
       "failed": "The change could not be undone."
     },
     "create": {
-      "action": "Create",
-      "actionAt": "Create a record in {{path}}",
       "refused": "This type cannot be stored in a content folder.",
       "failed": "The record could not be created. Try again."
     },

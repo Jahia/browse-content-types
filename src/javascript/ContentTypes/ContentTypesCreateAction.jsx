@@ -38,7 +38,7 @@ const EXCLUDED_NODE_TYPES = ['jmix:studioOnly', 'jmix:hiddenType'];
  * rather than published API - so, as with the selector types the bulk dialog borrows, its absence is
  * something to say rather than to crash on.
  */
-export const ContentTypesCreateAction = ({contentType}) => {
+export const ContentTypesCreateAction = ({contentType, contentTypeLabel}) => {
     const {t} = useTranslation(NAMESPACE);
     const client = useApolloClient();
     const {site, language, uilang} = useSelector(state => ({
@@ -145,8 +145,18 @@ export const ContentTypesCreateAction = ({contentType}) => {
                 // ContentTypesUndoAction.
                 variant="ghost"
                 icon={<Add/>}
-                label={t('label.create.action')}
-                title={t('label.create.actionAt', {path: folderPath})}
+                /*
+                 * The wording is jContent's, and so are the keys. A content folder restricted to one
+                 * type offers "New <type>", and this is the same offer about the same thing, so it
+                 * says the same words - and picks up the translations that string already has rather
+                 * than starting a second set here. The selection bar borrows from that namespace for
+                 * the same reason.
+                 */
+                label={t('jcontent:label.contentManager.create.contentOfType', {typeName: contentTypeLabel})}
+                title={t('jcontent:label.contentEditor.CMMActions.createNewContent.tooltipForType', {
+                    typeName: contentTypeLabel,
+                    parent: folderPath
+                })}
                 disabled={isWorking}
                 data-sel-role="create-action"
                 onClick={create}
@@ -167,7 +177,13 @@ export const ContentTypesCreateAction = ({contentType}) => {
 
 ContentTypesCreateAction.propTypes = {
     /** The type being listed, which is the type that gets created. */
-    contentType: PropTypes.string.isRequired
+    contentType: PropTypes.string.isRequired,
+    /**
+     * The same type as the heading names it - its display name, falling back to the type name. Only
+     * the button says it; everything else here works from `contentType`, the name being a label and
+     * not an identifier.
+     */
+    contentTypeLabel: PropTypes.string.isRequired
 };
 
 export default ContentTypesCreateAction;

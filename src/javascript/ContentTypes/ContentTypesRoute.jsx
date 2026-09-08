@@ -75,12 +75,15 @@ export const ContentTypesRoute = () => {
     }
 
     const type = data?.jcr?.nodeTypes?.nodes?.find(candidate => candidate.name === contentType);
+    // What to call this type on screen, worked out once: the heading shows it and the create button
+    // offers it by name, and the two must not disagree.
+    const typeLabel = type?.displayName || contentType;
 
     return (
         <div className={styles.mainPane} data-sel-role="content-types-route">
             <header className={styles.header}>
                 <Typography isNowrap variant="heading" weight="bold">
-                    {type?.displayName || contentType}
+                    {typeLabel}
                 </Typography>
                 <Typography isNowrap className={styles.subtitle} variant="caption">
                     {contentType}
@@ -89,6 +92,7 @@ export const ContentTypesRoute = () => {
             <ContentTypesToolBar
                 search={search}
                 contentType={contentType}
+                contentTypeLabel={typeLabel}
                 lockedLabel={t('label.table.name')}
                 availableFields={columns.availableFields}
                 visibleFields={columns.visibleFields}

@@ -37,6 +37,7 @@ export const ContentTypesToolBar = ({
     search,
     onSearchChange,
     contentType,
+    contentTypeLabel,
     lockedLabel,
     availableFields,
     visibleFields,
@@ -71,7 +72,7 @@ export const ContentTypesToolBar = ({
                 <>
                     {/* First on the line, and only while nothing is ticked: creating a record is
                         about the type being listed, not about the rows that happen to be selected. */}
-                    <ContentTypesCreateAction contentType={contentType}/>
+                    <ContentTypesCreateAction contentType={contentType} contentTypeLabel={contentTypeLabel}/>
                     <SearchInput
                         className={styles.search}
                         variant="ghost"
@@ -213,6 +214,8 @@ ContentTypesToolBar.propTypes = {
      * action creates one of it.
      */
     contentType: PropTypes.string.isRequired,
+    /** That same type as the heading names it, for the create button to offer by name. */
+    contentTypeLabel: PropTypes.string.isRequired,
     lockedLabel: PropTypes.string.isRequired,
     availableFields: PropTypes.array.isRequired,
     visibleFields: PropTypes.array.isRequired,
