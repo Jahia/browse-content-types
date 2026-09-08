@@ -85,10 +85,10 @@ const FILTER_TYPES_BY_REQUIRED_TYPE = {
  */
 export const COMMON_FIELDS = [
     {key: 'type', labelKey: 'label.field.type', sortProperty: 'primaryNodeType.displayName'},
-    {key: 'createdBy', labelKey: 'label.field.createdBy', sortProperty: 'createdBy.value', isDefault: true},
+    {key: 'createdBy', labelKey: 'label.field.createdBy', sortProperty: 'createdBy.value'},
     {key: 'createdDate', labelKey: 'label.field.createdDate', sortProperty: 'createdDate.value'},
     {key: 'lastModified', labelKey: 'label.field.lastModified', sortProperty: 'lastModified.value', isDefault: true},
-    {key: 'lastModifiedBy', labelKey: 'label.field.lastModifiedBy', sortProperty: 'lastModifiedBy.value'},
+    {key: 'lastModifiedBy', labelKey: 'label.field.lastModifiedBy', sortProperty: 'lastModifiedBy.value', isDefault: true},
     {key: 'publicationStatus', labelKey: 'label.field.publicationStatus', isDefault: true},
     // Tags and categories belong here rather than among a type's own fields: they are carried by the
     // jmix:tagged and jmix:categorized mixins, so they can be put on any node and belong to no one
@@ -115,6 +115,22 @@ export const COMMON_FIELDS = [
     {key: 'id', labelKey: 'label.field.id'}
 ];
 
+/**
+ * What a reader sees before they have chosen anything: Name, then when a record was last touched, by
+ * whom, and whether that has been published.
+ *
+ * One question answered across four columns - what state is this content in, and who to ask about
+ * it. `createdBy` was among them and is not any more: on content that has been edited since, who
+ * first made it answers a question nobody asked, and the last modifier is the person to go to.
+ *
+ * The order is this array's order, which is why the three sit in the sequence they are read in. Name
+ * is not among them because it is not in this catalog at all - it is always drawn, as is the row
+ * menu, which the table appends rather than taking from here.
+ *
+ * No field of a type's own is default, and there is no way to mark one: this catalog is the common
+ * metadata every node carries, and which of a type's own properties matters most is not something
+ * this module can know.
+ */
 const DEFAULT_VISIBLE_KEYS = COMMON_FIELDS.filter(field => field.isDefault).map(field => field.key);
 
 /** A binary property (a large file's own bytes) has no reasonable display as a table cell. */
