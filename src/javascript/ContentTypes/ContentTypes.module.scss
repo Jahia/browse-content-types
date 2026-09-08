@@ -910,60 +910,13 @@
     .undoAction { animation: none; }
 }
 
-/* The table and the preview side by side, sharing whatever height the toolbar leaves. */
+/* Holds the table to whatever height the toolbar leaves, rather than letting it run past the pane. */
 .contentArea {
     display: flex;
     flex: 1 1 0;
     min-height: 0;
     min-width: 0;
     gap: var(--spacing-medium);
-}
-
-/*
- * The preview, beside the table rather than over it.
- *
- * A fixed width with `flex-shrink: 0`: the table beside it already carries `min-width: 0` and so
- * gives way, which is the right way round - a narrower table still reads, while a narrower preview
- * stops being a preview.
- */
-.previewPanel {
-    display: flex;
-    flex: 0 0 420px;
-    flex-direction: column;
-    min-height: 0;
-
-    border: 1px solid var(--color-gray_light);
-    border-radius: var(--border-radius);
-    background-color: var(--color-light);
-    overflow: hidden;
-}
-
-.previewHeader {
-    display: flex;
-    flex: 0 0 auto;
-    align-items: center;
-    gap: var(--spacing-small);
-    padding: var(--spacing-nano) var(--spacing-nano) var(--spacing-nano) var(--spacing-small);
-    border-bottom: 1px solid var(--color-gray_light40);
-}
-
-.previewNote {
-    flex: 0 0 auto;
-    padding: var(--spacing-nano) var(--spacing-small);
-    color: var(--color-gray_dark);
-    background-color: var(--color-gray_light40);
-}
-
-/*
- * The rendered page. `border: 0` because an iframe carries one by default, and a white background
- * so a page with no background of its own does not show this panel's through it.
- */
-.previewFrame {
-    flex: 1 1 auto;
-    width: 100%;
-    min-height: 0;
-    border: 0;
-    background-color: #fff;
 }
 
 /*

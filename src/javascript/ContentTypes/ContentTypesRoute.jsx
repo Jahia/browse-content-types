@@ -8,7 +8,6 @@ import {ContentTypesTable} from './ContentTypesTable';
 import {ContentTypesToolBar} from './ContentTypesToolBar';
 import {useContentTypeColumns} from './useContentTypeColumns';
 import {useColumnFilters} from './useColumnFilters';
-import {ContentTypesPreviewPanel} from './ContentTypesPreviewPanel';
 import {clearUndo} from './useBulkUndo';
 import {NAMESPACE} from '../ContentTypes.register';
 import styles from './ContentTypes.module.scss';
@@ -120,8 +119,8 @@ export const ContentTypesRoute = () => {
                 onClearFilter={clearFilter}
                 onClearAllFilters={clearAll}
             />
-            {/* The table and the preview share the remaining height as a row, so opening a
-                preview narrows the table rather than pushing it off the bottom. */}
+            {/* Holds the table to the height the toolbar leaves rather than letting it run past the
+                bottom of the pane - which is what `flex: 1 1 0` with `min-height: 0` is for. */}
             <div className={styles.contentArea}>
                 <ContentTypesTable
                     contentType={contentType}
@@ -138,7 +137,6 @@ export const ContentTypesRoute = () => {
                     onSetFilter={setFilter}
                     onClearFilter={clearFilter}
                 />
-                <ContentTypesPreviewPanel/>
             </div>
         </div>
     );
