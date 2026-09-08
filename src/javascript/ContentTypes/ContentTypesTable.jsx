@@ -11,7 +11,9 @@ import {missingTranslations} from './ContentTypesTranslations';
 import {MIN_SEARCH_LENGTH, filterFor, labelForValue, matchesPublication, sanitiseTokens, toNodeConstraint} from './ContentTypesFilters';
 import {WIDE_COMMON_FIELDS, columnWidthFor, commonColumnWidth} from './ContentTypesColumnWidth';
 import {siteRelativePath} from './ContentTypesPaths';
-import {CELL_EDIT_INLINE, CELL_LOCKED, CELL_NOT_EDITABLE, cellEditability, currentCellValue, editSurface} from './ContentTypesCellEdit';
+import {CELL_EDIT_INLINE, CELL_LOCKED, CELL_NOT_EDITABLE, cellEditability, currentCellValue, editSurface, mixinFieldKey} from './ContentTypesCellEdit';
+import {BULK_FIELDS} from './ContentTypesBulkFields';
+import {ContentTypesBulkFieldDialog} from './ContentTypesBulkFieldDialog';
 import {isBulkSelection} from './ContentTypesSelection';
 import {ContentTypesCellEditor} from './ContentTypesCellEditor';
 import {ContentTypesCellEditDialog} from './ContentTypesCellEditDialog';
@@ -1223,7 +1225,24 @@ export const ContentTypesTable = ({
             label: headerLabel(field.label, field.key, Boolean(field.sortProperty), field),
             width: commonColumnWidth(field.key),
             isScrollable: WIDE_COMMON_FIELDS.has(field.key),
-            render: ({data: row}) => COMMON_RENDERERS[field.key](row, renderContext)
+            /*
+             * Wrapped like a type's own column, which for all but two of these changes nothing:
+             * EditableCell draws its children untouched for a column that cannot be written, and
+             * the metadata the repository maintains never can be.
+             *
+             * The two are tags and categories. They are carried by mixins rather than declared by
+             * any one type, which is why they sit in this catalog - but they are still properties,
+             * and there is a dialog that writes them with Content Editor's own pickers. Clicking
+             * the cell that holds the tags to change the tags is a better way in than a menu.
+             */
+            render: ({data: row}) => (
+                <EditableCell field={field} row={row} t={t} onEdit={() => startCellEdit(field, row)}>
+                    {COMMON_RENDERERS[field.key](row, renderContext)}
+                </EditableCell>
+            ),
+            cellProps: ({data: row}) => (cellEditability(field, row).canEdit ? {
+                onDoubleClick: () => startCellEdit(field, row)
+            } : {})
         }));
 
         return [
@@ -1428,13 +1447,32 @@ export const ContentTypesTable = ({
                     nameField :
                     visibleFields.find(candidate => candidate.key === cellDialog.key);
 
-                return row && field ? (
+                if (!row || !field) {
+                    return null;
+                }
+
+                // Tags and categories have a dialog of their own, with the pickers this module
+                // already uses for them across a selection. One record is that same dialog handed
+                // a list of one.
+                const mixinField = mixinFieldKey(field);
+                if (mixinField) {
+                    return (
+                        <ContentTypesBulkFieldDialog
+                            isOpen
+                            field={BULK_FIELDS[mixinField]}
+                            nodes={[row]}
+                            onClose={() => setCellDialog(null)}
+                        />
+                    );
+                }
+
+                return (
                     <ContentTypesCellEditDialog
                         field={field}
                         row={row}
                         onClose={() => setCellDialog(null)}
                     />
-                ) : null;
+                );
             })()}
 
             {/* These draw nothing until a row is right-clicked - see openContextMenu above - so they

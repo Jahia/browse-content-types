@@ -9,6 +9,8 @@ import {
     cellEditability,
     currentCellValue,
     editSurface,
+    isCellEditable,
+    mixinFieldKey,
     hasCellValueChanged,
     isLongText,
     toDateInputValue
@@ -76,6 +78,44 @@ describe('ContentTypesCellEdit', () => {
             expect(editSurface({key: 'createdBy', filterType: FILTER_TEXT}, '')).toBeNull();
             expect(editSurface(own({filterType: FILTER_IMAGE}), '')).toBeNull();
             expect(editSurface(own({isDynamic: false}), '')).toBeNull();
+        });
+    });
+
+    /*
+     * Tags and categories are carried by jmix:tagged and jmix:categorized, so they belong to no one
+     * type's definition and `isEditable` refuses them - that line is about a content type's own
+     * properties. They are still properties, and there is a dialog with the right pickers.
+     */
+    describe('the two mixin-backed columns', () => {
+        it.each([
+            ['tags', 'tag'],
+            ['categories', 'categorize']
+        ])('maps the %s column to its dialog field', (key, expected) => {
+            expect(mixinFieldKey({key})).toBe(expected);
+        });
+
+        it('maps nothing else', () => {
+            expect(mixinFieldKey({key: 'createdBy'})).toBeNull();
+            expect(mixinFieldKey(own())).toBeNull();
+            expect(mixinFieldKey(undefined)).toBeNull();
+        });
+
+        it('counts them as writable, though isEditable does not', () => {
+            expect(isCellEditable({key: 'tags'})).toBe(true);
+            expect(isCellEditable({key: 'categories'})).toBe(true);
+            expect(isCellEditable({key: 'createdBy', filterType: FILTER_TEXT})).toBe(false);
+        });
+
+        // A picker wants the room a dialog has, and a cell has no version of one.
+        it('always sends them to the dialog, whatever they hold', () => {
+            expect(editSurface({key: 'tags'}, [])).toBe(CELL_EDIT_DIALOG);
+            expect(editSurface({key: 'categories'}, ['a', 'b'])).toBe(CELL_EDIT_DIALOG);
+        });
+
+        it('lets a record be checked for them like any other column', () => {
+            expect(cellEditability({key: 'tags'}, record())).toEqual({canEdit: true, reason: null});
+            expect(cellEditability({key: 'tags'}, record({canEdit: false})).reason).toBe(CELL_NO_PERMISSION);
+            expect(cellEditability({key: 'tags'}, record({lockedAndCannotBeEdited: true})).reason).toBe(CELL_LOCKED);
         });
     });
 

@@ -42,6 +42,35 @@ export const isLongText = value => typeof value === 'string' &&
     (value.length > LONG_TEXT_FROM || value.includes('\n'));
 
 /**
+ * The two columns that are written through a dialog of their own, and the field each one is.
+ *
+ * Tags and categories are carried by jmix:tagged and jmix:categorized, so they can be put on any
+ * node and belong to no one type's definition - which is why they sit in the common catalog and why
+ * `isEditable` refuses them: that draws the line at a content type's own properties. But a mixin's
+ * property is a property, and there is already a dialog that writes these two with Content Editor's
+ * own tag and category pickers. So a cell here opens that, for the one record, rather than the
+ * generic editor which has no picker to offer.
+ *
+ * Keyed by column rather than looked up in BULK_FIELDS, so this module stays free of what a dialog
+ * needs; the table maps the answer to the field the dialog takes.
+ */
+export const MIXIN_FIELD_COLUMNS = {
+    tags: 'tag',
+    categories: 'categorize'
+};
+
+/** Which of the two dialog-backed fields this column is, or nothing. */
+export const mixinFieldKey = field => MIXIN_FIELD_COLUMNS[field?.key] || null;
+
+/**
+ * Whether this column can be written at all, by either route.
+ *
+ * A content type's own property, edited by the generic control, or one of the two mixin-backed
+ * columns above, edited by the dialog that knows about pickers.
+ */
+export const isCellEditable = field => Boolean(isEditable(field) || mixinFieldKey(field));
+
+/**
  * Where the control for this cell should appear, or nothing where the column cannot be written.
  *
  * A multi-valued property always goes to the dialog: its control is a list typed one per line, which
@@ -49,6 +78,12 @@ export const isLongText = value => typeof value === 'string' &&
  * otherwise.
  */
 export const editSurface = (field, currentValue) => {
+    // Tags and categories are chosen with a picker, which wants the room a dialog has and which a
+    // cell has no version of.
+    if (mixinFieldKey(field)) {
+        return CELL_EDIT_DIALOG;
+    }
+
     if (!isEditable(field)) {
         return null;
     }
@@ -74,7 +109,7 @@ export const editSurface = (field, currentValue) => {
  * been typed.
  */
 export const cellEditability = (field, row) => {
-    if (!isEditable(field)) {
+    if (!isCellEditable(field)) {
         return {canEdit: false, reason: CELL_NOT_EDITABLE};
     }
 
