@@ -2,6 +2,7 @@ import i18next from 'i18next';
 import registerContentTypesAccordion from './ContentTypes/registerContentTypesAccordion';
 import registerContentTypesBulkActions from './ContentTypes/registerContentTypesBulkActions';
 import registerContentTypesSettings from './ContentTypes/registerContentTypesSettings';
+import registerContentTypesActionOverrides from './ContentTypes/registerContentTypesActionOverrides';
 
 export const NAMESPACE = 'content-types';
 
@@ -23,4 +24,8 @@ export default async function () {
     registerContentTypesAccordion();
     registerContentTypesBulkActions();
     registerContentTypesSettings();
+
+    // Last, and it has to be: it wraps actions jContent has already registered, so there has to be
+    // something there to wrap. jContent registers its own on jahiaApp-init:1 and this runs on :60.
+    registerContentTypesActionOverrides();
 }
