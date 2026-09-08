@@ -1117,3 +1117,95 @@
     color: var(--color-danger);
     white-space: nowrap;
 }
+
+/*
+ * Editing a value where it is read.
+ *
+ * The cell keeps drawing what it always drew - the value, with whatever the column makes of it -
+ * and gains one thing: a pencil, on hover. At rest a table is for reading, and a button standing
+ * in every writable cell would compete with the values for the eye on a screen whose whole purpose
+ * is to be scanned across.
+ */
+.editableCell {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    width: 100%;
+    min-width: 0;
+}
+
+/* Takes the room, and yields it: `min-width: 0` is what lets a long value be clipped by the cell
+   rather than pushing the pencil out of it. */
+.editableCellValue {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/*
+ * Hidden until the cell is hovered, and while it is focused.
+ *
+ * `visibility` rather than `display`, so the button keeps its place in the row: appearing from
+ * nothing would reflow the value sideways under the pointer, at the moment somebody is reaching
+ * for it. The focus rule is what keeps it reachable by keyboard, where there is no hover at all.
+ */
+.editableCellButton {
+    flex: 0 0 auto;
+    visibility: hidden;
+}
+
+.editableCell:hover .editableCellButton,
+.editableCellButton:focus-visible {
+    visibility: visible;
+}
+
+/* A writable column on a record this reader may not write. Drawn as it always was - the reason is
+   on hover, since the same cell is editable on the row above and that is worth explaining. */
+.uneditableCell {
+    cursor: help;
+}
+
+/* The control takes the cell whole while it is open, the value it replaces being the thing being
+   edited. Positioned, so a refusal can be hung underneath it. */
+.cellEditor {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-width: 0;
+}
+
+.cellEditorControl {
+    width: 100%;
+    min-width: 0;
+}
+
+.cellEditorFailed .cellEditorControl {
+    /* Outline rather than border: a border would resize the control inside a cell already sized to
+       the character, and shift the row. */
+    outline: 1px solid var(--color-danger);
+}
+
+/*
+ * What the server said, under the cell rather than in it.
+ *
+ * Absolute, because a cell cannot grow to hold a sentence without taking the whole row's height
+ * with it. The message is as long as the server's own words are, so the box shows what fits on one
+ * line and the rest is on hover - the same bargain every truncated value in this table makes.
+ */
+.cellEditorError {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 2;
+    max-width: 320px;
+    padding: 2px var(--spacing-nano);
+    overflow: hidden;
+    color: var(--color-light);
+    font-size: 0.75rem;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    background-color: var(--color-danger);
+    border-radius: 2px;
+}

@@ -84,6 +84,13 @@ const COMMON_RECORD_FIELDS = `
             type
         }
     }
+    # Whether this reader may write this record's properties, for the inline cell editor - see
+    # ContentTypesCellEdit. Asked per record rather than assumed, because a table is exactly where
+    # the assumption breaks: a listing crosses a whole site, and a reader can hold permission on part
+    # of it. The permission is the per-language one Content Editor itself checks
+    # jcr:modifyProperties_default_<lang>, so the two agree about who may edit what. Named with
+    # no backticks on purpose: this whole block is a JS template literal.
+    canEdit: hasPermission(permissionName: $writePermission)
     # Which of the two publish actions the selection bar offers, asked of the same three types
     # jContent asks about. Reading them here rather than resolving the selected paths separately is
     # what keeps the bar from costing a request of its own every time a row is ticked.
@@ -211,6 +218,7 @@ export const buildRecordQuery = (dynamicFields, languages) => parse(`
         $sitePath: String!,
         $type: String!,
         $language: String!,
+        $writePermission: String!,
         $offset: Int!,
         $limit: Int!,
         $fieldSorter: InputFieldSorterInput,

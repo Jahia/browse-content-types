@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import {useQuery} from '@apollo/client';
 import {shallowEqual, useSelector} from 'react-redux';
 import {useTranslation} from 'react-i18next';
-import {Button, Chip, DataTable, Loader, Lock, Menu, Pagination, SortIndicator, Thumbnail, Typography} from '@jahia/moonstone';
+import {Button, Chip, DataTable, Edit, Loader, Lock, Menu, Pagination, SortIndicator, Thumbnail, Typography} from '@jahia/moonstone';
 import {ContextualMenu, DisplayAction, registry} from '@jahia/ui-extender';
 import {ButtonRendererNoLabel} from '@jahia/jcontent';
 import {buildRecordQuery} from './ContentTypesRecordQuery';
@@ -11,6 +11,9 @@ import {missingTranslations} from './ContentTypesTranslations';
 import {MIN_SEARCH_LENGTH, filterFor, labelForValue, matchesPublication, sanitiseTokens, toNodeConstraint} from './ContentTypesFilters';
 import {WIDE_COMMON_FIELDS, columnWidthFor, commonColumnWidth} from './ContentTypesColumnWidth';
 import {siteRelativePath} from './ContentTypesPaths';
+import {CELL_EDIT_INLINE, CELL_LOCKED, CELL_NOT_EDITABLE, cellEditability, currentCellValue, editSurface} from './ContentTypesCellEdit';
+import {ContentTypesCellEditor} from './ContentTypesCellEditor';
+import {ContentTypesCellEditDialog} from './ContentTypesCellEditDialog';
 import {ContentTypesFilterOverlay} from './ContentTypesFilterOverlay';
 import {NAMESPACE} from '../ContentTypes.register';
 import styles from './ContentTypes.module.scss';
@@ -626,6 +629,67 @@ const renderDynamicField = (field, payload, context) => {
     return labelForValue(field, payload.value);
 };
 
+/**
+ * A cell at rest, with whatever it needs to say about being editable.
+ *
+ * Three outcomes, and the difference between them is what a reader is owed. A column that is not
+ * writable at all - metadata the repository maintains, a reference - is drawn exactly as it always
+ * was: there is nothing to offer and nothing to explain, and marking every such cell would be noise
+ * on most of the table. A writable column on a record this reader cannot write says why on hover,
+ * because that one is worth explaining - the same cell is editable on the row above. Only the third
+ * gets the pencil.
+ *
+ * The pencil appears on hover (see the stylesheet) rather than sitting in every cell: at rest the
+ * table is for reading, and a column of buttons down every writable cell would compete with the
+ * values for the eye.
+ */
+const EditableCell = ({field, row, t, onEdit, children}) => {
+    const {canEdit, reason} = cellEditability(field, row);
+
+    if (!canEdit) {
+        if (reason === CELL_NOT_EDITABLE) {
+            return children;
+        }
+
+        return (
+            <span
+                className={styles.uneditableCell}
+                title={t(reason === CELL_LOCKED ? 'label.cellEdit.locked' : 'label.cellEdit.noPermission')}
+            >
+                {children}
+            </span>
+        );
+    }
+
+    return (
+        <span className={styles.editableCell}>
+            <span className={styles.editableCellValue}>{children}</span>
+            <Button
+                className={styles.editableCellButton}
+                variant="ghost"
+                size="small"
+                icon={<Edit/>}
+                title={t('label.cellEdit.start', {column: field.label})}
+                data-sel-role="cell-edit-start"
+                onClick={event => {
+                    // Without this the click would also tick the row's checkbox, a click on the
+                    // table being what selects a row.
+                    event.stopPropagation();
+                    onEdit();
+                }}
+            />
+        </span>
+    );
+};
+
+EditableCell.propTypes = {
+    field: PropTypes.object.isRequired,
+    row: PropTypes.object.isRequired,
+    t: PropTypes.func.isRequired,
+    onEdit: PropTypes.func.isRequired,
+    children: PropTypes.node
+};
+
 const toRow = node => ({...node, displayName: node.displayName || node.name});
 
 /** The column whose filter this table answers itself. */
@@ -710,6 +774,20 @@ export const ContentTypesTable = ({
     const [sortBy, setSortBy] = useState('displayName');
     const [sortDirection, setSortDirection] = useState('ascending');
 
+    /**
+     * The cell currently being edited, as a path and a column key rather than as the row itself.
+     *
+     * Identifiers rather than objects because the rows are replaced wholesale on every refetch - a
+     * held row would be the state from before the reload, and the editor would be writing against
+     * it. Resolved back to the current row where it is rendered.
+     *
+     * Two pieces of state rather than one with a mode, because they behave differently: the inline
+     * editor lives inside a cell and dies with the row it is in, while the dialog is drawn once
+     * beside the table and outlives any re-render of the rows underneath it.
+     */
+    const [editingCell, setEditingCell] = useState(null);
+    const [cellDialog, setCellDialog] = useState(null);
+
     // Sorting is driven from the header's arrow rather than from the table - see ColumnSortControl.
     // A different column starts ascending; the same column reverses. Either way the paging goes back
     // to the first page, since page 4 of one ordering says nothing about page 4 of another.
@@ -758,7 +836,19 @@ export const ContentTypesTable = ({
         }
     }, [visibleFields, sortBy]);
 
-    const dynamicFields = useMemo(() => visibleFields.filter(field => field.isDynamic), [visibleFields]);
+    const nameField = fieldsByKey.get('displayName');
+
+    /*
+     * The type's own columns that are on screen, plus one selection that is on no column: the
+     * primary item's stored value, which the Name column's editor needs and `displayName` cannot
+     * give it - that falls back to the node's own name when the property is empty. Fetched under a
+     * key of its own so the cell can go on drawing the resolved name while the editor starts from
+     * what is really stored. See NAME_VALUE_KEY.
+     */
+    const dynamicFields = useMemo(() => {
+        const own = visibleFields.filter(field => field.isDynamic);
+        return nameField?.valueSelection ? [...own, nameField.valueSelection] : own;
+    }, [visibleFields, nameField]);
 
     // Rebuilt only when the set of content-type-specific columns actually shown changes - not on
     // every render, and not when a common field becomes visible, since those are always fetched.
@@ -857,6 +947,10 @@ export const ContentTypesTable = ({
             sitePath: `/sites/${site}`,
             type: contentType,
             language,
+            // The per-language write permission, which is the one Content Editor itself checks
+            // before letting a form be edited. Asked of every record so the cell editor can be
+            // offered only where it would actually be allowed - see ContentTypesCellEdit.
+            writePermission: `jcr:modifyProperties_default_${language}`,
             offset: publicationFilter ? 0 : (currentPage - 1) * itemsPerPage,
             limit: publicationFilter ? PUBLICATION_FILTER_CEILING : itemsPerPage,
             fieldSorter,
@@ -1002,6 +1096,33 @@ export const ContentTypesTable = ({
         }
     };
 
+    /**
+     * Opens whichever editor suits the cell that was asked for, or nothing where none does.
+     *
+     * The surface is decided from the value the record actually holds rather than from the column,
+     * so the same column opens in the cell for a short value and in a dialog for a long one - see
+     * `editSurface`. Editability is checked here as well as in the cell that drew the affordance,
+     * because a double-click reaches this without going through that affordance at all.
+     */
+    const startCellEdit = useCallback((field, row) => {
+        if (!cellEditability(field, row).canEdit) {
+            return;
+        }
+
+        const surface = editSurface(field, currentCellValue(field, row));
+        if (!surface) {
+            return;
+        }
+
+        if (surface === CELL_EDIT_INLINE) {
+            setCellDialog(null);
+            setEditingCell({path: row.path, key: field.key});
+        } else {
+            setEditingCell(null);
+            setCellDialog({path: row.path, key: field.key});
+        }
+    }, []);
+
     const columns = useMemo(() => {
         /**
          * A column heading, as an element rather than the bare string a column label usually is.
@@ -1055,7 +1176,36 @@ export const ContentTypesTable = ({
             // A simple text or number value is corrected where it is read; anything else is drawn
             // exactly as before. The cell wraps the ordinary rendering rather than replacing it, so
             // a writable column looks no different at rest than a read-only one.
-            render: ({value}) => renderDynamicField(field, value, renderContext)
+            render: ({value, data: row}) => {
+                // The editor replaces the value rather than sitting beside it: a cell has room for
+                // one of the two, and what is being edited is the thing that was being read.
+                if (editingCell?.path === row.path && editingCell?.key === field.key) {
+                    return (
+                        <ContentTypesCellEditor
+                            field={field}
+                            row={row}
+                            onClose={() => setEditingCell(null)}
+                        />
+                    );
+                }
+
+                return (
+                    <EditableCell field={field} row={row} t={t} onEdit={() => startCellEdit(field, row)}>
+                        {renderDynamicField(field, value, renderContext)}
+                    </EditableCell>
+                );
+            },
+            /*
+             * Double-click as the second way in, the pencil being the first.
+             *
+             * A single click cannot be it: the table selects a row when one is clicked, and every
+             * bulk action in the bar above depends on that. Double-clicking does send two clicks
+             * through, so the checkbox is toggled and toggled back - it ends where it started,
+             * which is why this is acceptable rather than merely unavoidable.
+             */
+            cellProps: ({data: row}) => (cellEditability(field, row).canEdit ? {
+                onDoubleClick: () => startCellEdit(field, row)
+            } : {})
         } : {
             key: field.key,
             label: headerLabel(field.label, field.key, Boolean(field.sortProperty), field),
@@ -1067,13 +1217,43 @@ export const ContentTypesTable = ({
         return [
             {
                 key: 'displayName',
-                label: headerLabel(t('label.table.name'), 'displayName', true, fieldsByKey.get('displayName')),
+                label: headerLabel(t('label.table.name'), 'displayName', true, nameField),
                 width: NAME_COLUMN_WIDTH,
                 // Bounded and scrollable, the way every other text column already was. The whole
                 // name is in the cell, so hovering it scrolls through the part that does not fit;
                 // the tooltip stays as the quicker way to read it.
                 isScrollable: true,
-                render: ({value}) => <span title={value}>{ellipsize(value)}</span>
+                /*
+                 * Editable where what it draws is a plain text property of the record, which is the
+                 * ordinary case - a type's primary item is nearly always its title. It matters more
+                 * than it sounds: Name is the only column always on screen, so while it was
+                 * read-only the whole feature had no entry point on a table nobody had customised.
+                 *
+                 * `nameField` carries the property behind it only when that is true, so
+                 * `cellEditability` refuses this exactly as it refuses any other unwritable column
+                 * and neither branch needs a special case for Name.
+                 */
+                render: ({value, data: row}) => {
+                    if (nameField && editingCell?.path === row.path && editingCell?.key === 'displayName') {
+                        return (
+                            <ContentTypesCellEditor
+                                field={nameField}
+                                row={row}
+                                onClose={() => setEditingCell(null)}
+                            />
+                        );
+                    }
+
+                    const name = <span title={value}>{ellipsize(value)}</span>;
+                    return nameField ? (
+                        <EditableCell field={nameField} row={row} t={t} onEdit={() => startCellEdit(nameField, row)}>
+                            {name}
+                        </EditableCell>
+                    ) : name;
+                },
+                cellProps: ({data: row}) => (nameField && cellEditability(nameField, row).canEdit ? {
+                    onDoubleClick: () => startCellEdit(nameField, row)
+                } : {})
             },
             ...fieldColumns,
             {
@@ -1096,7 +1276,7 @@ export const ContentTypesTable = ({
                 ))
             }
         ];
-    }, [visibleFields, t, renderContext, hasSelection, filters, fieldsByKey, onSetFilter, onClearFilter, sortBy, sortDirection, toggleSort]);
+    }, [visibleFields, t, renderContext, hasSelection, filters, fieldsByKey, nameField, onSetFilter, onClearFilter, sortBy, sortDirection, toggleSort, editingCell, startCellEdit]);
 
     // Falling back to previousData keeps the table on screen while a page or sort change is in
     // flight, instead of collapsing to a loader and back on every click.
@@ -1219,6 +1399,28 @@ export const ContentTypesTable = ({
                     setCurrentPage(1);
                 }}
             />
+
+            {/* Resolved against the rows as they stand rather than held from when the cell was
+                clicked, so a refetch underneath the dialog cannot leave it writing to a record it
+                read before the reload. A row that has gone - filtered away, or on another page
+                after a reload - simply closes it. */}
+            {cellDialog && (() => {
+                const row = rows.find(candidate => candidate.path === cellDialog.path);
+                // Name is not among the visible fields - it is always drawn and so is not in the
+                // picker's catalog - but it can reach this dialog like any other column once its
+                // value grows past what a cell holds.
+                const field = cellDialog.key === 'displayName' ?
+                    nameField :
+                    visibleFields.find(candidate => candidate.key === cellDialog.key);
+
+                return row && field ? (
+                    <ContentTypesCellEditDialog
+                        field={field}
+                        row={row}
+                        onClose={() => setCellDialog(null)}
+                    />
+                ) : null;
+            })()}
 
             {/* These draw nothing until a row is right-clicked - see openContextMenu above - so they
                 sit here rather than inside a row, which a Moonstone table gives no way to reach. */}

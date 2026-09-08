@@ -4,16 +4,7 @@ import {useTranslation} from 'react-i18next';
 import {useApolloClient} from '@apollo/client';
 import {shallowEqual, useSelector} from 'react-redux';
 import {Button, Checkbox, Dropdown, Input, Modal, ModalBody, ModalFooter, ModalHeader, Textarea, Typography} from '@jahia/moonstone';
-import {
-    CAPTURE_TIMESTAMPS,
-    CAPTURE_VALUES,
-    CLEAR_PROPERTY,
-    CLEAR_PROPERTY_I18N,
-    SET_PROPERTY,
-    SET_PROPERTY_I18N,
-    SET_PROPERTY_VALUES,
-    SET_PROPERTY_VALUES_I18N
-} from './ContentTypes.gql';
+import {CAPTURE_TIMESTAMPS, CAPTURE_VALUES} from './ContentTypes.gql';
 import {
     bulkEditVariables,
     canApplyEdit,
@@ -24,19 +15,10 @@ import {
     recordsWithValue
 } from './ContentTypesBulkEdit';
 import {buildSnapshot, snapshotEntries, timestampEntries} from './ContentTypesUndo';
+import {MUTATIONS} from './useCellEdit';
 import {recordUndo} from './useBulkUndo';
 import {NAMESPACE} from '../ContentTypes.register';
 import styles from './ContentTypes.module.scss';
-
-/** The name each mutation kind resolves to. Kept beside the imports so the two cannot drift. */
-const MUTATIONS = {
-    CLEAR_PROPERTY,
-    CLEAR_PROPERTY_I18N,
-    SET_PROPERTY,
-    SET_PROPERTY_I18N,
-    SET_PROPERTY_VALUES,
-    SET_PROPERTY_VALUES_I18N
-};
 
 /** Past this many options a list is worth searching rather than scrolling. */
 const SEARCHABLE_FROM = 12;

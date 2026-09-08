@@ -218,6 +218,17 @@
       "applyClear": "Empty",
       "failed": "The change could not be applied. Check that you may edit this content, then try again."
     },
+    "cellEdit": {
+      "title": "Edit {{column}}",
+      "apply": "Save",
+      "clear": "Empty the property instead",
+      "start": "Edit {{column}}",
+      "choosePlaceholder": "Choose",
+      "locked": "This content is locked by someone else, so its values cannot be changed here.",
+      "noPermission": "You do not have permission to change this content.",
+      "mandatory": "This property is required, so it cannot be emptied.",
+      "failed": "The change could not be saved. Check that you may edit this content, then try again."
+    },
     "undo": {
       "property": "{{label}} replaced on {{count}} record.",
       "property_plural": "{{label}} replaced on {{count}} records.",
