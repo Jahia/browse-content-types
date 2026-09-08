@@ -8,6 +8,7 @@ import {ContentTypesCreateAction} from './ContentTypesCreateAction';
 import {ContentTypesSelectionBar} from './ContentTypesSelectionBar';
 import {ContentTypesUndoAction} from './ContentTypesUndoAction';
 import {MIN_SEARCH_LENGTH, describeFilter, isSearchTooShort} from './ContentTypesFilters';
+import {isBulkSelection} from './ContentTypesSelection';
 import {NAMESPACE} from '../ContentTypes.register';
 import styles from './ContentTypes.module.scss';
 
@@ -24,10 +25,14 @@ import styles from './ContentTypes.module.scss';
  * table with nothing on screen to say why. Each one is also named in the line itself, beside the
  * button, so that reading why the table is short does not take a click.
  *
- * Ticking a row replaces all of that with what can be done to what is ticked, in the same place, as
- * jContent's own list does: while there is a selection, the controls for finding content are not
- * what is being asked for, and a search or a sort clears the selection anyway. The columns picker
- * stays either way, being about how the table reads rather than about what is in it.
+ * Ticking SEVERAL rows replaces all of that with what can be done to them, in the same place: while
+ * a set is being acted on, the controls for finding content are not what is being asked for, and a
+ * search or a sort clears the selection anyway. The columns picker stays either way, being about how
+ * the table reads rather than about what is in it.
+ *
+ * One ticked row leaves this line alone, which is a departure from jContent - its own list switches
+ * at one. Picking a single record out is not a change of mode, and having the toolbar answer it by
+ * replacing itself read as one. See ContentTypesSelection, where the threshold and its cost live.
  *
  * Choosing which types the accordion lists is deliberately not offered here: it is a site wide
  * setting and lives in Administration > site > Settings, where an administrator looks for it,
@@ -57,7 +62,7 @@ export const ContentTypesToolBar = ({
 
     return (
         <div className={styles.toolBar} data-sel-role="content-types-toolbar">
-            {selection.length > 0 ? (
+            {isBulkSelection(selection) ? (
                 <ContentTypesSelectionBar
                     nodes={selection}
                     fields={visibleFields}

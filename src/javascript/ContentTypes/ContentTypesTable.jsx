@@ -12,6 +12,7 @@ import {MIN_SEARCH_LENGTH, filterFor, labelForValue, matchesPublication, sanitis
 import {WIDE_COMMON_FIELDS, columnWidthFor, commonColumnWidth} from './ContentTypesColumnWidth';
 import {siteRelativePath} from './ContentTypesPaths';
 import {CELL_EDIT_INLINE, CELL_LOCKED, CELL_NOT_EDITABLE, cellEditability, currentCellValue, editSurface} from './ContentTypesCellEdit';
+import {isBulkSelection} from './ContentTypesSelection';
 import {ContentTypesCellEditor} from './ContentTypesCellEditor';
 import {ContentTypesCellEditDialog} from './ContentTypesCellEditDialog';
 import {ContentTypesFilterOverlay} from './ContentTypesFilterOverlay';
@@ -1051,9 +1052,10 @@ export const ContentTypesTable = ({
     // The table is told which rows are ticked in the terms it keys them by; the selection is kept
     // as the rows themselves for the benefit of the bar above, which needs more than their paths.
     const selectedPaths = useMemo(() => selection.map(node => node.path), [selection]);
-    // Whether anything is selected, rather than how much: the columns depend only on that, so
-    // ticking a second row must not rebuild them.
-    const hasSelection = selection.length > 0;
+    // Whether what is ticked is a set rather than a record - see ContentTypesSelection, which the
+    // toolbar reads too. A boolean rather than the count, so ticking a third row does not rebuild
+    // the columns.
+    const isBulk = isBulkSelection(selection);
 
     /*
      * The right-click menus, and why there are three of them.
@@ -1073,19 +1075,29 @@ export const ContentTypesTable = ({
     const openContextMenu = (event, row) => {
         const isSelected = selectedPaths.includes(row.path);
 
-        // The same distinction the selection bar draws: a row acted on by itself is given its path,
-        // a row that is part of the selection hands over the whole selection instead.
+        /*
+         * Whether this row is being acted on as part of a set, which takes both: a set to belong to,
+         * and this row belonging to it. Being ticked is not enough on its own - one ticked row is
+         * still one row, and the menu it opens is its own.
+         *
+         * The context follows the same answer. A row acted on by itself is given its path; one
+         * standing for the selection hands over the whole selection instead, and its own path would
+         * then be the wrong thing for an action to read.
+         */
+        const actsOnSelection = isBulk && isSelected;
+
         const context = {
             currentPath: row.path,
-            path: isSelected ? null : row.path,
-            paths: isSelected ? selectedPaths : null,
+            path: actsOnSelection ? null : row.path,
+            paths: actsOnSelection ? selectedPaths : null,
             node: row
         };
 
         event.stopPropagation();
 
-        if (!hasSelection) {
-            // Nothing selected: the same menu as the row's own three dots.
+        if (!isBulk) {
+            // Nothing ticked, or one row ticked: either way this is a row, and it gets the same
+            // menu as its own three dots.
             rowMenu.current?.(event, context);
         } else if (isSelected) {
             // Part of the selection: what can be done to all of it.
@@ -1266,7 +1278,10 @@ export const ContentTypesTable = ({
                 width: '60px',
                 // Without this, clicking the menu also toggles the row's checkbox.
                 cellProps: {onClick: event => event.stopPropagation()},
-                render: ({data: row}) => (hasSelection ? null : (
+                // Kept while a single row is ticked: that is still one row, and the actions it
+                // offers are its own. It goes only once there is a set, where what applies is a
+                // bulk action on the selection rather than an action on any one of them.
+                render: ({data: row}) => (isBulk ? null : (
                     <DisplayAction
                         actionKey="contentItemActionsMenu"
                         path={row.path}
@@ -1276,7 +1291,7 @@ export const ContentTypesTable = ({
                 ))
             }
         ];
-    }, [visibleFields, t, renderContext, hasSelection, filters, fieldsByKey, nameField, onSetFilter, onClearFilter, sortBy, sortDirection, toggleSort, editingCell, startCellEdit]);
+    }, [visibleFields, t, renderContext, isBulk, filters, fieldsByKey, nameField, onSetFilter, onClearFilter, sortBy, sortDirection, toggleSort, editingCell, startCellEdit]);
 
     // Falling back to previousData keeps the table on screen while a page or sort change is in
     // flight, instead of collapsing to a loader and back on every click.
