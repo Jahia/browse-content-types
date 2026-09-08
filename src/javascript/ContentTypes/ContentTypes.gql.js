@@ -680,27 +680,6 @@ export const CAPTURE_TIMESTAMPS = gql`
 `;
 
 /**
- * A sample of where records of one type actually sit, to propose a parent for the next one.
- *
- * Paths only, and only a sample: the answer wanted is which folder this type tends to live in, and
- * that is legible from a few dozen records without reading the whole set. The query string is the
- * same one the counts use - see `typeCountQuery` - so a type means the same thing here as it does
- * there, subtypes excluded.
- */
-export const GET_RECORD_PARENTS = gql`
-    query getRecordParents($query: String!, $limit: Int!) {
-        jcr {
-            nodesByQuery(query: $query, limit: $limit) {
-                nodes {
-                    uuid
-                    path
-                }
-            }
-        }
-    }
-`;
-
-/**
  * Which types may be created at a given path, as Content Editor itself resolves it.
  *
  * `forms.contentTypesAsTree` is the API behind Content Editor's own create flow, so asking it is how

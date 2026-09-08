@@ -1,22 +1,13 @@
-import React, {useMemo, useState} from 'react';
+import React, {useState} from 'react';
 import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
 import {shallowEqual, useSelector} from 'react-redux';
-import {useApolloClient, useQuery} from '@apollo/client';
+import {useApolloClient} from '@apollo/client';
 import {Add, Button, Typography} from '@jahia/moonstone';
-import {GET_CREATABLE_TYPES, GET_RECORD_PARENTS} from './ContentTypes.gql';
-import {typeCountQuery} from './ContentTypesCounts';
-import {proposeParentPath, readCreatableTypeNames} from './ContentTypesCreate';
+import {GET_CREATABLE_TYPES} from './ContentTypes.gql';
+import {readCreatableTypeNames, siteContentsPath} from './ContentTypesCreate';
 import {NAMESPACE} from '../ContentTypes.register';
 import styles from './ContentTypes.module.scss';
-
-/**
- * How many existing records are read to work out where this type tends to live.
- *
- * A sample, not the set: the answer wanted is the common parent, which a few dozen paths already
- * show. Reading every record of a type that has thousands would be a page of work thrown away.
- */
-const PARENT_SAMPLE_SIZE = 50;
 
 /**
  * The types Content Editor leaves out of a create by default.
@@ -30,11 +21,10 @@ const EXCLUDED_NODE_TYPES = ['jmix:studioOnly', 'jmix:hiddenType'];
 /**
  * Create a record of the type being listed.
  *
- * **The location is chosen, not inferred.** Why, and how the proposal is arrived at, is in
- * ContentTypesCreate - the short of it being that a record's path is meaningful in a way a task's is
- * not, and that this table cannot show a mistake about it, because it lists by type and not by
- * place. So the picker opens, positioned on where records of this type already sit, and the editor
- * confirms with one click or moves it with two.
+ * **The location is chosen, not inferred.** Why is in ContentTypesCreate - the short of it being
+ * that a record's path is meaningful in a way a task's is not, and that this table cannot show a
+ * mistake about it, because it lists by type and not by place. So the picker opens, on the site's
+ * shared content folder, and the editor confirms with one click or moves it with two.
  *
  * **The creatable check is ours, and it has to be.** CE_API.create resolves what may be created at
  * the path it is given and then branches on one type and on several - and does nothing whatsoever
@@ -62,18 +52,7 @@ export const ContentTypesCreateAction = ({contentType}) => {
     // type is already the heading of the page.
     const [refusedAt, setRefusedAt] = useState(null);
 
-    const {data} = useQuery(GET_RECORD_PARENTS, {
-        variables: {
-            query: typeCountQuery(contentType, `/sites/${site}`),
-            limit: PARENT_SAMPLE_SIZE
-        },
-        skip: !site || !contentType
-    });
-
-    const proposedPath = useMemo(
-        () => proposeParentPath((data?.jcr?.nodesByQuery?.nodes || []).map(node => node.path), site),
-        [data, site]
-    );
+    const openAtPath = siteContentsPath(site);
 
     const api = typeof window === 'undefined' ? null : window.CE_API;
 
@@ -135,7 +114,7 @@ export const ContentTypesCreateAction = ({contentType}) => {
             // Pages and content folders both, because a type listed here may be dropped into a page
             // or kept as shared content, and the module has no way to know which this one is for.
             type: 'editorial',
-            value: proposedPath,
+            value: openAtPath,
             isMultiple: false,
             site,
             lang: language,
@@ -159,7 +138,7 @@ export const ContentTypesCreateAction = ({contentType}) => {
                 variant="ghost"
                 icon={<Add/>}
                 label={t('label.create.action')}
-                title={t('label.create.actionAt', {path: proposedPath})}
+                title={t('label.create.actionAt', {path: openAtPath})}
                 disabled={isResolving}
                 data-sel-role="create-action"
                 onClick={chooseLocation}

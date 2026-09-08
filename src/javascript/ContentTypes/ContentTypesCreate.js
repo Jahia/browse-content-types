@@ -2,8 +2,8 @@
  * Where a new record of the listed type is offered a home, and whether it may have one there.
  *
  * Free of React and of Apollo, like the other logic modules here: what is worth getting right is
- * which parent gets proposed and how the creatable types are read back, and both are pure functions
- * of values. The component that runs it is ContentTypesCreateAction.
+ * where the picker opens and how the creatable types are read back, and both are pure functions of
+ * values. The component that runs it is ContentTypesCreateAction.
  *
  * **Why a location is asked for at all.** This table is scoped to a type, not to a place, so nothing
  * about the view says where a new record belongs. That is unlike a task, whose home is an
@@ -13,72 +13,24 @@
  * next week. Filing that silently would put the mistake somewhere nobody sees, because a record in
  * the wrong place still appears in this table - the listing is by type, so the path it landed at is
  * exactly what the view does not show.
- *
- * What the module can do is not ask blindly. The records that already exist say where this type
- * tends to live, so one of them is proposed and the editor confirms or moves it.
  */
 
-/** A site's shared content folder - the fallback home, and where jContent puts unplaced content. */
+/**
+ * Where the picker opens: the site's shared content folder.
+ *
+ * The one place on a site whose purpose is to hold content that is not part of a page, which is what
+ * a record created from a listing of a type - rather than from a page being composed - almost always
+ * is. Every site has one, and this module already leans on that in the settings panel, which reads
+ * its type list from `<site>/contents`.
+ *
+ * Deliberately fixed, rather than inferred from where records of this type already sit. A folder
+ * learned from existing records reads as the module knowing where this type belongs, and it is wrong
+ * in the case that matters: a type dropped into pages would propose a page, which is not where a new
+ * shared record should go and is somewhere the editor then has to navigate out of. Opening in the
+ * same place every time is also something an editor can learn, where a proposal that moves with the
+ * data is not.
+ */
 export const siteContentsPath = siteKey => `/sites/${siteKey}/contents`;
-
-/**
- * The parent of a path, or null when there isn't one.
- *
- * Null rather than `/` for a top-level path: the caller is choosing somewhere to create content, and
- * the repository root is never that. Returning it would offer a target that cannot accept the write.
- */
-export const parentPathOf = path => {
-    if (typeof path !== 'string') {
-        return null;
-    }
-
-    const cut = path.lastIndexOf('/');
-    if (cut <= 0) {
-        return null;
-    }
-
-    return path.substring(0, cut);
-};
-
-/** How deep a path sits, used only to break a tie between two equally common parents. */
-const depthOf = path => path.split('/').length;
-
-/**
- * The parent to propose, read from where records of this type already sit.
- *
- * The most common parent wins, which is the whole point: on a site where a type is kept in one
- * folder, that folder is the answer every time, and the editor confirms rather than navigates.
- *
- * Ties are broken deterministically - shallower first, then alphabetically - so that the proposal
- * does not depend on the order the repository happened to return records in. A proposal that moved
- * between two openings of the same menu would be worse than a fixed default, because it would be
- * read as the module knowing something it does not.
- *
- * Falls back to the site's shared content folder when there is nothing to learn from: a type with no
- * records yet, or a sample whose paths are all top-level. That is a guess, and it is why the picker
- * opens on it rather than the record being created there outright.
- */
-export const proposeParentPath = (paths, siteKey) => {
-    const counts = new Map();
-
-    (paths || []).forEach(path => {
-        const parent = parentPathOf(path);
-        if (parent) {
-            counts.set(parent, (counts.get(parent) || 0) + 1);
-        }
-    });
-
-    if (counts.size === 0) {
-        return siteContentsPath(siteKey);
-    }
-
-    return [...counts.entries()]
-        .sort(([leftPath, leftCount], [rightPath, rightCount]) =>
-            rightCount - leftCount ||
-            depthOf(leftPath) - depthOf(rightPath) ||
-            leftPath.localeCompare(rightPath)
-        )[0][0];
-};
 
 /**
  * The type names `forms.contentTypesAsTree` says may be created at the path it was asked about.
