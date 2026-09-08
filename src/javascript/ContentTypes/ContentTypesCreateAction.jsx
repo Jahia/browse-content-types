@@ -5,7 +5,7 @@ import {shallowEqual, useSelector} from 'react-redux';
 import {useApolloClient} from '@apollo/client';
 import {Add, Button, Typography} from '@jahia/moonstone';
 import {CREATE_CONTENT_FOLDER, GET_CONTENT_FOLDER, GET_CREATABLE_TYPES} from './ContentTypes.gql';
-import {readCreatableTypeNames, siteContentsPath, typeFolderName, typeFolderPath} from './ContentTypesCreate';
+import {foldersToEnsure, readCreatableTypeNames, typeFolderPath} from './ContentTypesCreate';
 import {NAMESPACE} from '../ContentTypes.register';
 import styles from './ContentTypes.module.scss';
 
@@ -21,10 +21,11 @@ const EXCLUDED_NODE_TYPES = ['jmix:studioOnly', 'jmix:hiddenType'];
 /**
  * Create a record of the type being listed.
  *
- * **Nothing is asked.** The record goes into a folder named after its type, under the site's content
- * folder, and that folder is made on the way in if it is not there yet - see typeFolderPath. One
- * click from wanting a record to editing one, no location to answer for, and nothing the editor is
- * committed to: content moves, so a record filed here can be put anywhere afterwards.
+ * **Nothing is asked.** The record goes into a folder named after its type, inside this module's own
+ * folder under the site's content folder, and whichever of those two is missing is made on the way in
+ * - see typeFolderPath and foldersToEnsure. One click from wanting a record to editing one, no
+ * location to answer for, and nothing the editor is committed to: content moves, so a record filed
+ * here can be put anywhere afterwards.
  *
  * **The creatable check is ours, and it has to be.** CE_API.create resolves what may be created at
  * the path it is given and then branches on one type and on several - and does nothing whatsoever
@@ -64,28 +65,32 @@ export const ContentTypesCreateAction = ({contentType, contentTypeLabel}) => {
     }
 
     /**
-     * The type's folder, made if it is not there.
+     * The folders the record needs, made where they are not there.
      *
-     * Asked for and then created on the error, which is how the tasks container is handled in
+     * Each is asked for and then created on the error, which is how the tasks container is handled in
      * ContentTypesAssignDialog: `nodeByPath` on a missing node is an error rather than a null. A
-     * failure to create is left to the caller - the folder not being there is the one thing that
-     * makes the create below pointless.
+     * failure to create is left to the caller - a folder not being there is the one thing that makes
+     * the create below pointless.
+     *
+     * One at a time and in order, deliberately: the type's folder cannot be created until the folder
+     * it goes in exists, so there is nothing here to run in parallel.
      */
-    const ensureFolder = async () => {
-        try {
-            await client.query({
-                query: GET_CONTENT_FOLDER,
-                variables: {path: folderPath},
-                fetchPolicy: 'network-only'
-            });
-        } catch {
-            await client.mutate({
-                mutation: CREATE_CONTENT_FOLDER,
-                variables: {
-                    parentPath: siteContentsPath(site),
-                    name: typeFolderName(contentType)
-                }
-            });
+    const ensureFolders = async () => {
+        for (const folder of foldersToEnsure(site, contentType)) {
+            try {
+                // eslint-disable-next-line no-await-in-loop
+                await client.query({
+                    query: GET_CONTENT_FOLDER,
+                    variables: {path: folder.path},
+                    fetchPolicy: 'network-only'
+                });
+            } catch {
+                // eslint-disable-next-line no-await-in-loop
+                await client.mutate({
+                    mutation: CREATE_CONTENT_FOLDER,
+                    variables: {parentPath: folder.parentPath, name: folder.name}
+                });
+            }
         }
     };
 
@@ -94,7 +99,7 @@ export const ContentTypesCreateAction = ({contentType, contentTypeLabel}) => {
         setProblem(null);
 
         try {
-            await ensureFolder();
+            await ensureFolders();
 
             const {data: creatable} = await client.query({
                 query: GET_CREATABLE_TYPES,

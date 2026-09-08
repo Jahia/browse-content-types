@@ -39,8 +39,21 @@ export const siteContentsPath = siteKey => `/sites/${siteKey}/contents`;
 export const typeFolderName = contentType => String(contentType || '').replace(/:/g, '_');
 
 /**
- * Where records of one type are created: a folder of that type's own name, under the site's content
- * folder.
+ * The one folder this module adds to a site's content folder, and the only one.
+ *
+ * A folder per type directly under `contents` would put a node there for every type anybody ever
+ * creates a record of - beside the folders the site's own editors made, and outnumbering them on a
+ * site with many types. Everything this module files goes under here instead, so what it adds to a
+ * place it does not own is a single, named, obviously-ours folder.
+ */
+export const TYPE_FOLDERS_SEGMENT = 'content-types';
+
+/** The folder holding one folder per type. */
+export const typeFoldersPath = siteKey => `${siteContentsPath(siteKey)}/${TYPE_FOLDERS_SEGMENT}`;
+
+/**
+ * Where records of one type are created: a folder of that type's own name, under this module's own
+ * folder, under the site's content folder.
  *
  * **Why a folder per type, made on the way in.** Creating a record used to ask where it should go,
  * which is a question the editor cannot get wrong but also cannot skip - and asking it every time to
@@ -49,11 +62,35 @@ export const typeFolderName = contentType => String(contentType || '').replace(/
  * them would look, and is nothing the editor is stuck with: content moves, and a record created here
  * can be moved anywhere afterwards by the ordinary means.
  *
- * This is the same bargain `tasksPath` strikes for tasks, one step further: the container is created
- * on first use rather than assumed to exist.
+ * This is the same bargain `tasksPath` strikes for tasks, two steps further: the containers are
+ * created on first use rather than assumed to exist, and there are two of them.
  */
 export const typeFolderPath = (siteKey, contentType) =>
-    `${siteContentsPath(siteKey)}/${typeFolderName(contentType)}`;
+    `${typeFoldersPath(siteKey)}/${typeFolderName(contentType)}`;
+
+/**
+ * The folders that have to exist before a record can be created, outermost first.
+ *
+ * Both of them, every time, because either may be missing: this module's own folder is absent until
+ * the first record of any type is created on the site, and the type's folder until the first record
+ * of that type. Order matters - a child cannot be created before its parent - which is why this is a
+ * list and not a set.
+ *
+ * Each entry carries the path to test and the parent-and-name to create it with, since those are what
+ * the two calls need and working them back out of a path is how they come to disagree.
+ */
+export const foldersToEnsure = (siteKey, contentType) => [
+    {
+        path: typeFoldersPath(siteKey),
+        parentPath: siteContentsPath(siteKey),
+        name: TYPE_FOLDERS_SEGMENT
+    },
+    {
+        path: typeFolderPath(siteKey, contentType),
+        parentPath: typeFoldersPath(siteKey),
+        name: typeFolderName(contentType)
+    }
+];
 
 /**
  * The type names `forms.contentTypesAsTree` says may be created at the path it was asked about.

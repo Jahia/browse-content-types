@@ -1,8 +1,11 @@
 import {
+    TYPE_FOLDERS_SEGMENT,
+    foldersToEnsure,
     readCreatableTypeNames,
     siteContentsPath,
     typeFolderName,
-    typeFolderPath
+    typeFolderPath,
+    typeFoldersPath
 } from './ContentTypesCreate';
 
 /** A tree entry as `forms.contentTypesAsTree` returns one: a category with types under it. */
@@ -40,15 +43,49 @@ describe('typeFolderName', () => {
 });
 
 describe('typeFolderPath', () => {
-    it('puts the type\'s folder under the site\'s content folder', () => {
-        expect(typeFolderPath('luxe', 'luxe:blogPost')).toBe('/sites/luxe/contents/luxe_blogPost');
+    it('puts the type\'s folder inside this module\'s own folder', () => {
+        expect(typeFolderPath('luxe', 'luxe:blogPost'))
+            .toBe('/sites/luxe/contents/content-types/luxe_blogPost');
     });
 
-    it('sits directly under the content folder, one level down', () => {
+    /*
+     * The point of the extra level. However many types a site holds, this module adds exactly one
+     * node to the content folder it does not own, and everything else of its own goes inside that.
+     */
+    it('adds one node to the site content folder, whatever the type', () => {
+        const added = ['luxe:blogPost', 'jnt:text', 'luxe:estate']
+            .map(type => typeFolderPath('luxe', type).slice(siteContentsPath('luxe').length + 1))
+            .map(rest => rest.split('/')[0]);
+
+        expect(new Set(added)).toEqual(new Set([TYPE_FOLDERS_SEGMENT]));
+    });
+
+    it('sits directly inside that folder, one level down', () => {
         const path = typeFolderPath('luxe', 'luxe:blogPost');
 
-        expect(path.startsWith(`${siteContentsPath('luxe')}/`)).toBe(true);
-        expect(path.slice(siteContentsPath('luxe').length + 1)).not.toContain('/');
+        expect(path.startsWith(`${typeFoldersPath('luxe')}/`)).toBe(true);
+        expect(path.slice(typeFoldersPath('luxe').length + 1)).not.toContain('/');
+    });
+});
+
+describe('foldersToEnsure', () => {
+    /*
+     * Order is the whole contract: a child cannot be created before its parent, so the outer folder
+     * has to be asked for first.
+     */
+    it('names both folders, outermost first', () => {
+        expect(foldersToEnsure('luxe', 'luxe:blogPost').map(folder => folder.path)).toEqual([
+            '/sites/luxe/contents/content-types',
+            '/sites/luxe/contents/content-types/luxe_blogPost'
+        ]);
+    });
+
+    // The parent and name are carried rather than derived, so the test to see whether a folder is
+    // there and the call that creates it cannot disagree about where it goes.
+    it('carries a parent and name that rebuild each path', () => {
+        foldersToEnsure('luxe', 'luxe:blogPost').forEach(folder => {
+            expect(`${folder.parentPath}/${folder.name}`).toBe(folder.path);
+        });
     });
 });
 
