@@ -231,7 +231,8 @@
     "create": {
       "action": "Créer",
       "actionAt": "Créer une fiche dans {{path}}",
-      "refused": "Ce type ne peut pas être créé dans {{path}}. Choisissez un autre emplacement."
+      "refused": "Ce type ne peut pas être stocké dans un dossier de contenus.",
+      "failed": "La fiche n'a pas pu être créée. Réessayez."
     },
     "preview": {
       "close": "Fermer l'aperçu",

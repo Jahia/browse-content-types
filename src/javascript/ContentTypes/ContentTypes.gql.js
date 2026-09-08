@@ -715,3 +715,36 @@ export const GET_CREATABLE_TYPES = gql`
         }
     }
 `;
+
+/**
+ * Whether a type's folder is already there.
+ *
+ * The same shape as GET_TASKS_NODE and for the same reason: `addNode` on an existing node fails, and
+ * the folder is created by whoever adds the first record of that type. `nodeByPath` on a missing node
+ * answers with an error rather than a null, so the caller reads the error as "not there yet".
+ */
+export const GET_CONTENT_FOLDER = gql`
+    query getContentFolder($path: String!) {
+        jcr(workspace: EDIT) {
+            nodeByPath(path: $path) {
+                uuid
+            }
+        }
+    }
+`;
+
+/**
+ * The folder a type's records live in, created on the first record of that type.
+ *
+ * Name and primary type only. The tasks container is created the same way, and a folder that carries
+ * nothing but its name has nothing in it to keep in step with the type it was named after.
+ */
+export const CREATE_CONTENT_FOLDER = gql`
+    mutation createContentFolder($parentPath: String!, $name: String!) {
+        jcr(workspace: EDIT) {
+            addNode(parentPathOrId: $parentPath, name: $name, primaryNodeType: "jnt:contentFolder") {
+                uuid
+            }
+        }
+    }
+`;

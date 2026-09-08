@@ -1103,7 +1103,7 @@
 }
 
 /*
- * The refusal, when a type may not be created at the path that was picked.
+ * The refusal or the failure, when no editor is going to open.
  *
  * Beside the create button rather than in a dialog: the editor is mid-decision about where the
  * record goes, and a message they have to dismiss before they can pick again puts a click between
@@ -1113,7 +1113,7 @@
  * `nowrap` for the same reason the search hint has it: the toolbar is a flex row, and a sentence
  * allowed to wrap would push the controls beside it onto a second line as it appeared.
  */
-.createRefused {
+.createProblem {
     color: var(--color-danger);
     white-space: nowrap;
 }

@@ -231,7 +231,8 @@
     "create": {
       "action": "Create",
       "actionAt": "Create a record in {{path}}",
-      "refused": "This type cannot be created in {{path}}. Pick another location."
+      "refused": "This type cannot be stored in a content folder.",
+      "failed": "The record could not be created. Try again."
     },
     "preview": {
       "close": "Close preview",

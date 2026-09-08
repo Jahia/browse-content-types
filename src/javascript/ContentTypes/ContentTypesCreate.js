@@ -16,21 +16,44 @@
  */
 
 /**
- * Where the picker opens: the site's shared content folder.
+ * The site's shared content folder, which is what everything below hangs off.
  *
  * The one place on a site whose purpose is to hold content that is not part of a page, which is what
  * a record created from a listing of a type - rather than from a page being composed - almost always
  * is. Every site has one, and this module already leans on that in the settings panel, which reads
  * its type list from `<site>/contents`.
- *
- * Deliberately fixed, rather than inferred from where records of this type already sit. A folder
- * learned from existing records reads as the module knowing where this type belongs, and it is wrong
- * in the case that matters: a type dropped into pages would propose a page, which is not where a new
- * shared record should go and is somewhere the editor then has to navigate out of. Opening in the
- * same place every time is also something an editor can learn, where a proposal that moves with the
- * data is not.
  */
 export const siteContentsPath = siteKey => `/sites/${siteKey}/contents`;
+
+/**
+ * The folder name a type's records are kept under.
+ *
+ * The type name with its colon replaced, because a colon in a JCR name is the namespace separator and
+ * `luxe:blogPost` as a node name would be read as a prefix that is not registered.
+ *
+ * The prefix is kept rather than dropped, which is the whole reason this is a function and not an
+ * inline `split`. `jnt:text` and `luxe:text` both end at `text` once the prefix goes, and two
+ * different types sharing one folder is precisely the confusion this layout exists to remove - the
+ * same collision `countAlias` documents for its own aliases.
+ */
+export const typeFolderName = contentType => String(contentType || '').replace(/:/g, '_');
+
+/**
+ * Where records of one type are created: a folder of that type's own name, under the site's content
+ * folder.
+ *
+ * **Why a folder per type, made on the way in.** Creating a record used to ask where it should go,
+ * which is a question the editor cannot get wrong but also cannot skip - and asking it every time to
+ * hear the same answer is the kind of ceremony that gets in the way of the actual work. Filing by the
+ * type's own name needs no answer, puts the records of a type together where somebody looking for
+ * them would look, and is nothing the editor is stuck with: content moves, and a record created here
+ * can be moved anywhere afterwards by the ordinary means.
+ *
+ * This is the same bargain `tasksPath` strikes for tasks, one step further: the container is created
+ * on first use rather than assumed to exist.
+ */
+export const typeFolderPath = (siteKey, contentType) =>
+    `${siteContentsPath(siteKey)}/${typeFolderName(contentType)}`;
 
 /**
  * The type names `forms.contentTypesAsTree` says may be created at the path it was asked about.

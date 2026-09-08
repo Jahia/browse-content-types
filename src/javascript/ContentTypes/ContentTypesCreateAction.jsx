@@ -4,8 +4,8 @@ import {useTranslation} from 'react-i18next';
 import {shallowEqual, useSelector} from 'react-redux';
 import {useApolloClient} from '@apollo/client';
 import {Add, Button, Typography} from '@jahia/moonstone';
-import {GET_CREATABLE_TYPES} from './ContentTypes.gql';
-import {readCreatableTypeNames, siteContentsPath} from './ContentTypesCreate';
+import {CREATE_CONTENT_FOLDER, GET_CONTENT_FOLDER, GET_CREATABLE_TYPES} from './ContentTypes.gql';
+import {readCreatableTypeNames, siteContentsPath, typeFolderName, typeFolderPath} from './ContentTypesCreate';
 import {NAMESPACE} from '../ContentTypes.register';
 import styles from './ContentTypes.module.scss';
 
@@ -21,14 +21,14 @@ const EXCLUDED_NODE_TYPES = ['jmix:studioOnly', 'jmix:hiddenType'];
 /**
  * Create a record of the type being listed.
  *
- * **The location is chosen, not inferred.** Why is in ContentTypesCreate - the short of it being
- * that a record's path is meaningful in a way a task's is not, and that this table cannot show a
- * mistake about it, because it lists by type and not by place. So the picker opens, on the site's
- * shared content folder, and the editor confirms with one click or moves it with two.
+ * **Nothing is asked.** The record goes into a folder named after its type, under the site's content
+ * folder, and that folder is made on the way in if it is not there yet - see typeFolderPath. One
+ * click from wanting a record to editing one, no location to answer for, and nothing the editor is
+ * committed to: content moves, so a record filed here can be put anywhere afterwards.
  *
  * **The creatable check is ours, and it has to be.** CE_API.create resolves what may be created at
  * the path it is given and then branches on one type and on several - and does nothing whatsoever
- * for none. A type that cannot live at the chosen path therefore produces no editor, no error and no
+ * for none. A type that cannot live in a content folder therefore produces no editor, no error and no
  * callback: a button that looks broken precisely when the editor most needs to be told why. So the
  * same question is asked first, through forms.contentTypesAsTree, and the refusal is said out loud.
  *
@@ -47,26 +47,55 @@ export const ContentTypesCreateAction = ({contentType}) => {
         uilang: state.uilang
     }), shallowEqual);
 
-    const [isResolving, setIsResolving] = useState(false);
-    // The path a create was refused at, which is the only thing worth saying about the refusal - the
-    // type is already the heading of the page.
-    const [refusedAt, setRefusedAt] = useState(null);
+    const [isWorking, setIsWorking] = useState(false);
+    // One of 'refused' or 'failed', or nothing. Two messages rather than one because they ask
+    // different things of the reader: a refusal is about this type and will not come right on a
+    // second click, where a failure might.
+    const [problem, setProblem] = useState(null);
 
-    const openAtPath = siteContentsPath(site);
+    const folderPath = typeFolderPath(site, contentType);
 
     const api = typeof window === 'undefined' ? null : window.CE_API;
 
     // Nothing to offer without the editor that would do the creating. Drawn as nothing rather than as
     // a disabled button: a control that can never become enabled only asks to be clicked.
-    if (!api?.create || !api?.openPicker) {
+    if (!api?.create) {
         return null;
     }
 
-    const createAt = async parentPath => {
-        setIsResolving(true);
-        setRefusedAt(null);
+    /**
+     * The type's folder, made if it is not there.
+     *
+     * Asked for and then created on the error, which is how the tasks container is handled in
+     * ContentTypesAssignDialog: `nodeByPath` on a missing node is an error rather than a null. A
+     * failure to create is left to the caller - the folder not being there is the one thing that
+     * makes the create below pointless.
+     */
+    const ensureFolder = async () => {
+        try {
+            await client.query({
+                query: GET_CONTENT_FOLDER,
+                variables: {path: folderPath},
+                fetchPolicy: 'network-only'
+            });
+        } catch {
+            await client.mutate({
+                mutation: CREATE_CONTENT_FOLDER,
+                variables: {
+                    parentPath: siteContentsPath(site),
+                    name: typeFolderName(contentType)
+                }
+            });
+        }
+    };
+
+    const create = async () => {
+        setIsWorking(true);
+        setProblem(null);
 
         try {
+            await ensureFolder();
+
             const {data: creatable} = await client.query({
                 query: GET_CREATABLE_TYPES,
                 variables: {
@@ -75,22 +104,21 @@ export const ContentTypesCreateAction = ({contentType}) => {
                     // resolved alongside the type asked for would open the type selector for what the
                     // editor meant as one choice they had already made.
                     includeSubTypes: false,
-                    path: parentPath,
+                    path: folderPath,
                     uilang: uilang || 'en',
                     excludedNodeTypes: EXCLUDED_NODE_TYPES
                 },
-                // The answer depends on what is at that path now, and a stale yes would be spent on
-                // the silent branch of CE_API.create.
+                // Asked of the folder as it stands, which a moment ago may not have existed at all.
                 fetchPolicy: 'network-only'
             });
 
             if (!readCreatableTypeNames(creatable).includes(contentType)) {
-                setRefusedAt(parentPath);
+                setProblem('refused');
                 return;
             }
 
             api.create({
-                path: parentPath,
+                path: folderPath,
                 nodeTypes: [contentType],
                 includeSubTypes: false,
                 lang: language,
@@ -100,32 +128,12 @@ export const ContentTypesCreateAction = ({contentType}) => {
                 createCallback: () => client.refetchQueries({include: ['getContentByType']})
             });
         } catch {
-            // Treated as a refusal rather than as its own kind of failure. Both leave the editor
-            // without a form, and "not here" is the actionable half of either message.
-            setRefusedAt(parentPath);
+            // The folder could not be made, or the question could not be asked. Either way there is
+            // no form coming, and saying so is better than a click that does nothing.
+            setProblem('failed');
         } finally {
-            setIsResolving(false);
+            setIsWorking(false);
         }
-    };
-
-    const chooseLocation = () => {
-        setRefusedAt(null);
-        api.openPicker({
-            // Pages and content folders both, because a type listed here may be dropped into a page
-            // or kept as shared content, and the module has no way to know which this one is for.
-            type: 'editorial',
-            value: openAtPath,
-            isMultiple: false,
-            site,
-            lang: language,
-            uilang,
-            setValue: picked => {
-                const target = Array.isArray(picked) ? picked[0] : picked;
-                if (target?.path) {
-                    createAt(target.path);
-                }
-            }
-        });
     };
 
     return (
@@ -138,18 +146,19 @@ export const ContentTypesCreateAction = ({contentType}) => {
                 variant="ghost"
                 icon={<Add/>}
                 label={t('label.create.action')}
-                title={t('label.create.actionAt', {path: openAtPath})}
-                disabled={isResolving}
+                title={t('label.create.actionAt', {path: folderPath})}
+                disabled={isWorking}
                 data-sel-role="create-action"
-                onClick={chooseLocation}
+                onClick={create}
             />
-            {refusedAt && (
+            {problem && (
                 <Typography
                     variant="caption"
-                    className={styles.createRefused}
-                    data-sel-role="create-refused"
+                    className={styles.createProblem}
+                    data-sel-role="create-problem"
+                    data-sel-problem={problem}
                 >
-                    {t('label.create.refused', {path: refusedAt})}
+                    {t(`label.create.${problem}`, {path: folderPath})}
                 </Typography>
             )}
         </>

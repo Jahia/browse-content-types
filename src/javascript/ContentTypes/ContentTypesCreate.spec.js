@@ -1,4 +1,9 @@
-import {readCreatableTypeNames, siteContentsPath} from './ContentTypesCreate';
+import {
+    readCreatableTypeNames,
+    siteContentsPath,
+    typeFolderName,
+    typeFolderPath
+} from './ContentTypesCreate';
 
 /** A tree entry as `forms.contentTypesAsTree` returns one: a category with types under it. */
 const category = (name, children) => ({name, children: children.map(child => ({name: child}))});
@@ -6,6 +11,44 @@ const category = (name, children) => ({name, children: children.map(child => ({n
 describe('siteContentsPath', () => {
     it('is the site\'s shared content folder', () => {
         expect(siteContentsPath('luxe')).toBe('/sites/luxe/contents');
+    });
+});
+
+describe('typeFolderName', () => {
+    // A colon in a JCR name is the namespace separator, so the type name cannot be used as it stands.
+    it('replaces the colon a JCR name may not carry', () => {
+        expect(typeFolderName('luxe:blogPost')).toBe('luxe_blogPost');
+    });
+
+    /*
+     * The reason the prefix is kept. Dropping it reads better right up until a site holds two types
+     * whose local names match, at which point their records share one folder - which is the confusion
+     * a folder per type exists to remove.
+     */
+    it('keeps the prefix, so two types with one local name stay apart', () => {
+        expect(typeFolderName('jnt:text')).not.toBe(typeFolderName('luxe:text'));
+    });
+
+    it('leaves a name that has no prefix alone', () => {
+        expect(typeFolderName('text')).toBe('text');
+    });
+
+    it('has an answer for nothing at all', () => {
+        expect(typeFolderName(undefined)).toBe('');
+        expect(typeFolderName(null)).toBe('');
+    });
+});
+
+describe('typeFolderPath', () => {
+    it('puts the type\'s folder under the site\'s content folder', () => {
+        expect(typeFolderPath('luxe', 'luxe:blogPost')).toBe('/sites/luxe/contents/luxe_blogPost');
+    });
+
+    it('sits directly under the content folder, one level down', () => {
+        const path = typeFolderPath('luxe', 'luxe:blogPost');
+
+        expect(path.startsWith(`${siteContentsPath('luxe')}/`)).toBe(true);
+        expect(path.slice(siteContentsPath('luxe').length + 1)).not.toContain('/');
     });
 });
 
