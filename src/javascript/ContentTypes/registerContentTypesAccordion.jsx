@@ -22,7 +22,7 @@ const registerContentTypesAccordion = () => {
         icon: <Grain/>,
         label: `${NAMESPACE}:label.accordion`,
         isEnabled: siteKey => siteKey !== 'systemsite',
-        requireModuleInstalledOnSite: 'content-types',
+        requireModuleInstalledOnSite: 'browse-content-types',
 
         // What this accordion selects is a node type, not a node, so its path is '/<typeName>'
         // and '/' means nothing is selected yet. The base accordion's helpers assume a JCR path

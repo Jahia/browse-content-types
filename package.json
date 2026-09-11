@@ -1,5 +1,5 @@
 {
-  "name": "content-types",
+  "name": "browse-content-types",
   "version": "1.0.0-SNAPSHOT",
   "description": "Adds a Content Types accordion to jContent",
   "license": "MIT",

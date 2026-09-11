@@ -13,8 +13,8 @@
         a deploy that otherwise logs success.
     -->
     <groupId>org.jahia.se.modules</groupId>
-    <artifactId>content-types</artifactId>
-    <name>Content Types</name>
+    <artifactId>browse-content-types</artifactId>
+    <name>Browse Content Types</name>
     <version>1.0.0-SNAPSHOT</version>
     <packaging>bundle</packaging>
     <description>Adds a Content Types accordion to jContent</description>

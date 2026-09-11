@@ -2,7 +2,7 @@ import i18next from 'i18next';
 import registerContentTypesAccordion from './ContentTypes/registerContentTypesAccordion';
 import registerContentTypesSettings from './ContentTypes/registerContentTypesSettings';
 
-export const NAMESPACE = 'content-types';
+export const NAMESPACE = 'browse-content-types';
 
 export default async function () {
     // Awaited before registering: jContent draws the accordion label with its own `t`, bound to
