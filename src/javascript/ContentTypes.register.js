@@ -4,7 +4,7 @@ import registerContentTypesBulkActions from './ContentTypes/registerContentTypes
 import registerContentTypesSettings from './ContentTypes/registerContentTypesSettings';
 import registerContentTypesActionOverrides from './ContentTypes/registerContentTypesActionOverrides';
 
-export const NAMESPACE = 'content-types';
+export const NAMESPACE = 'browse-content-types';
 
 export default async function () {
     /*
