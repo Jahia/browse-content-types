@@ -1,4 +1,4 @@
-import {FILTER_BOOLEAN, FILTER_CHOICE, FILTER_DATE, FILTER_IMAGE, FILTER_NUMBER, FILTER_TEXT} from './ContentTypesFilters';
+import {FILTER_BOOLEAN, FILTER_CHOICE, FILTER_DATE, FILTER_IMAGE, FILTER_NUMBER, FILTER_TEXT} from './ContentTypesFieldTypes';
 
 /**
  * Replacing one property's value across the ticked rows.

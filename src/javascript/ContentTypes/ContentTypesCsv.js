@@ -1,5 +1,5 @@
 import {missingTranslations} from './ContentTypesTranslations';
-import {PUBLICATION_STATUSES, labelForValue} from './ContentTypesFilters';
+import {PUBLICATION_STATUSES, labelForValue} from './ContentTypesFieldTypes';
 
 /**
  * Turning the rows on screen into a CSV file.

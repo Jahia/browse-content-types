@@ -2,7 +2,8 @@ import React, {useState} from 'react';
 import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
 import {Button, Dropdown, Input} from '@jahia/moonstone';
-import {FILTER_BOOLEAN, FILTER_CHOICE, FILTER_DATE, FILTER_NUMBER, FILTER_PUBLICATION, MULTI_VALUE_OPERATORS, OPERATORS, VALUELESS_OPERATORS, defaultOperator, operatorLabel, valuesOf} from './ContentTypesFilters';
+import {FILTER_BOOLEAN, FILTER_CHOICE, FILTER_DATE, FILTER_NUMBER, FILTER_PUBLICATION} from './ContentTypesFieldTypes';
+import {MULTI_VALUE_OPERATORS, OPERATORS, VALUELESS_OPERATORS, defaultOperator, operatorLabel, valuesOf} from './ContentTypesFilters';
 import {NAMESPACE} from '../ContentTypes.register';
 import styles from './ContentTypes.module.scss';
 
