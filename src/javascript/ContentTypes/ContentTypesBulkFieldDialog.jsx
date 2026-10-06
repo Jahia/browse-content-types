@@ -6,7 +6,7 @@ import {shallowEqual, useSelector} from 'react-redux';
 import {registry} from '@jahia/ui-extender';
 import {Button, Modal, ModalBody, ModalFooter, ModalHeader, RadioGroup, RadioItem, Typography} from '@jahia/moonstone';
 import {ContentEditorContext} from '@jahia/jcontent';
-import {CAPTURE_REFERENCES, CAPTURE_TIMESTAMPS, CAPTURE_VALUES, SET_BULK_FIELD} from './ContentTypes.gql';
+import {SET_BULK_FIELD} from './ContentTypes.gql';
 import {
     BULK_MODES,
     addRecords,
@@ -17,7 +17,7 @@ import {
     pickerField,
     recordsWithValues
 } from './ContentTypesBulkFields';
-import {buildSnapshot, snapshotEntries, timestampEntries} from './ContentTypesUndo';
+import {buildSnapshot, captureUndo} from './ContentTypesUndo';
 import {recordUndo} from './useBulkUndo';
 import {NAMESPACE} from '../ContentTypes.register';
 import styles from './ContentTypes.module.scss';
@@ -83,39 +83,15 @@ export const ContentTypesBulkFieldDialog = ({isOpen, field, nodes, onClose}) => 
             // whose capture failed reports a failure instead.
             const isAdding = mode === BULK_MODES.ADD;
             const isReference = field.valueType === 'WEAKREFERENCE';
-            let entries = null;
-            try {
-                const captured = await client.query({
-                    query: isReference ? CAPTURE_REFERENCES : CAPTURE_VALUES,
-                    variables: {
-                        paths: nodes.map(node => node.path),
-                        property: field.property,
-                        language
-                    },
-                    fetchPolicy: 'network-only'
-                });
-                entries = snapshotEntries(captured.data?.jcr?.nodesByPath, {isReference});
-            } catch {
-                entries = null;
-            }
-
-            // The stamps that decide the publication flag, captured with the values. Jahia reads
-            // that flag from jcr:lastModified against j:lastPublished and never from comparing the
-            // two workspaces, so restoring values alone leaves the record marked Modified.
-            let timestamps = null;
-            try {
-                const stamped = await client.query({
-                    query: CAPTURE_TIMESTAMPS,
-                    variables: {
-                        paths: nodes.map(node => node.path),
-                        translationPath: `j:translation_${language}`
-                    },
-                    fetchPolicy: 'network-only'
-                });
-                timestamps = timestampEntries(stamped.data?.jcr?.nodesByPath);
-            } catch {
-                timestamps = null;
-            }
+            // `entries` is narrowed below for an Add, which only writes some of the records.
+            const captured = await captureUndo(client, {
+                paths: nodes.map(node => node.path),
+                property: field.property,
+                language,
+                isReference
+            });
+            const {timestamps} = captured;
+            let {entries} = captured;
 
             if (isAdding && !entries) {
                 setFailed(true);

@@ -1,4 +1,5 @@
 import {parse} from 'graphql';
+import {CAPTURE_REFERENCES, CAPTURE_TIMESTAMPS, CAPTURE_VALUES} from './ContentTypes.gql';
 
 /**
  * Taking back the last bulk operation.
@@ -246,4 +247,49 @@ export const buildTimestampVariables = timestamps => {
     });
 
     return variables;
+};
+
+/**
+ * What the records hold now, read just before an operation replaces it.
+ *
+ * The one piece of reading every surface that writes a property has to do first, and it was written
+ * out at each of them. Here instead, because the two captures are easy to get subtly wrong in
+ * different ways in different copies - and a copy that drifts does not fail loudly, it just restores
+ * something slightly wrong when somebody finally presses undo.
+ *
+ * Both are best-effort on purpose: losing a capture costs the undo, not the edit. An editor who has
+ * just corrected a value would rather have the correction saved with no way back than be told the
+ * save failed because a snapshot could not be read. A caller that cannot honestly proceed without
+ * the values - an Add, which computes a union against them - checks `entries` itself and says so.
+ *
+ * The timestamps go with the values because Jahia reads the publication flag from jcr:lastModified
+ * against j:lastPublished, and never from comparing the two workspaces: restoring values alone
+ * leaves every record still marked Modified.
+ */
+export const captureUndo = async (client, {paths, property, language, isReference = false}) => {
+    let entries = null;
+    try {
+        const captured = await client.query({
+            query: isReference ? CAPTURE_REFERENCES : CAPTURE_VALUES,
+            variables: {paths, property, language},
+            fetchPolicy: 'network-only'
+        });
+        entries = snapshotEntries(captured.data?.jcr?.nodesByPath, {isReference});
+    } catch {
+        entries = null;
+    }
+
+    let timestamps = null;
+    try {
+        const stamped = await client.query({
+            query: CAPTURE_TIMESTAMPS,
+            variables: {paths, translationPath: `j:translation_${language}`},
+            fetchPolicy: 'network-only'
+        });
+        timestamps = timestampEntries(stamped.data?.jcr?.nodesByPath);
+    } catch {
+        timestamps = null;
+    }
+
+    return {entries, timestamps};
 };

@@ -2,10 +2,10 @@ import {useCallback, useState} from 'react';
 import {useApolloClient} from '@apollo/client';
 import {shallowEqual, useSelector} from 'react-redux';
 import {useTranslation} from 'react-i18next';
-import {CAPTURE_TIMESTAMPS, CAPTURE_VALUES, MUTATIONS} from './ContentTypes.gql';
+import {MUTATIONS} from './ContentTypes.gql';
 import {mutationKind} from './ContentTypesBulkEdit';
 import {cellEditVariables} from './ContentTypesCellEdit';
-import {buildSnapshot, snapshotEntries, timestampEntries} from './ContentTypesUndo';
+import {buildSnapshot, captureUndo} from './ContentTypesUndo';
 import {recordUndo} from './useBulkUndo';
 import {NAMESPACE} from '../ContentTypes.register';
 
@@ -45,32 +45,11 @@ export const useCellEdit = () => {
         try {
             // What this record holds now. Read from the repository rather than taken from the row,
             // which carries nothing for a column the table is not currently showing.
-            let entries = null;
-            try {
-                const captured = await client.query({
-                    query: CAPTURE_VALUES,
-                    variables: {paths: [row.path], property: field.propertyName, language},
-                    fetchPolicy: 'network-only'
-                });
-                entries = snapshotEntries(captured.data?.jcr?.nodesByPath, {isReference: false});
-            } catch {
-                entries = null;
-            }
-
-            // The stamps behind the publication flag, captured with the values: Jahia reads that flag
-            // from jcr:lastModified against j:lastPublished, so restoring values alone would leave
-            // the record still marked Modified.
-            let timestamps = null;
-            try {
-                const stamped = await client.query({
-                    query: CAPTURE_TIMESTAMPS,
-                    variables: {paths: [row.path], translationPath: `j:translation_${language}`},
-                    fetchPolicy: 'network-only'
-                });
-                timestamps = timestampEntries(stamped.data?.jcr?.nodesByPath);
-            } catch {
-                timestamps = null;
-            }
+            const {entries, timestamps} = await captureUndo(client, {
+                paths: [row.path],
+                property: field.propertyName,
+                language
+            });
 
             await client.mutate({
                 mutation: MUTATIONS[mutationKind({field, isClearing})],

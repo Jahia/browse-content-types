@@ -6,6 +6,7 @@ import {
     buildSnapshot,
     buildTimestampDocument,
     buildTimestampVariables,
+    captureUndo,
     snapshotEntries,
     taskSnapshot,
     timestampEntries,
@@ -313,5 +314,72 @@ describe('ContentTypesUndo', () => {
             expect(withStamps.timestamps).toHaveLength(1);
             expect(buildSnapshot(snapshot()).timestamps).toBeUndefined();
         });
+    });
+});
+describe('capturing what the records hold, before an operation replaces it', () => {
+    /** An Apollo client as far as this uses one: each query answered, or made to fail. */
+    const client = ({values, timestamps, failing = []} = {}) => ({
+        query: ({query}) => {
+            const name = print(query).includes('captureTimestamps') ? 'timestamps' : 'values';
+            if (failing.includes(name)) {
+                return Promise.reject(new Error('unreachable'));
+            }
+
+            return Promise.resolve({
+                data: {jcr: {nodesByPath: name === 'timestamps' ? timestamps : values}}
+            });
+        }
+    });
+
+    const nodes = [{path: '/sites/x/a', property: {value: 'villa', values: null}}];
+
+    it('reads the values and the stamps that go with them', async () => {
+        const captured = await captureUndo(client({values: nodes, timestamps: []}), {
+            paths: ['/sites/x/a'],
+            property: 'title',
+            language: 'en'
+        });
+
+        expect(captured.entries).toEqual(snapshotEntries(nodes, {isReference: false}));
+        expect(captured.timestamps).toEqual([]);
+    });
+
+    // Losing a capture costs the undo, not the edit - so neither failure is allowed to escape.
+    it('gives up the values rather than the edit when they cannot be read', async () => {
+        const captured = await captureUndo(client({timestamps: [], failing: ['values']}), {
+            paths: ['/sites/x/a'],
+            property: 'title',
+            language: 'en'
+        });
+
+        expect(captured.entries).toBeNull();
+        expect(captured.timestamps).toEqual([]);
+    });
+
+    it('keeps the values when only the stamps cannot be read', async () => {
+        const captured = await captureUndo(client({values: nodes, failing: ['timestamps']}), {
+            paths: ['/sites/x/a'],
+            property: 'title',
+            language: 'en'
+        });
+
+        expect(captured.entries).toHaveLength(1);
+        expect(captured.timestamps).toBeNull();
+    });
+
+    it('reads a reference column the way a reference has to be read', async () => {
+        const asked = [];
+        const recording = {
+            query: ({query}) => {
+                asked.push(print(query));
+                return Promise.resolve({data: {jcr: {nodesByPath: []}}});
+            }
+        };
+
+        await captureUndo(recording, {paths: ['/sites/x/a'], property: 'j:defaultCategory', language: 'en', isReference: true});
+
+        // The reference capture asks for the uuids a restore needs, not the display names a plain
+        // value capture would bring back.
+        expect(asked[0]).toContain('refNodes');
     });
 });

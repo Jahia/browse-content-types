@@ -4,7 +4,7 @@ import {useTranslation} from 'react-i18next';
 import {useApolloClient} from '@apollo/client';
 import {shallowEqual, useSelector} from 'react-redux';
 import {Button, Checkbox, Dropdown, Input, Modal, ModalBody, ModalFooter, ModalHeader, Textarea, Typography} from '@jahia/moonstone';
-import {CAPTURE_TIMESTAMPS, CAPTURE_VALUES, MUTATIONS} from './ContentTypes.gql';
+import {MUTATIONS} from './ContentTypes.gql';
 import {
     bulkEditVariables,
     canApplyEdit,
@@ -14,7 +14,7 @@ import {
     mutationKind,
     recordsWithValue
 } from './ContentTypesBulkEdit';
-import {buildSnapshot, snapshotEntries, timestampEntries} from './ContentTypesUndo';
+import {buildSnapshot, captureUndo} from './ContentTypesUndo';
 import {recordUndo} from './useBulkUndo';
 import {NAMESPACE} from '../ContentTypes.register';
 import styles from './ContentTypes.module.scss';
@@ -77,39 +77,11 @@ export const ContentTypesBulkEditDialog = ({isOpen, nodes, availableFields, visi
             // What the records hold now, so this can be taken back. Read rather than taken from the
             // rows, which carry nothing for a column the table is not showing. Losing the capture
             // costs the undo, not the edit.
-            let entries = null;
-            try {
-                const captured = await client.query({
-                    query: CAPTURE_VALUES,
-                    variables: {
-                        paths: nodes.map(node => node.path),
-                        property: field.propertyName,
-                        language
-                    },
-                    fetchPolicy: 'network-only'
-                });
-                entries = snapshotEntries(captured.data?.jcr?.nodesByPath, {isReference: false});
-            } catch {
-                entries = null;
-            }
-
-            // The stamps that decide the publication flag, captured with the values. Jahia reads
-            // that flag from jcr:lastModified against j:lastPublished and never from comparing the
-            // two workspaces, so restoring values alone leaves the record marked Modified.
-            let timestamps = null;
-            try {
-                const stamped = await client.query({
-                    query: CAPTURE_TIMESTAMPS,
-                    variables: {
-                        paths: nodes.map(node => node.path),
-                        translationPath: `j:translation_${language}`
-                    },
-                    fetchPolicy: 'network-only'
-                });
-                timestamps = timestampEntries(stamped.data?.jcr?.nodesByPath);
-            } catch {
-                timestamps = null;
-            }
+            const {entries, timestamps} = await captureUndo(client, {
+                paths: nodes.map(node => node.path),
+                property: field.propertyName,
+                language
+            });
 
             await client.mutate({
                 mutation: MUTATIONS[mutationKind({field, isClearing})],
