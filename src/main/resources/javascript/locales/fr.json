@@ -204,17 +204,7 @@
       "applyClear": "Vider",
       "failed": "La modification n'a pas pu être appliquée. Vérifiez que vous pouvez modifier ce contenu, puis réessayez."
     },
-    "cellEdit": {
-      "title": "Modifier {{column}}",
-      "apply": "Enregistrer",
-      "clear": "Vider la propriété",
-      "start": "Modifier {{column}}",
-      "choosePlaceholder": "Choisir",
-      "locked": "Ce contenu est verrouillé par quelqu'un d'autre : ses valeurs ne peuvent pas être modifiées ici.",
-      "noPermission": "Vous n'avez pas le droit de modifier ce contenu.",
-      "mandatory": "Cette propriété est obligatoire : elle ne peut pas être vidée.",
-      "failed": "La modification n'a pas pu être enregistrée. Vérifiez que vous pouvez modifier ce contenu, puis réessayez."
-    },
+
 
     "create": {
       "refused": "Ce type ne peut pas être stocké dans un dossier de contenus.",

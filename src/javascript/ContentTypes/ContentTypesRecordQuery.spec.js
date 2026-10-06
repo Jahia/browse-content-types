@@ -37,17 +37,7 @@ describe('buildRecordQuery', () => {
     });
 
     describe('the fields every record carries', () => {
-        it('asks whether this reader may write the record, for the cell editor', () => {
-            expect(text()).toContain('canEdit: hasPermission(permissionName: $writePermission)');
-        });
-
-        // Declared as well as used: GraphQL rejects a document that reads a variable it never
-        // announced, and the two live in different template literals.
-        it('declares the write permission it reads', () => {
-            expect(text()).toContain('$writePermission: String!');
-        });
-
-        it('still asks for the lock, which the editor also gates on', () => {
+        it('asks for the lock, which the Lock column shows', () => {
             expect(text()).toContain('lockedAndCannotBeEdited');
         });
     });
