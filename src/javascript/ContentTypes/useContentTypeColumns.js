@@ -11,17 +11,6 @@ import {NAMESPACE} from '../ContentTypes.register';
 const STORAGE_PREFIX = 'content-types:columns:';
 
 /**
- * Where the Name column's editor reads the value it is editing.
- *
- * Not from `displayName`, which is the wrong thing by a subtle margin: that is the name as
- * *resolved*, and it falls back to the node's own name when the primary item holds nothing. An
- * editor prefilled from it would show `content_1754409625306` as though that were the title, and
- * saving would write it into the property. So the stored value is fetched alongside, under this key,
- * and the editor reads that while the cell goes on drawing the resolved name.
- */
-export const NAME_VALUE_KEY = 'nameValue';
-
-/**
  * Which property a common field can be filtered on, and with what kind of form.
  *
  * A filter is a constraint on a named JCR property, so a column can only offer one where it reads a
@@ -383,56 +372,21 @@ export const useContentTypeColumns = contentType => {
     }, [data, contentType, labelsByProperty, optionsByProperty]);
 
     /**
-     * The Name column as something that can be filtered.
+     * The Name column as a field in its own right.
      *
-     * It shows a computed value rather than a property, so there was nothing to constrain and no
-     * filter on the column a reader is most likely to want one on. What it computes is the type's
-     * primary item, so that is what gets constrained - checked against a site, `contains "mansion"`
-     * on `luxe:estate.title` returns exactly the rows whose displayed name contains it.
+     * It shows a computed value rather than a property: what it draws is the type's primary item,
+     * falling back to the node's own name where the type names a child node instead, or names
+     * nothing at all. `jcrProperty` records which of the two a given type ended up with.
      *
-     * Only when the primary item is really a property of this type: a type may name a child node
-     * instead, and one may name nothing at all. Either way the display name falls back to the node's
-     * own name, so the filter follows it to `j:nodename`.
-     *
-     * Deliberately not part of `availableFields`: that list is the columns picker, and Name is always
-     * shown. It is published on its own so the table can filter it and the summary can name it.
+     * Deliberately not part of `availableFields`: that list is the columns picker, and Name is
+     * always shown. It is published on its own so that whatever needs to name every column a record
+     * carries - the export dialog, today - can reach this one too.
      */
     const nameField = useMemo(() => {
         const definitions = data?.jcr?.nodeTypeByName?.properties || [];
         const primaryItem = data?.jcr?.nodeTypeByName?.primaryItem?.name;
         const primaryDefinition = primaryItem && definitions.find(definition => definition.name === primaryItem);
         const isProperty = Boolean(primaryDefinition);
-
-        /*
-         * Whether the Name column can be edited where it is read.
-         *
-         * It can when what it draws is a plain text property of the record - which is the ordinary
-         * case: a type's primary item is nearly always its title. Then Name is a second view of that
-         * property, and refusing to edit it there while its own column edits it fine is a
-         * distinction no reader can infer. It matters most where the primary item is inherited
-         * rather than declared - `jcr:title` from `mix:title` - because such a property gets no
-         * column of its own at all (see `contentTypeFields`), so Name is the only place the main
-         * text of every record appears.
-         *
-         * Three things keep it out. A property the repository maintains or hides is not ours to
-         * write. A multi-valued one has no single value for a name to be. And anything but text -
-         * a value list, a date, a number - would be edited here as free text, because the column
-         * filters as text and `editorKind` reads that same filter: rather than let the two disagree,
-         * such a primary item is left to its own column, which knows what it is.
-         *
-         * Where there is no primary item at all, Name draws `j:nodename`, and that is not a refusal
-         * this module chose: the property is protected and hidden, and renaming a node is a move
-         * that changes its path and breaks what points at it. jContent's Rename action is what does
-         * that, correctly.
-         */
-        const isEditableName = Boolean(
-            primaryDefinition &&
-            !primaryDefinition.hidden &&
-            !primaryDefinition.protected &&
-            !primaryDefinition.multiple &&
-            TEXT_SEARCH_TYPES.has(primaryDefinition.requiredType) &&
-            !labelsByProperty[primaryItem]
-        );
 
         return {
             key: 'displayName',
@@ -443,29 +397,9 @@ export const useContentTypeColumns = contentType => {
             // Only when falling back: the node name is punctuated where the displayed name has
             // spaces, so a space in what was typed has to match either. A primary item needs none of
             // this - its value is what the column draws, character for character.
-            looseSeparators: !isProperty,
-            // The same shape a content type's own column carries, so the editor needs no special
-            // case for this one. `isDynamic` is not a stretch here: the primary item genuinely is a
-            // property of the type, which is what that flag means.
-            ...(isEditableName ? {
-                isDynamic: true,
-                propertyName: primaryItem,
-                requiredType: primaryDefinition.requiredType,
-                internationalized: primaryDefinition.internationalized,
-                mandatory: primaryDefinition.mandatory,
-                valueKey: NAME_VALUE_KEY,
-                // What the record query has to fetch for the editor to prefill honestly. Handed
-                // over ready-made rather than rebuilt by the table, so the key it is stored under
-                // and the key it is read back by cannot come apart.
-                valueSelection: {
-                    key: NAME_VALUE_KEY,
-                    propertyName: primaryItem,
-                    requiredType: primaryDefinition.requiredType,
-                    multiple: false
-                }
-            } : {})
+            looseSeparators: !isProperty
         };
-    }, [data, t, labelsByProperty]);
+    }, [data, t]);
 
     const availableFields = useMemo(() => [
         ...COMMON_FIELDS.map(field => {

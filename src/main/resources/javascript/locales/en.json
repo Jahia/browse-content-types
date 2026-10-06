@@ -73,62 +73,10 @@
     "lock": {
       "locked": "Locked"
     },
-    "filter": {
-      "column": "Filter on {{column}}",
-      "apply": "Apply",
-      "clear": "Clear",
-      "remove": "Remove filter {{filter}}",
-      "clearAll": "Clear all filters",
-      "activeCount": "Filtered ({{count}})",
-      "valuePlaceholder": "Value",
-      "valueSeparator": " or ",
-      "publicationPartial": "Showing matches from the first {{read}} records of {{total}}. Narrow the search to see the rest.",
-      "operator": {
-        "contains": "contains",
-        "equals": "is",
-        "notEquals": "is not",
-        "startsWith": "starts with",
-        "empty": "is empty",
-        "notEmpty": "is not empty",
-        "gt": "greater than",
-        "gte": "at least",
-        "lt": "less than",
-        "lte": "at most",
-        "after": "after",
-        "before": "before",
-        "lastDays": "in the last (days)",
-        "isTrue": "is true",
-        "isFalse": "is false",
-        "notContains": "does not contain",
-        "is": "is",
-        "isNot": "is not",
-        "text": {
-          "equals": "is exactly"
-        },
-        "number": {
-          "equals": "equal to",
-          "gt": "superior to",
-          "lt": "inferior to",
-          "notEquals": "is not"
-        },
-        "choiceMultiple": {
-          "is": "contains",
-          "isNot": "does not contain"
-        },
-        "image": {
-          "notEmpty": "has an image",
-          "empty": "has no image"
-        },
-        "imageMultiple": {
-          "notEmpty": "contains an image",
-          "empty": "contains no image"
-        }
-      }
-    },
+
     "sort": {
       "column": "Sort by {{column}}"
     },
-    "noFilterResults": "No content of this type matches the filters.",
 
     "bulkField": {
       "count": "{{count}} record selected",

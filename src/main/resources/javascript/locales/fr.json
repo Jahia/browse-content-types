@@ -73,62 +73,10 @@
     "lock": {
       "locked": "Verrouillé"
     },
-    "filter": {
-      "column": "Filtrer sur {{column}}",
-      "apply": "Appliquer",
-      "clear": "Retirer",
-      "remove": "Retirer le filtre {{filter}}",
-      "clearAll": "Retirer tous les filtres",
-      "activeCount": "Filtré ({{count}})",
-      "valuePlaceholder": "Valeur",
-      "valueSeparator": " ou ",
-      "publicationPartial": "Résultats parmi les {{read}} premiers enregistrements sur {{total}}. Affinez la recherche pour voir le reste.",
-      "operator": {
-        "contains": "contient",
-        "equals": "est",
-        "notEquals": "n'est pas",
-        "startsWith": "commence par",
-        "empty": "est vide",
-        "notEmpty": "n'est pas vide",
-        "gt": "supérieur à",
-        "gte": "au moins",
-        "lt": "inférieur à",
-        "lte": "au plus",
-        "after": "après le",
-        "before": "avant le",
-        "lastDays": "dans les derniers (jours)",
-        "isTrue": "est vrai",
-        "isFalse": "est faux",
-        "notContains": "ne contient pas",
-        "is": "est",
-        "isNot": "n'est pas",
-        "text": {
-          "equals": "est exactement"
-        },
-        "number": {
-          "equals": "égal à",
-          "gt": "supérieur à",
-          "lt": "inférieur à",
-          "notEquals": "n'est pas"
-        },
-        "choiceMultiple": {
-          "is": "contient",
-          "isNot": "ne contient pas"
-        },
-        "image": {
-          "notEmpty": "a une image",
-          "empty": "n'a pas d'image"
-        },
-        "imageMultiple": {
-          "notEmpty": "contient une image",
-          "empty": "ne contient pas d'image"
-        }
-      }
-    },
+
     "sort": {
       "column": "Trier par {{column}}"
     },
-    "noFilterResults": "Aucun contenu de ce type ne correspond aux filtres.",
 
     "bulkField": {
       "count": "{{count}} enregistrement sélectionné",

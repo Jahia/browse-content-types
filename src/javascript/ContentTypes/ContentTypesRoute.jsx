@@ -7,7 +7,6 @@ import {GET_SITE_CONTENT_TYPES} from './ContentTypes.gql';
 import {ContentTypesTable} from './ContentTypesTable';
 import {ContentTypesToolBar} from './ContentTypesToolBar';
 import {useContentTypeColumns} from './useContentTypeColumns';
-import {useColumnFilters} from './useColumnFilters';
 import {NAMESPACE} from '../ContentTypes.register';
 import styles from './ContentTypes.module.scss';
 
@@ -62,17 +61,10 @@ export const ContentTypesRoute = () => {
     // dependency on every render.
     const clearSelection = useCallback(() => setSelection([]), []);
 
-    // Owned here for the same reason the columns are: the headers in the table set the filters and the
-    // toolbar above summarises them, so neither can hold the state the other needs. They live in the
-    // address bar rather than in this component, which is what makes a narrowed table a link.
-    const {filters, setFilter, clearFilter, clearAll} = useColumnFilters();
-
-    // Indexed over the whole catalog, not only what is shown: a filter carried in a shared link can
-    // name a column this reader has hidden, and it must still narrow the table and still be nameable
-    // in the summary.
+    // Indexed over the whole catalog, not only what is shown: the export dialog offers every column
+    // a record carries, including ones this reader has hidden from the table.
     const fieldsByKey = useMemo(
-        // Name is in here without being in the picker: it is always shown, but a filter on it still
-        // has to be built and still has to be nameable in the summary.
+        // Name is in here without being in the picker: it is always shown, and so never in it.
         () => new Map([...columns.availableFields, columns.nameField].map(field => [field.key, field])),
         [columns.availableFields, columns.nameField]
     );
@@ -107,14 +99,11 @@ export const ContentTypesRoute = () => {
                 moveField={columns.moveField}
                 resetToDefaults={columns.resetToDefaults}
                 selection={selection}
-                filters={filters}
                 fieldsByKey={fieldsByKey}
                 translatableFields={columns.translatableFields}
                 languages={columns.languages}
                 onSearchChange={setSearch}
                 onClearSelection={clearSelection}
-                onClearFilter={clearFilter}
-                onClearAllFilters={clearAll}
             />
             {/* Holds the table to the height the toolbar leaves rather than letting it run past the
                 bottom of the pane - which is what `flex: 1 1 0` with `min-height: 0` is for. */}
@@ -125,14 +114,10 @@ export const ContentTypesRoute = () => {
                     visibleFields={columns.visibleFields}
                     availableFields={columns.availableFields}
                     selection={selection}
-                    filters={filters}
-                    fieldsByKey={fieldsByKey}
                     translatableFields={columns.translatableFields}
                     languages={columns.languages}
                     searchableTextProperties={columns.searchableTextProperties}
                     onSelectionChange={setSelection}
-                    onSetFilter={setFilter}
-                    onClearFilter={clearFilter}
                 />
             </div>
         </div>

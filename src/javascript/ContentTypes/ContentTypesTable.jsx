@@ -3,18 +3,16 @@ import PropTypes from 'prop-types';
 import {useQuery} from '@apollo/client';
 import {shallowEqual, useSelector} from 'react-redux';
 import {useTranslation} from 'react-i18next';
-import {Button, Chip, DataTable, Loader, Lock, Menu, Pagination, SortIndicator, Thumbnail, Typography} from '@jahia/moonstone';
+import {Button, Chip, DataTable, Loader, Lock, Pagination, SortIndicator, Thumbnail, Typography} from '@jahia/moonstone';
 import {ContextualMenu, DisplayAction, registry} from '@jahia/ui-extender';
 import {ButtonRendererNoLabel} from '@jahia/jcontent';
 import {buildRecordQuery} from './ContentTypesRecordQuery';
 import {missingTranslations} from './ContentTypesTranslations';
 import {labelForValue} from './ContentTypesFieldTypes';
 import {MIN_SEARCH_LENGTH, sanitiseTokens} from './ContentTypesSearch';
-import {filterFor, matchesPublication, toNodeConstraint} from './ContentTypesFilters';
 import {WIDE_COMMON_FIELDS, columnWidthFor, commonColumnWidth} from './ContentTypesColumnWidth';
 import {siteRelativePath} from './ContentTypesPaths';
 import {isBulkSelection} from './ContentTypesSelection';
-import {ContentTypesFilterOverlay} from './ContentTypesFilterOverlay';
 import {NAMESPACE} from '../ContentTypes.register';
 import styles from './ContentTypes.module.scss';
 
@@ -102,11 +100,11 @@ const humanise = status => status.toLowerCase().replace(/_/g, ' ');
 /**
  * A column's sort control: the arrow in its header, and only the arrow.
  *
- * Moonstone sorts from the whole header cell, which put sorting and filtering behind one click -
- * opening a column's funnel re-sorted the table on the way in. Confining that to the arrow with
- * `pointer-events` did not work either: the rule matched `[class*='sort']`, and the indicator's base
- * class is `moonstone-SortIndicator`, so only `-sorted` ever matched. The arrow of a column that was
- * not already sorted took no clicks at all, which left no way to sort by a different column.
+ * Moonstone sorts from the whole header cell, which made the whole heading a sort control.
+ * Confining that to the arrow with `pointer-events` did not work either: the rule matched
+ * `[class*='sort']`, and the indicator's base class is `moonstone-SortIndicator`, so only `-sorted`
+ * ever matched. The arrow of a column that was not already sorted took no clicks at all, which left
+ * no way to sort by a different column.
  *
  * So the sort is ours: the column carries no `isSortable`, the table is given no `onSortChange`, and
  * this button is the only thing that reorders anything. Two buttons, two meanings, and the arrow is
@@ -137,73 +135,6 @@ ColumnSortControl.propTypes = {
     isSorted: PropTypes.bool,
     direction: PropTypes.oneOf(['ascending', 'descending']),
     onToggle: PropTypes.func.isRequired
-};
-
-/**
- * A column's heading, which is also the way to filter it.
- *
- * The funnel that used to sit beside it cost width in every filterable header, and a header has
- * little to spare - the label was already the first thing to be truncated. So the label is the
- * control. Nothing is lost by that now: sorting moved to its own arrow, so a click on the heading
- * has only one meaning, which was the objection to making it clickable in the first place.
- *
- * A real button rather than a span with a handler, so the heading is reachable by keyboard and
- * announces that it opens something. It carries no button chrome - see .headerLabelFilterable, which
- * strips it back to text and keeps the truncation the plain heading has.
- *
- * A column with a condition on it is coloured rather than badged, which says the whole of what the
- * funnel's active state used to say and costs no width at all.
- */
-const FilterableColumnLabel = ({field, filter, label, title, onApply, onClear}) => {
-    const anchor = useRef();
-    const [isOpen, setOpen] = useState(false);
-
-    const classes = [styles.headerLabel, styles.headerLabelFilterable];
-    if (filter) {
-        classes.push(styles.headerLabelFiltered);
-    }
-
-    return (
-        <>
-            <button
-                ref={anchor}
-                type="button"
-                className={classes.join(' ')}
-                title={title}
-                aria-haspopup="dialog"
-                aria-expanded={isOpen}
-                // Says whether a condition is in force, for the tests and for anything reading the
-                // header without seeing its colour.
-                data-sel-role={filter ? 'column-filter-active' : 'column-filter'}
-                onClick={() => setOpen(open => !open)}
-            >
-                {label}
-            </button>
-            <Menu
-                hasSearch={false}
-                isDisplayed={isOpen}
-                anchorEl={anchor}
-                onClose={() => setOpen(false)}
-            >
-                <ContentTypesFilterOverlay
-                    field={field}
-                    filter={filter}
-                    onApply={onApply}
-                    onClear={onClear}
-                    onClose={() => setOpen(false)}
-                />
-            </Menu>
-        </>
-    );
-};
-
-FilterableColumnLabel.propTypes = {
-    field: PropTypes.object.isRequired,
-    filter: PropTypes.object,
-    label: PropTypes.string.isRequired,
-    title: PropTypes.string.isRequired,
-    onApply: PropTypes.func.isRequired,
-    onClear: PropTypes.func.isRequired
 };
 
 /**
@@ -631,20 +562,6 @@ const renderDynamicField = (field, payload, context) => {
 
 const toRow = node => ({...node, displayName: node.displayName || node.name});
 
-/** The column whose filter this table answers itself. */
-const PUBLICATION_FILTER_KEY = 'publicationStatus';
-
-/**
- * How many records this table will read at once to answer a publication filter.
- *
- * Publication status is not a property, so the repository cannot narrow by it and cannot count what
- * matches - the records have to be read and sorted through here. That is fine for a type with a few
- * hundred of them and wrong for one with a hundred thousand, so there is a ceiling, and past it the
- * table says the answer is partial rather than quietly showing a page of a set it never saw the whole
- * of.
- */
-const PUBLICATION_FILTER_CEILING = 2000;
-
 /**
  * Each word matched two ways at once, as `(word OR word*)`.
  *
@@ -691,15 +608,11 @@ export const ContentTypesTable = ({
     contentType,
     search,
     visibleFields,
-    filters,
-    fieldsByKey,
     translatableFields,
     searchableTextProperties,
     languages,
     selection,
-    onSelectionChange,
-    onSetFilter,
-    onClearFilter
+    onSelectionChange
 }) => {
     const {t} = useTranslation(NAMESPACE);
     const {site, language, uilang} = useSelector(state => ({
@@ -734,7 +647,7 @@ export const ContentTypesTable = ({
     // type that has content.
     useEffect(() => {
         setCurrentPage(1);
-    }, [contentType, terms, filters]);
+    }, [contentType, terms]);
 
     // The selection only ever holds rows that are on screen.
     //
@@ -750,7 +663,7 @@ export const ContentTypesTable = ({
     // this table is entitled to.
     useEffect(() => {
         onSelectionChange([]);
-    }, [site, contentType, terms, filters, currentPage, itemsPerPage, sortBy, sortDirection, onSelectionChange]);
+    }, [site, contentType, terms, currentPage, itemsPerPage, sortBy, sortDirection, onSelectionChange]);
 
     // Reset the sort whenever the chosen column disappears - hiding a column that the table was
     // sorted by would otherwise keep silently requesting a sort the picker no longer offers.
@@ -761,19 +674,11 @@ export const ContentTypesTable = ({
         }
     }, [visibleFields, sortBy]);
 
-    const nameField = fieldsByKey.get('displayName');
-
-    /*
-     * The type's own columns that are on screen, plus one selection that is on no column: the
-     * primary item's stored value, which the Name column's editor needs and `displayName` cannot
-     * give it - that falls back to the node's own name when the property is empty. Fetched under a
-     * key of its own so the cell can go on drawing the resolved name while the editor starts from
-     * what is really stored. See NAME_VALUE_KEY.
-     */
-    const dynamicFields = useMemo(() => {
-        const own = visibleFields.filter(field => field.isDynamic);
-        return nameField?.valueSelection ? [...own, nameField.valueSelection] : own;
-    }, [visibleFields, nameField]);
+    /** The type's own columns that are on screen, which are the ones the query has to ask for. */
+    const dynamicFields = useMemo(
+        () => visibleFields.filter(field => field.isDynamic),
+        [visibleFields]
+    );
 
     // Rebuilt only when the set of content-type-specific columns actually shown changes - not on
     // every render, and not when a common field becomes visible, since those are always fetched.
@@ -821,49 +726,32 @@ export const ContentTypesTable = ({
     }, [sortBy, sortDirection, visibleFields]);
 
     /**
-     * Everything being asked of the records, as one constraint.
+     * What is being asked of the records, as one constraint.
      *
-     * A search and the column filters are the same kind of thing to the repository, so they are built
-     * together here and composed with `all`. The search keeps its own three ways of matching - full
-     * text, the tag list, and the node name as a substring - which stay an `any` of their own, so a
-     * search still widens across those three while a filter narrows.
+     * The search's own three ways of matching - full text, the tag list, and the node name as a
+     * substring - are an `any`, so a search widens across the three rather than narrowing through
+     * them.
      */
-    const nodeConstraint = useMemo(() => {
-        const searchConstraint = isSearching ? {
-            any: [
-                {contains: terms},
-                {contains: terms, property: 'j:tagList'},
-                // LOWER_CASE lowercases the column server-side, so an upper-case pattern would never
-                // match. jContent lowercases the pattern here for the same reason.
-                {like: nameTerms, property: 'j:nodename', function: 'LOWER_CASE'},
-                // One substring arm per text property, so a fragment from the middle of a word
-                // matches. The full-text arms above are whole-word-or-prefix, which is why "rovenc"
-                // found nothing while "provence" found 27 - and why the only mid-word matching there
-                // used to be on the system name, making it look arbitrary. See
-                // searchableTextProperties for what this costs.
-                ...searchableTextProperties.map(property => ({
-                    like: nameTerms,
-                    property,
-                    function: 'LOWER_CASE'
-                }))
-            ]
-        } : null;
-
-        return toNodeConstraint(filters, fieldsByKey, searchConstraint);
+    const nodeConstraint = useMemo(() => (isSearching ? {
+        any: [
+            {contains: terms},
+            {contains: terms, property: 'j:tagList'},
+            // LOWER_CASE lowercases the column server-side, so an upper-case pattern would never
+            // match. jContent lowercases the pattern here for the same reason.
+            {like: nameTerms, property: 'j:nodename', function: 'LOWER_CASE'},
+            // One substring arm per text property, so a fragment from the middle of a word matches.
+            // The full-text arms above are whole-word-or-prefix, which is why "rovenc" found nothing
+            // while "provence" found 27 - and why the only mid-word matching there used to be on the
+            // system name, making it look arbitrary. See searchableTextProperties for what this
+            // costs.
+            ...searchableTextProperties.map(property => ({
+                like: nameTerms,
+                property,
+                function: 'LOWER_CASE'
+            }))
+        ]
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isSearching, terms, nameTerms, filters, fieldsByKey, searchablePropertiesKey]);
-
-    /**
-     * The publication filter, when one is set.
-     *
-     * Its presence changes how the table is read: a page at a time is no use when the thing being
-     * filtered on is not something the query can narrow by, so the records are read up to the ceiling
-     * and both the filtering and the paging happen here instead.
-     */
-    const publicationFilter = useMemo(
-        () => filters.find(filter => filter.c === PUBLICATION_FILTER_KEY) || null,
-        [filters]
-    );
+    } : null), [isSearching, terms, nameTerms, searchablePropertiesKey]);
 
     const ready = Boolean(site) && Boolean(contentType);
 
@@ -872,8 +760,8 @@ export const ContentTypesTable = ({
             sitePath: `/sites/${site}`,
             type: contentType,
             language,
-            offset: publicationFilter ? 0 : (currentPage - 1) * itemsPerPage,
-            limit: publicationFilter ? PUBLICATION_FILTER_CEILING : itemsPerPage,
+            offset: (currentPage - 1) * itemsPerPage,
+            limit: itemsPerPage,
             fieldSorter,
             ordering,
             nodeConstraint
@@ -1036,25 +924,9 @@ export const ContentTypesTable = ({
          * below its own width, and a long one pushed the sort arrow out of the cell. The full text stays
          * on hover, the way a truncated name does.
          */
-        const headerLabel = (label, sortKey, isSortable, field) => (
+        const headerLabel = (label, sortKey, isSortable) => (
             <>
-                {/* A kind of filter is the whole test. It used to also require a property to
-                    constrain, which was true of every filterable column until publication status -
-                    which is answered here rather than by the repository and so has none. */}
-                {field?.filterType ? (
-                    <FilterableColumnLabel
-                        field={field}
-                        filter={filterFor(filters, field.key)}
-                        label={label}
-                        // Names the column in full, so it doubles as the tooltip a truncated heading
-                        // needs - which is the one thing the plain heading used its title for.
-                        title={t('label.filter.column', {column: label})}
-                        onApply={filter => onSetFilter(field.key, filter)}
-                        onClear={() => onClearFilter(field.key)}
-                    />
-                ) : (
-                    <span className={styles.headerLabel} title={label}>{label}</span>
-                )}
+                <span className={styles.headerLabel} title={label}>{label}</span>
                 {isSortable && (
                     <ColumnSortControl
                         label={t('label.sort.column', {column: label})}
@@ -1075,13 +947,13 @@ export const ContentTypesTable = ({
             key: field.key,
             // An arrow if the hook found either way of ordering it. What is left without one is a
             // multi-valued property, which has no single value to order a row by.
-            label: headerLabel(field.label, field.key, Boolean(field.sortJcrProperty || field.sortProperty), field),
+            label: headerLabel(field.label, field.key, Boolean(field.sortJcrProperty || field.sortProperty)),
             width: columnWidthFor(field),
             isScrollable: true,
             render: ({value}) => renderDynamicField(field, value, renderContext)
         } : {
             key: field.key,
-            label: headerLabel(field.label, field.key, Boolean(field.sortProperty), field),
+            label: headerLabel(field.label, field.key, Boolean(field.sortProperty)),
             width: commonColumnWidth(field.key),
             isScrollable: WIDE_COMMON_FIELDS.has(field.key),
             render: ({data: row}) => COMMON_RENDERERS[field.key](row, renderContext)
@@ -1090,7 +962,7 @@ export const ContentTypesTable = ({
         return [
             {
                 key: 'displayName',
-                label: headerLabel(t('label.table.name'), 'displayName', true, nameField),
+                label: headerLabel(t('label.table.name'), 'displayName', true),
                 width: NAME_COLUMN_WIDTH,
                 // Bounded and scrollable, the way every other text column already was. The whole
                 // name is in the cell, so hovering it scrolls through the part that does not fit;
@@ -1122,7 +994,7 @@ export const ContentTypesTable = ({
                 ))
             }
         ];
-    }, [visibleFields, t, renderContext, isBulk, filters, fieldsByKey, nameField, onSetFilter, onClearFilter, sortBy, sortDirection, toggleSort]);
+    }, [visibleFields, t, renderContext, isBulk, sortBy, sortDirection, toggleSort]);
 
     // Falling back to previousData keeps the table on screen while a page or sort change is in
     // flight, instead of collapsing to a loader and back on every click.
@@ -1133,31 +1005,8 @@ export const ContentTypesTable = ({
     const fetched = useMemo(() => (connection?.nodes || []).map(toRow), [connection]);
     const serverTotal = connection?.pageInfo?.totalCount || 0;
 
-    // The status the chip shows is the status the filter reads - the same field, in the same
-    // language - so a row can never be hidden by a condition its own cell contradicts.
-    const matching = useMemo(() => (publicationFilter ?
-        fetched.filter(row => matchesPublication(
-            publicationFilter,
-            row.aggregatedPublicationInfo?.publicationStatus
-        )) :
-        fetched), [fetched, publicationFilter]);
-
-    const rows = useMemo(() => {
-        if (!publicationFilter) {
-            return matching;
-        }
-
-        const from = (currentPage - 1) * itemsPerPage;
-        return matching.slice(from, from + itemsPerPage);
-    }, [matching, publicationFilter, currentPage, itemsPerPage]);
-
-    // What was matched, not what the repository counted: the query knows nothing about the status, so
-    // its own total is the unfiltered one and would page to rows that are not there.
-    const totalItems = publicationFilter ? matching.length : serverTotal;
-
-    // More records of this type than were read, so what is on screen is drawn from the first
-    // PUBLICATION_FILTER_CEILING of them rather than from all of them.
-    const partialAnswer = Boolean(publicationFilter) && serverTotal > PUBLICATION_FILTER_CEILING;
+    const rows = fetched;
+    const totalItems = serverTotal;
 
     // What a bulk action deleted is gone from the rows the refetch brings back, but would otherwise
     // still be selected - and the bar would still be offering to act on it. Dropping whatever the
@@ -1184,9 +1033,7 @@ export const ContentTypesTable = ({
     if (totalItems === 0) {
         return (
             <Typography className={styles.message} variant="body" data-sel-role="content-empty">
-                {isSearching ?
-                    t('label.noSearchResults', {terms: typed}) :
-                    t(filters.length > 0 ? 'label.noFilterResults' : 'label.noContent')}
+                {isSearching ? t('label.noSearchResults', {terms: typed}) : t('label.noContent')}
             </Typography>
         );
     }
@@ -1201,11 +1048,6 @@ export const ContentTypesTable = ({
                 that can grow taller than the viewport, and ended up drawn over the last rows
                 instead of pinned below them.
             */}
-            {partialAnswer && (
-                <Typography className={styles.message} variant="caption" data-sel-role="publication-partial">
-                    {t('label.filter.publicationPartial', {read: PUBLICATION_FILTER_CEILING, total: serverTotal})}
-                </Typography>
-            )}
             <div className={styles.tableScroll}>
                 <DataTable
                     enableSelection
@@ -1259,10 +1101,6 @@ ContentTypesTable.propTypes = {
     contentType: PropTypes.string.isRequired,
     search: PropTypes.string,
     visibleFields: PropTypes.array,
-    /** The conditions narrowing the table, and every field they could name - including ones whose
-     *  column is hidden, since a filter in a shared link outlives a column choice held in a browser. */
-    filters: PropTypes.array.isRequired,
-    fieldsByKey: PropTypes.instanceOf(Map).isRequired,
     /** Every translatable property of the type, for the missing-translations column. Inherited ones
      *  included, which is why it comes from the type definition rather than from the columns. */
     translatableFields: PropTypes.array,
@@ -1270,8 +1108,6 @@ ContentTypesTable.propTypes = {
     languages: PropTypes.array,
     /** The type's text properties, each given a substring arm so a search matches inside a word. */
     searchableTextProperties: PropTypes.array,
-    onSetFilter: PropTypes.func.isRequired,
-    onClearFilter: PropTypes.func.isRequired,
     /** The ticked rows, held above so the toolbar can act on them. Whole rows rather than paths,
      *  because the bar names them and reads their node type flags. */
     selection: PropTypes.array.isRequired,

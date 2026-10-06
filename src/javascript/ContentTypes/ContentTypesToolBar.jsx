@@ -1,13 +1,12 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
-import {Button, Close, CustomDropdown, Filter, SearchInput, Typography} from '@jahia/moonstone';
+import {CustomDropdown, SearchInput, Typography} from '@jahia/moonstone';
 import {ColumnsIcon} from './ColumnsIcon';
 import {ContentTypesColumnsPicker} from './ContentTypesColumnsPicker';
 import {ContentTypesCreateAction} from './ContentTypesCreateAction';
 import {ContentTypesSelectionBar} from './ContentTypesSelectionBar';
 import {MIN_SEARCH_LENGTH, isSearchTooShort} from './ContentTypesSearch';
-import {describeFilter} from './ContentTypesFilters';
 import {isBulkSelection} from './ContentTypesSelection';
 import {NAMESPACE} from '../ContentTypes.register';
 import styles from './ContentTypes.module.scss';
@@ -18,12 +17,6 @@ import styles from './ContentTypes.module.scss';
  * The create action opens a new record of the listed type, the search box narrows the table across
  * every field at once, and the columns icon opens the picker for which fields the table shows, and
  * in what order.
- *
- * Filter is the summary, not the way in, and it appears only once there is something to summarise.
- * Conditions are set from the column headers, where the column is; this gathers up whatever is in
- * force so that a condition on a column since scrolled past, or since hidden, is never narrowing the
- * table with nothing on screen to say why. Each one is also named in the line itself, beside the
- * button, so that reading why the table is short does not take a click.
  *
  * Ticking SEVERAL rows replaces all of that with what can be done to them, in the same place: while
  * a set is being acted on, the controls for finding content are not what is being asked for, and a
@@ -51,12 +44,9 @@ export const ContentTypesToolBar = ({
     resetToDefaults,
     selection,
     onClearSelection,
-    filters,
     fieldsByKey,
     translatableFields,
-    languages,
-    onClearFilter,
-    onClearAllFilters
+    languages
 }) => {
     const {t} = useTranslation(NAMESPACE);
 
@@ -100,82 +90,6 @@ export const ContentTypesToolBar = ({
                         >
                             {t('label.toolbar.searchTooShort', {count: MIN_SEARCH_LENGTH})}
                         </Typography>
-                    )}
-                    {/* Nothing about filters is drawn until one is in force. Conditions are
-                        created from the column headers, not from here, so an empty Filter control
-                        would only invite a click that leads nowhere. Once something is narrowing the
-                        table it is named in the line itself, and the button beside it carries the
-                        whole list and the way to clear them all at once - which is what a shortened
-                        chip cannot do. */}
-                    {filters.length > 0 && (
-                        <>
-                            <CustomDropdown
-                                variant="ghost"
-                                icon={<Filter/>}
-                                label={t('label.filter.activeCount', {count: filters.length})}
-                                data-sel-role="toolbar-filter"
-                            >
-                                <div className={styles.filterSummary} data-sel-role="filter-summary">
-                                    {filters.map(filter => (
-                                        <div key={filter.c} className={styles.filterSummaryRow}>
-                                            <Typography isNowrap variant="body">
-                                                {describeFilter(filter, fieldsByKey.get(filter.c), t)}
-                                            </Typography>
-                                            <Button
-                                                variant="ghost"
-                                                size="small"
-                                                icon={<Close/>}
-                                                aria-label={t('label.filter.clear')}
-                                                data-sel-role="filter-summary-remove"
-                                                onClick={() => onClearFilter(filter.c)}
-                                            />
-                                        </div>
-                                    ))}
-                                    <div className={styles.filterSummaryFooter}>
-                                        <Button
-                                            variant="ghost"
-                                            label={t('label.filter.clearAll')}
-                                            data-sel-role="filter-clear-all"
-                                            onClick={onClearAllFilters}
-                                        />
-                                    </div>
-                                </div>
-                            </CustomDropdown>
-
-                            {/* The same conditions spelled out in the line itself, so that reading
-                                why the table is short does not take a click. */}
-                            <div className={styles.activeFilters} data-sel-role="active-filters">
-                                {filters.map(filter => {
-                                    const described = describeFilter(filter, fieldsByKey.get(filter.c), t);
-
-                                    return (
-                                        <span
-                                            key={filter.c}
-                                            className={styles.activeFilter}
-                                            data-sel-role="active-filter"
-                                            data-sel-filter={filter.c}
-                                        >
-                                            <Typography
-                                                isNowrap
-                                                variant="caption"
-                                                className={styles.activeFilterLabel}
-                                                title={described}
-                                            >
-                                                {described}
-                                            </Typography>
-                                            <Button
-                                                variant="ghost"
-                                                size="small"
-                                                icon={<Close/>}
-                                                aria-label={t('label.filter.remove', {filter: described})}
-                                                data-sel-role="active-filter-remove"
-                                                onClick={() => onClearFilter(filter.c)}
-                                            />
-                                        </span>
-                                    );
-                                })}
-                            </div>
-                        </>
                     )}
                 </>
             )}
@@ -225,11 +139,8 @@ ContentTypesToolBar.propTypes = {
     /** The ticked rows. Empty means nothing is selected, and the browse controls hold the line. */
     selection: PropTypes.array.isRequired,
     onClearSelection: PropTypes.func.isRequired,
-    /** The conditions currently narrowing the table, gathered from the column headers. */
-    filters: PropTypes.array.isRequired,
-    fieldsByKey: PropTypes.instanceOf(Map).isRequired,
-    onClearFilter: PropTypes.func.isRequired,
-    onClearAllFilters: PropTypes.func.isRequired
+    /** Every column a record could be exported by, which the export dialog offers. */
+    fieldsByKey: PropTypes.instanceOf(Map).isRequired
 };
 
 export default ContentTypesToolBar;

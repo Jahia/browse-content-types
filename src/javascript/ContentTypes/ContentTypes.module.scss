@@ -118,37 +118,6 @@
 }
 
 /*
- * A heading that opens its filter, looking like the heading it replaced.
- *
- * Everything a button brings of its own is taken back off - box, background, padding, the inherited
- * font it does not inherit - so the only difference a reader sees from a plain heading is the cursor,
- * and the colour once a condition is in force. `text-align` matters because a button centres its
- * text where a heading does not, and `width: 100%` keeps the click target the whole of the space the
- * heading occupies rather than only the glyphs.
- */
-.headerLabelFilterable {
-    width: 100%;
-    padding: 0;
-
-    border: 0;
-
-    color: inherit;
-    font: inherit;
-    text-align: left;
-
-    background: none;
-    cursor: pointer;
-}
-
-/*
- * Says this column is narrowing the table, in the one place a reader is already looking. It is the
- * whole of what the funnel's active state used to convey, without the width a funnel cost.
- */
-.headerLabelFiltered {
-    color: var(--color-accent_dark);
-}
-
-/*
  * The row menu stays put while the columns scroll under it.
  *
  * It is the last cell on the line, so with enough columns chosen it was the first thing to leave the
@@ -304,13 +273,7 @@
 }
 
 /*
- * A column's filter control, in the header beside the label.
- *
- * Hit testing is given back explicitly: the header cell has it taken away, which is what confines
- * sorting to the arrow, and a descendant that re-enables it still bubbles its own clicks.
- */
-/*
- * The two header controls. Each keeps its own width whatever the label does, so a long heading
+ * The header controls. Each keeps its own width whatever the label does, so a long heading
  * shortens itself rather than squeezing them out of the cell.
  *
  * Neither needs `pointer-events`. The cell used to sort on click, so sorting had to be confined by
@@ -341,92 +304,6 @@
 
 .headerSortInactive:hover svg {
     color: var(--color-gray_dark);
-}
-
-/* A column that is currently narrowing the table says so where the condition was set, not only in
-   the summary above. */
-
-.filterOverlay {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    width: 260px;
-    padding: 12px;
-}
-
-.filterOverlayFooter {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding-top: 8px;
-
-    border-top: 1px solid var(--color-gray_light40);
-}
-
-/* Every condition in force, listed where the Filter control opens. */
-.filterSummary {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    min-width: 260px;
-    max-width: 420px;
-    padding: 12px;
-}
-
-.filterSummaryRow {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.filterSummaryRow > :first-child {
-    flex: 1 1 auto;
-    min-width: 0;
-}
-
-.filterSummaryFooter {
-    display: flex;
-    justify-content: flex-end;
-    padding-top: 8px;
-
-    border-top: 1px solid var(--color-gray_light40);
-}
-
-/*
- * The conditions in force, named in the toolbar beside the Filter button.
- *
- * Truncated one at a time and never wrapped: the toolbar is a single line, and one long condition on
- * a long column name would otherwise push the columns control off the end of it. Each carries its
- * full text as a tooltip, and the dropdown still lists every one, so a shortened chip is never the
- * only place a condition can be read.
- */
-.activeFilters {
-    display: flex;
-    flex: 0 1 auto;
-    align-items: center;
-    gap: 4px;
-    min-width: 0;
-    overflow: hidden;
-}
-
-.activeFilter {
-    display: flex;
-    flex: 0 1 auto;
-    align-items: center;
-    min-width: 0;
-    max-width: 240px;
-    padding-left: 8px;
-
-    border-radius: 16px;
-    background-color: var(--color-gray_light40);
-}
-
-.activeFilterLabel {
-    min-width: 0;
-    overflow: hidden;
-
-    white-space: nowrap;
-    text-overflow: ellipsis;
 }
 
 .subtitle {
@@ -924,7 +801,8 @@
  *
  * In the toolbar rather than under the table: it is about what has been typed, so it belongs beside
  * the box it is about. `white-space: nowrap` because the toolbar is a flex row - allowed to wrap, the
- * sentence would push the filter controls onto a second line as it appeared and back as it went.
+ * sentence would push the controls beside it onto a second line as it appeared and back as it
+ * went.
  */
 .searchHint {
     color: var(--color-gray);
