@@ -23,8 +23,7 @@
       "editValue": "Replace a value",
       "tag": "Tag",
       "categorize": "Categorize",
-      "export": "Export",
-      "assignTo": "Assign to"
+      "export": "Export"
     },
     "settings": {
       "title": "Content Types",
@@ -130,20 +129,7 @@
       "column": "Sort by {{column}}"
     },
     "noFilterResults": "No content of this type matches the filters.",
-    "assign": {
-      "title": "Assign content",
-      "count": "{{count}} record selected",
-      "count_plural": "{{count}} records selected",
-      "taskTitle": "Task title",
-      "description": "Description",
-      "dueDate": "Due date (optional)",
-      "assignee": "Assign to",
-      "assigneePlaceholder": "Search a user who can edit this site",
-      "noEditors": "Nobody on this site has permission to edit its content.",
-      "cancel": "Cancel",
-      "submit": "Create task",
-      "failed": "The task could not be created. Check that you may edit this site, then try again."
-    },
+
     "bulkField": {
       "count": "{{count}} record selected",
       "count_plural": "{{count}} records selected",
@@ -232,8 +218,6 @@
     "undo": {
       "property": "{{label}} replaced on {{count}} record.",
       "property_plural": "{{label}} replaced on {{count}} records.",
-      "task": "Task created for {{count}} record.",
-      "task_plural": "Task created for {{count}} records.",
       "action": "Undo",
       "actionWith": "Undo — {{message}}",
       "dismiss": "Dismiss",

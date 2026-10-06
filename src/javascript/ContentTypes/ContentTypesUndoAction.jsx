@@ -2,7 +2,6 @@ import React, {useState} from 'react';
 import {useTranslation} from 'react-i18next';
 import {useApolloClient} from '@apollo/client';
 import {Button, Close, Undo} from '@jahia/moonstone';
-import {DELETE_TASK} from './ContentTypes.gql';
 import {
     buildRestoreDocument,
     buildRestoreVariables,
@@ -51,31 +50,27 @@ export const ContentTypesUndoAction = () => {
         setIsUndoing(true);
         setFailed(false);
         try {
-            if (snapshot.kind === 'task') {
-                await client.mutate({mutation: DELETE_TASK, variables: {uuid: snapshot.uuid}});
-            } else {
-                // One aliased mutateNode per record, because each goes back to its own previous
-                // value - which is exactly what a single mutateNodes cannot do.
+            // One aliased mutateNode per record, because each goes back to its own previous
+            // value - which is exactly what a single mutateNodes cannot do.
+            await client.mutate({
+                mutation: buildRestoreDocument(snapshot),
+                variables: buildRestoreVariables(snapshot)
+            });
+
+            // Second, and only once the values are back. Restoring a value is itself a write and
+            // moves jcr:lastModified forward again, so doing both in one document would leave the
+            // stamp pointing at the moment of the undo - which is exactly the state this exists to
+            // correct.
+            if (snapshot.timestamps?.length > 0) {
                 await client.mutate({
-                    mutation: buildRestoreDocument(snapshot),
-                    variables: buildRestoreVariables(snapshot)
+                    mutation: buildTimestampDocument(snapshot.timestamps),
+                    variables: buildTimestampVariables(snapshot.timestamps)
                 });
-
-                // Second, and only once the values are back. Restoring a value is itself a write
-                // and moves jcr:lastModified forward again, so doing both in one document would
-                // leave the stamp pointing at the moment of the undo - which is exactly the state
-                // this exists to correct.
-                if (snapshot.timestamps?.length > 0) {
-                    await client.mutate({
-                        mutation: buildTimestampDocument(snapshot.timestamps),
-                        variables: buildTimestampVariables(snapshot.timestamps)
-                    });
-                }
-
-                // Asked for once, at the end, so the table reads the record as it finally stands
-                // rather than between the two writes.
-                await client.refetchQueries({include: ['getContentByType']});
             }
+
+            // Asked for once, at the end, so the table reads the record as it finally stands rather
+            // than between the two writes.
+            await client.refetchQueries({include: ['getContentByType']});
 
             clearUndo();
         } catch {

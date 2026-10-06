@@ -1,11 +1,9 @@
 import React, {useCallback, useMemo, useState} from 'react';
 import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
-import {shallowEqual, useSelector} from 'react-redux';
 import {Button, ButtonGroup, Cancel, ChevronDown, Separator, Typography} from '@jahia/moonstone';
 import {DisplayAction, DisplayActions} from '@jahia/ui-extender';
 import {ButtonRenderer, ButtonRendererNoLabel, ButtonRendererShortLabel} from '@jahia/jcontent';
-import {ContentTypesAssignDialog} from './ContentTypesAssignDialog';
 import {ContentTypesBulkFieldDialog} from './ContentTypesBulkFieldDialog';
 import {ContentTypesBulkEditDialog} from './ContentTypesBulkEditDialog';
 import {ContentTypesUndoAction} from './ContentTypesUndoAction';
@@ -53,16 +51,12 @@ export const ContentTypesSelectionBar = ({
     onClear
 }) => {
     const {t} = useTranslation(NAMESPACE);
-    const {site} = useSelector(state => ({site: state.site}), shallowEqual);
 
-    // Assign opens a form, and an action's onClick has no React of its own to render one in. So the
-    // bar owns the dialog and hands the action the way to ask for it - which keeps every entry in
-    // the menu a plain onClick, the way Export as CSV is, rather than making one of the four a
-    // component and the rest not.
-    const [isAssigning, setIsAssigning] = useState(false);
-    const openAssign = useCallback(() => setIsAssigning(true), []);
-    const closeAssign = useCallback(() => setIsAssigning(false), []);
-
+    // Tag and Categorize opens a form, and an action's onClick has no React of its own to render
+    // one in. So the bar owns the dialogs and hands each action the way to ask for one - which keeps
+    // every entry in the menu a plain onClick, the way Export as CSV is, rather than making one of
+    // them a component and the rest not.
+    //
     // Tag and Categorize open the same dialog on different fields, so one piece of state holds
     // which of the two is open rather than two booleans that must never both be true.
     const [bulkFieldKey, setBulkFieldKey] = useState(null);
@@ -98,8 +92,8 @@ export const ContentTypesSelectionBar = ({
     // Memoised for the same reason `paths` is - the menu is a PureComponent, and an object rebuilt
     // on every render would reopen its whole item list each time anything above this re-rendered.
     const bulkContext = useMemo(
-        () => ({...context, nodes, fields, contentType, t, openAssign, openBulkField, openExport, openBulkEdit}),
-        [context, nodes, fields, contentType, t, openAssign, openBulkField, openExport, openBulkEdit]
+        () => ({...context, nodes, fields, contentType, t, openBulkField, openExport, openBulkEdit}),
+        [context, nodes, fields, contentType, t, openBulkField, openExport, openBulkEdit]
     );
 
     return (
@@ -189,14 +183,6 @@ export const ContentTypesSelectionBar = ({
 
             {/* Mounted only while open, so the queries behind it are not run for a menu nobody
                 opened, and so a cancelled form does not keep what was typed into it. */}
-            {isAssigning && (
-                <ContentTypesAssignDialog
-                    isOpen
-                    nodes={nodes}
-                    siteKey={site}
-                    onClose={closeAssign}
-                />
-            )}
             {isEditing && (
                 <ContentTypesBulkEditDialog
                     isOpen

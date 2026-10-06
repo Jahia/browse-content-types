@@ -65,9 +65,6 @@ export const buildSnapshot = ({kind, label, property, type, language, multiple, 
     count: entries.length
 });
 
-/** A snapshot of the task an Assign to raised, which is undone by removing it again. */
-export const taskSnapshot = ({label, uuid, count}) => ({kind: 'task', label, uuid, count});
-
 /**
  * The mutation that puts every record back, in one document.
  *
@@ -161,7 +158,7 @@ export const affectedCount = snapshot => (snapshot?.entries || []).length;
  * that is what the reader recognises when they look back at the table - the tags went, not "the tag
  * operation happened".
  */
-export const undoMessageKey = snapshot => (snapshot?.kind === 'task' ? 'label.undo.task' : 'label.undo.property');
+export const undoMessageKey = () => 'label.undo.property';
 
 /**
  * The stamps a record carried before the operation, flattened.

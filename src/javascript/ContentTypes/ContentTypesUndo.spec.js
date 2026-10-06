@@ -8,7 +8,6 @@ import {
     buildTimestampVariables,
     captureUndo,
     snapshotEntries,
-    taskSnapshot,
     timestampEntries,
     undoMessageKey
 } from './ContentTypesUndo';
@@ -186,16 +185,8 @@ describe('ContentTypesUndo', () => {
             expect(affectedCount(built)).toBe(2);
         });
 
-        // Assign to created something rather than replacing anything, so there is no previous value
-        // - taking it back means removing the task again.
-        it('records a task by its uuid rather than by previous values', () => {
-            const built = taskSnapshot({label: 'Assign content', uuid: 'task-uuid', count: 3});
-            expect(built).toEqual({kind: 'task', label: 'Assign content', uuid: 'task-uuid', count: 3});
-        });
-
-        it('names each kind of operation differently in the bar', () => {
+        it('names the operation by the column it touched', () => {
             expect(undoMessageKey(snapshot())).toBe('label.undo.property');
-            expect(undoMessageKey(taskSnapshot({uuid: 'x'}))).toBe('label.undo.task');
         });
     });
 

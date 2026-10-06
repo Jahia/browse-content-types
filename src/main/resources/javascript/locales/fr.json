@@ -23,8 +23,7 @@
       "editValue": "Remplacer une valeur",
       "tag": "Ajouter des tags",
       "categorize": "Catégoriser",
-      "export": "Exporter",
-      "assignTo": "Assigner à"
+      "export": "Exporter"
     },
     "settings": {
       "title": "Types de contenu",
@@ -130,20 +129,7 @@
       "column": "Trier par {{column}}"
     },
     "noFilterResults": "Aucun contenu de ce type ne correspond aux filtres.",
-    "assign": {
-      "title": "Assigner du contenu",
-      "count": "{{count}} enregistrement sélectionné",
-      "count_plural": "{{count}} enregistrements sélectionnés",
-      "taskTitle": "Titre de la tâche",
-      "description": "Description",
-      "dueDate": "Échéance (facultative)",
-      "assignee": "Assigner à",
-      "assigneePlaceholder": "Rechercher un utilisateur pouvant modifier ce site",
-      "noEditors": "Personne sur ce site n'a le droit d'en modifier le contenu.",
-      "cancel": "Annuler",
-      "submit": "Créer la tâche",
-      "failed": "La tâche n'a pas pu être créée. Vérifiez que vous pouvez modifier ce site, puis réessayez."
-    },
+
     "bulkField": {
       "count": "{{count}} enregistrement sélectionné",
       "count_plural": "{{count}} enregistrements sélectionnés",
@@ -232,8 +218,6 @@
     "undo": {
       "property": "{{label}} remplacé sur {{count}} enregistrement.",
       "property_plural": "{{label}} remplacé sur {{count}} enregistrements.",
-      "task": "Tâche créée pour {{count}} enregistrement.",
-      "task_plural": "Tâche créée pour {{count}} enregistrements.",
       "action": "Annuler",
       "actionWith": "Annuler — {{message}}",
       "dismiss": "Fermer",

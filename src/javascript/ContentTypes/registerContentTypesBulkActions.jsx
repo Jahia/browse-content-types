@@ -29,8 +29,7 @@ import {NAMESPACE} from '../ContentTypes.register';
  *   fields       the visible columns, in the reader's own order
  *   contentType  the type being listed, which names the file
  *   t            this module's translations, for an action with no React of its own
- *   openAssign     opens the assign form, which the bar renders - see below
- *   openBulkField  opens the tag or category form, likewise
+ *   openBulkField  opens the tag or category form, which the bar renders - see below
  *   openExport     opens the export form, likewise
  *   openBulkEdit   opens the replace-a-value form, likewise
  *
@@ -51,7 +50,7 @@ export const BULK_MENU_ACTION = 'contentTypesBulkMenu';
  *
  * Priorities are spaced by ten to leave another module room to slot in between two of them.
  */
-const ENTRIES = ['editValue', 'tag', 'categorize', 'export', 'assignTo'];
+const ENTRIES = ['editValue', 'tag', 'categorize', 'export'];
 
 /**
  * Kept for an entry another module registers into this target without a handler, and as what a new
@@ -65,13 +64,6 @@ const notImplementedYet = () => undefined;
  * field it is about rather than two that differ by a string.
  */
 const openBulkFieldDialog = key => ({openBulkField}) => openBulkField?.(key);
-
-/**
- * Assigning opens a form, which an onClick cannot render. The bar owns the dialog and passes the way
- * to open it in the context, so this entry stays a plain handler like the others rather than being
- * the one action in the menu that is a component.
- */
-const openAssignDialog = ({openAssign}) => openAssign?.();
 
 /**
  * Exporting asks two questions first - which format, and which columns - so like the other three it
@@ -90,8 +82,7 @@ const HANDLERS = {
     editValue: openBulkEditDialog,
     tag: openBulkFieldDialog('tag'),
     categorize: openBulkFieldDialog('categorize'),
-    export: openExportDialog,
-    assignTo: openAssignDialog
+    export: openExportDialog
 };
 
 export const registerContentTypesBulkActions = () => {
