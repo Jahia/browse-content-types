@@ -546,6 +546,24 @@ export const CLEAR_PROPERTY_I18N = gql`
 `;
 
 /**
+ * The name each mutation kind resolves to.
+ *
+ * Written once and looked up by name rather than spelled out at each call site: a mutation document
+ * paired with variables built for a different one is a runtime error with nothing on screen to
+ * explain it, and two copies of this map are exactly how that pairing comes apart. Kept here, with
+ * the documents themselves, because every surface that writes a property needs the same six and
+ * none of them owns the set.
+ */
+export const MUTATIONS = {
+    CLEAR_PROPERTY,
+    CLEAR_PROPERTY_I18N,
+    SET_PROPERTY,
+    SET_PROPERTY_I18N,
+    SET_PROPERTY_VALUES,
+    SET_PROPERTY_VALUES_I18N
+};
+
+/**
  * What the selected records hold, read just before a bulk operation replaces it.
  *
  * The snapshot an undo is written from. Read from the repository rather than taken from the rows on

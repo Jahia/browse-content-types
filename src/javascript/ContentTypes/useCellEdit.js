@@ -2,37 +2,12 @@ import {useCallback, useState} from 'react';
 import {useApolloClient} from '@apollo/client';
 import {shallowEqual, useSelector} from 'react-redux';
 import {useTranslation} from 'react-i18next';
-import {
-    CAPTURE_TIMESTAMPS,
-    CAPTURE_VALUES,
-    CLEAR_PROPERTY,
-    CLEAR_PROPERTY_I18N,
-    SET_PROPERTY,
-    SET_PROPERTY_I18N,
-    SET_PROPERTY_VALUES,
-    SET_PROPERTY_VALUES_I18N
-} from './ContentTypes.gql';
+import {CAPTURE_TIMESTAMPS, CAPTURE_VALUES, MUTATIONS} from './ContentTypes.gql';
 import {mutationKind} from './ContentTypesBulkEdit';
 import {cellEditVariables} from './ContentTypesCellEdit';
 import {buildSnapshot, snapshotEntries, timestampEntries} from './ContentTypesUndo';
 import {recordUndo} from './useBulkUndo';
 import {NAMESPACE} from '../ContentTypes.register';
-
-/**
- * The name each mutation kind resolves to.
- *
- * Exported and imported by the bulk dialog rather than written out twice: a mutation document paired
- * with variables built for a different one is a runtime error with nothing on screen to explain it,
- * and two copies of this map are exactly how that pairing comes apart.
- */
-export const MUTATIONS = {
-    CLEAR_PROPERTY,
-    CLEAR_PROPERTY_I18N,
-    SET_PROPERTY,
-    SET_PROPERTY_I18N,
-    SET_PROPERTY_VALUES,
-    SET_PROPERTY_VALUES_I18N
-};
 
 /**
  * Writing one cell, and recording what it held so the write can be taken back.
