@@ -14,8 +14,6 @@ import {
     mutationKind,
     recordsWithValue
 } from './ContentTypesBulkEdit';
-import {buildSnapshot, captureUndo} from './ContentTypesUndo';
-import {recordUndo} from './useBulkUndo';
 import {NAMESPACE} from '../ContentTypes.register';
 import styles from './ContentTypes.module.scss';
 
@@ -74,35 +72,11 @@ export const ContentTypesBulkEditDialog = ({isOpen, nodes, availableFields, visi
         setIsSaving(true);
         setFailed(null);
         try {
-            // What the records hold now, so this can be taken back. Read rather than taken from the
-            // rows, which carry nothing for a column the table is not showing. Losing the capture
-            // costs the undo, not the edit.
-            const {entries, timestamps} = await captureUndo(client, {
-                paths: nodes.map(node => node.path),
-                property: field.propertyName,
-                language
-            });
-
             await client.mutate({
                 mutation: MUTATIONS[mutationKind({field, isClearing})],
                 variables: bulkEditVariables({field, nodes, value, isClearing, language}),
                 refetchQueries: ['getContentByType']
             });
-
-            if (entries) {
-                recordUndo(buildSnapshot({
-                    kind: 'property',
-                    label: field.label,
-                    property: field.propertyName,
-                    type: field.requiredType,
-                    // Carried only for a per-language property, and the restore reads it the same
-                    // way the write did - putting a value back in one language and not the others.
-                    language: field.internationalized ? language : undefined,
-                    multiple: field.multiple,
-                    entries,
-                    timestamps
-                }));
-            }
 
             close();
         } catch (error) {

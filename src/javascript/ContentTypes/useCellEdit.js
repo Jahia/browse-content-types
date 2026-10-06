@@ -5,8 +5,6 @@ import {useTranslation} from 'react-i18next';
 import {MUTATIONS} from './ContentTypes.gql';
 import {mutationKind} from './ContentTypesBulkEdit';
 import {cellEditVariables} from './ContentTypesCellEdit';
-import {buildSnapshot, captureUndo} from './ContentTypesUndo';
-import {recordUndo} from './useBulkUndo';
 import {NAMESPACE} from '../ContentTypes.register';
 
 /**
@@ -43,14 +41,6 @@ export const useCellEdit = () => {
         setFailed(null);
 
         try {
-            // What this record holds now. Read from the repository rather than taken from the row,
-            // which carries nothing for a column the table is not currently showing.
-            const {entries, timestamps} = await captureUndo(client, {
-                paths: [row.path],
-                property: field.propertyName,
-                language
-            });
-
             await client.mutate({
                 mutation: MUTATIONS[mutationKind({field, isClearing})],
                 variables: cellEditVariables({field, row, value, isClearing, language}),
@@ -61,21 +51,6 @@ export const useCellEdit = () => {
                 // worse than a reload nobody asked about.
                 refetchQueries: ['getContentByType']
             });
-
-            if (entries) {
-                recordUndo(buildSnapshot({
-                    kind: 'property',
-                    label: field.label,
-                    property: field.propertyName,
-                    type: field.requiredType,
-                    // Carried only for a per-language property, so the restore puts the value back
-                    // in the one language the write touched.
-                    language: field.internationalized ? language : undefined,
-                    multiple: field.multiple,
-                    entries,
-                    timestamps
-                }));
-            }
 
             return true;
         } catch (error) {

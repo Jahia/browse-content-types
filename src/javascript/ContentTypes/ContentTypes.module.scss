@@ -871,45 +871,6 @@
     min-width: 560px;
 }
 
-/*
- * The way back from the last bulk operation, in the toolbar beside the menu that raised it.
- *
- * Kept together so the dismiss reads as belonging to the undo rather than to whatever follows it on
- * the line, and given a little air on the left so it is not mistaken for another Bulk affordance.
- */
-.undoAction {
-    display: flex;
-    align-items: center;
-    flex: 0 0 auto;
-    gap: var(--spacing-nano);
-    margin-left: var(--spacing-small);
-
-    /*
-     * A one-shot flare on arrival.
-     *
-     * The control appears in a line the reader has just looked away from - their attention is on the
-     * table that changed, or on the dialog that closed - so a button that simply materialises is one
-     * nobody sees. This draws the eye once and then stops: a ring that fades over a second rather
-     * than anything that keeps moving, since a control that pulses forever reads as an error.
-     */
-    animation: undo-arrives 1.2s ease-out 1;
-    border-radius: var(--border-radius);
-}
-
-@keyframes undo-arrives {
-    0%   { box-shadow: 0 0 0 0 var(--color-accent_dark); }
-    30%  { box-shadow: 0 0 0 6px rgb(0 0 0 / 0%); }
-    100% { box-shadow: 0 0 0 0 rgb(0 0 0 / 0%); }
-}
-
-/*
- * Nobody is told anything by movement they asked not to see. The control is filled and labelled
- * with what it would reverse, so it stands on its own without the flare.
- */
-@media (prefers-reduced-motion: reduce) {
-    .undoAction { animation: none; }
-}
-
 /* Holds the table to whatever height the toolbar leaves, rather than letting it run past the pane. */
 .contentArea {
     display: flex;

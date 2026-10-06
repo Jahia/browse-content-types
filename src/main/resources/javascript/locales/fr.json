@@ -215,14 +215,7 @@
       "mandatory": "Cette propriété est obligatoire : elle ne peut pas être vidée.",
       "failed": "La modification n'a pas pu être enregistrée. Vérifiez que vous pouvez modifier ce contenu, puis réessayez."
     },
-    "undo": {
-      "property": "{{label}} remplacé sur {{count}} enregistrement.",
-      "property_plural": "{{label}} remplacé sur {{count}} enregistrements.",
-      "action": "Annuler",
-      "actionWith": "Annuler — {{message}}",
-      "dismiss": "Fermer",
-      "failed": "La modification n'a pas pu être annulée."
-    },
+
     "create": {
       "refused": "Ce type ne peut pas être stocké dans un dossier de contenus.",
       "failed": "La fiche n'a pas pu être créée. Réessayez."

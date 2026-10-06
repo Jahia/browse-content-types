@@ -6,7 +6,6 @@ import {DisplayAction, DisplayActions} from '@jahia/ui-extender';
 import {ButtonRenderer, ButtonRendererNoLabel, ButtonRendererShortLabel} from '@jahia/jcontent';
 import {ContentTypesBulkFieldDialog} from './ContentTypesBulkFieldDialog';
 import {ContentTypesBulkEditDialog} from './ContentTypesBulkEditDialog';
-import {ContentTypesUndoAction} from './ContentTypesUndoAction';
 import {ContentTypesExportDialog} from './ContentTypesExportDialog';
 import {BULK_FIELDS} from './ContentTypesBulkFields';
 import {BULK_MENU_ACTION} from './registerContentTypesBulkActions';
@@ -157,9 +156,6 @@ export const ContentTypesSelectionBar = ({
                         'data-sel-role': 'bulk-actions'
                     }}
                 />
-                {/* Beside the menu that raised the operation, which is where an editor looks to
-                    take it back. Draws nothing until there is something to undo. */}
-                <ContentTypesUndoAction/>
             </div>
 
             <Separator variant="vertical"/>

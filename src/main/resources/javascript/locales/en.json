@@ -215,14 +215,7 @@
       "mandatory": "This property is required, so it cannot be emptied.",
       "failed": "The change could not be saved. Check that you may edit this content, then try again."
     },
-    "undo": {
-      "property": "{{label}} replaced on {{count}} record.",
-      "property_plural": "{{label}} replaced on {{count}} records.",
-      "action": "Undo",
-      "actionWith": "Undo — {{message}}",
-      "dismiss": "Dismiss",
-      "failed": "The change could not be undone."
-    },
+
     "create": {
       "refused": "This type cannot be stored in a content folder.",
       "failed": "The record could not be created. Try again."

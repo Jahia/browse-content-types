@@ -1,4 +1,5 @@
 import {parse} from 'graphql';
+import {CAPTURE_REFERENCES, CAPTURE_VALUES} from './ContentTypes.gql';
 
 /**
  * Setting a tag list or a category list across the ticked rows.
@@ -126,11 +127,66 @@ export const unionValues = (existing, selected) => [
 ];
 
 /**
+ * What each record holds now, in the shape an add has to reason about.
+ *
+ * `values` is null where the record held nothing at all, which is not the same as holding an empty
+ * list - a record with no categories and a record with an empty category list are different states,
+ * and only the first is the "add to a record that has none" case.
+ *
+ * A reference property answers with uuids rather than with a value: that is what the property
+ * stores, and what writing it back needs.
+ */
+export const heldValues = (nodes, {isReference}) => (nodes || []).map(node => {
+    const payload = node.property;
+
+    if (!payload) {
+        return {path: node.path, values: null};
+    }
+
+    if (isReference) {
+        const uuids = (payload.refNodes || []).map(reference => reference.uuid).filter(Boolean);
+        return {path: node.path, values: uuids.length > 0 ? uuids : null};
+    }
+
+    if (payload.values) {
+        return {path: node.path, values: payload.values};
+    }
+
+    return {
+        path: node.path,
+        values: payload.value === null || payload.value === undefined ? null : [payload.value]
+    };
+});
+
+/**
+ * Reading that, for the records an add is about.
+ *
+ * Answers null rather than throwing when the read fails, so the caller decides what that costs it.
+ * An add cannot go ahead without it - the values it writes are each record's own plus the chosen
+ * ones, and with nothing read there is no union to compute.
+ *
+ * Only an add asks: replacing sends one list for the whole selection and has no use for what was
+ * there before.
+ */
+export const captureHeldValues = async (client, {paths, property, language, isReference = false}) => {
+    try {
+        const captured = await client.query({
+            query: isReference ? CAPTURE_REFERENCES : CAPTURE_VALUES,
+            variables: {paths, property, language},
+            fetchPolicy: 'network-only'
+        });
+        return heldValues(captured.data?.jcr?.nodesByPath, {isReference});
+    } catch {
+        return null;
+    }
+};
+
+/**
  * The records an "add" actually has to write, and what each should end up holding.
  *
- * `entries` are `{path, values}` as captured from the repository before the operation - the same
- * capture the undo takes, reused rather than re-queried. **The repository, not the table rows:** a
- * category cell carries display names, and what has to go back into the property is uuids.
+ * `entries` are `{path, values}` as read from the repository before the operation - see
+ * captureHeldValues. **The repository, not the table rows:** a category cell carries display names,
+ * and what has to go into the property is uuids.
  *
  * A record that already holds everything that was picked is left out entirely rather than written
  * with an identical list. Writing it would change nothing a reader can see, but it would still bump

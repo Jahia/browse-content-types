@@ -258,9 +258,8 @@ export const ContentTypesCreateAction = ({contentType, contentTypeLabel}) => {
         <>
             <Button
                 size="default"
-                // Ghost, among ghost buttons, on purpose: the one filled control on this line is the
-                // undo, which is an offer that expires and has to be seen while it stands. See
-                // ContentTypesUndoAction.
+                // Ghost, among ghost buttons: nothing on this line claims more weight than the
+                // rest of it.
                 variant="ghost"
                 icon={<Add/>}
                 /*

@@ -355,10 +355,9 @@ export const MUTATIONS = {
 /**
  * What the selected records hold, read just before a bulk operation replaces it.
  *
- * The snapshot an undo is written from. Read from the repository rather than taken from the rows on
- * screen, because the table cannot answer two of the cases: a column the reader has hidden has no
- * values in the rows at all, and the category column carries display names where a restore needs
- * uuids.
+ * Read from the repository rather than taken from the rows on screen, because the table cannot
+ * answer two of the cases: a column the reader has hidden has no values in the rows at all, and the
+ * category column carries display names where what has to be written back is uuids.
  *
  * `value` and `values` are both asked for and one of them answers - checked against a site, a
  * single-valued property returns its `value` with `values` null. That is what lets one document
@@ -400,37 +399,6 @@ export const CAPTURE_REFERENCES = gql`
                 property(name: $property, language: $language) {
                     refNodes {
                         uuid
-                    }
-                }
-            }
-        }
-    }
-`;
-
-export const CAPTURE_TIMESTAMPS = gql`
-    query captureTimestamps($paths: [String!]!, $translationPath: String!) {
-        jcr(workspace: EDIT) {
-            nodesByPath(paths: $paths) {
-                path
-                lastModified: property(name: "jcr:lastModified") {
-                    value
-                }
-                lastModifiedBy: property(name: "jcr:lastModifiedBy") {
-                    value
-                }
-                lastPublished: property(name: "j:lastPublished") {
-                    value
-                }
-                translation: descendant(relPath: $translationPath) {
-                    path
-                    lastModified: property(name: "jcr:lastModified") {
-                        value
-                    }
-                    lastModifiedBy: property(name: "jcr:lastModifiedBy") {
-                        value
-                    }
-                    lastPublished: property(name: "j:lastPublished") {
-                        value
                     }
                 }
             }

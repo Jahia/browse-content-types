@@ -13,12 +13,11 @@ import {
     buildAddDocument,
     buildAddVariables,
     bulkFieldVariables,
+    captureHeldValues,
     canApply,
     pickerField,
     recordsWithValues
 } from './ContentTypesBulkFields';
-import {buildSnapshot, captureUndo} from './ContentTypesUndo';
-import {recordUndo} from './useBulkUndo';
 import {NAMESPACE} from '../ContentTypes.register';
 import styles from './ContentTypes.module.scss';
 
@@ -72,26 +71,21 @@ export const ContentTypesBulkFieldDialog = ({isOpen, field, nodes, onClose}) => 
         setIsSaving(true);
         setFailed(false);
         try {
-            // Read what is there before writing, so the operation can be taken back. When
-            // replacing, a failure to capture is not a reason to refuse the operation - it costs
-            // the undo, not the edit - so it is caught separately and leaves the snapshot empty.
+            // **Adding cannot go ahead without reading what is there first.** The values it
+            // writes are each record's own plus the chosen ones, so with nothing read there is no
+            // union to compute, and the only thing left to send would be the chosen values alone -
+            // which is replacing. Doing that silently would destroy exactly the values the reader
+            // asked to keep, so an Add whose read failed reports a failure instead.
             //
-            // **Adding cannot go ahead without it.** The values it writes are each record's own
-            // plus the chosen ones, so with nothing captured there is no union to compute, and the
-            // only thing left to send would be the chosen values alone - which is replacing. Doing
-            // that silently would destroy exactly the values the reader asked to keep, so an Add
-            // whose capture failed reports a failure instead.
+            // Replacing asks for none of it: one list goes to the whole selection either way.
             const isAdding = mode === BULK_MODES.ADD;
             const isReference = field.valueType === 'WEAKREFERENCE';
-            // `entries` is narrowed below for an Add, which only writes some of the records.
-            const captured = await captureUndo(client, {
+            const entries = isAdding ? await captureHeldValues(client, {
                 paths: nodes.map(node => node.path),
                 property: field.property,
                 language,
                 isReference
-            });
-            const {timestamps} = captured;
-            let {entries} = captured;
+            }) : null;
 
             if (isAdding && !entries) {
                 setFailed(true);
@@ -103,7 +97,7 @@ export const ContentTypesBulkFieldDialog = ({isOpen, field, nodes, onClose}) => 
             const records = isAdding ? addRecords({entries, values}) : null;
 
             // Nothing to do: every record already had it. Closing quietly is the honest outcome -
-            // there is no edit to report and nothing to undo.
+            // there is no edit to report.
             if (isAdding && records.length === 0) {
                 close();
                 return;
@@ -121,26 +115,6 @@ export const ContentTypesBulkFieldDialog = ({isOpen, field, nodes, onClose}) => 
                 // reaching into the cache for properties this dialog does not own.
                 refetchQueries: ['getContentByType']
             });
-
-            // An Add only wrote some of the records, so the undo must only put those back - a
-            // record left untouched has nothing to restore and restoring it would be a write of
-            // its own.
-            if (isAdding && entries) {
-                const written = new Set(records.map(record => record.path));
-                entries = entries.filter(entry => written.has(entry.path));
-            }
-
-            if (entries) {
-                recordUndo(buildSnapshot({
-                    kind: 'property',
-                    label: t(`label.bulkField.${field.key}.label`),
-                    property: field.property,
-                    type: field.valueType,
-                    multiple: true,
-                    entries,
-                    timestamps
-                }));
-            }
 
             close();
         } catch {

@@ -7,6 +7,8 @@ import {
     buildAddVariables,
     bulkFieldVariables,
     canApply,
+    captureHeldValues,
+    heldValues,
     pickerField,
     recordsWithValues,
     unionValues
@@ -268,6 +270,85 @@ describe('ContentTypesBulkFields', () => {
             expect(canApply([{path: '/a'}])).toBe(true);
             expect(canApply([])).toBe(false);
             expect(canApply(undefined)).toBe(false);
+        });
+    });
+});
+describe('what each record holds, which an add has to know before it writes', () => {
+    /** A record as a capture query answers for one. */
+    const held = (path, property) => ({path, property});
+
+    it('reads a single value as a one-item list', () => {
+        expect(heldValues([held('/a', {value: '1 Main St', values: null})], {isReference: false}))
+            .toEqual([{path: '/a', values: ['1 Main St']}]);
+    });
+
+    it('reads a multi-valued property as it stands', () => {
+        expect(heldValues([held('/a', {value: null, values: ['sea', 'view']})], {isReference: false}))
+            .toEqual([{path: '/a', values: ['sea', 'view']}]);
+    });
+
+    // The distinction an add turns on: a record holding nothing is the case it exists to serve, and
+    // it is not the same as a record holding an empty list.
+    it('reads a record that held nothing as null, not as an empty list', () => {
+        expect(heldValues([held('/a', null)], {isReference: false}))
+            .toEqual([{path: '/a', values: null}]);
+        expect(heldValues([held('/a', {value: null, values: null})], {isReference: false}))
+            .toEqual([{path: '/a', values: null}]);
+    });
+
+    // The table shows category display names; what goes back into the property is uuids.
+    it('reads references by uuid, which is what the property holds', () => {
+        expect(heldValues([held('/a', {refNodes: [{uuid: 'u1'}, {uuid: 'u2'}]})], {isReference: true}))
+            .toEqual([{path: '/a', values: ['u1', 'u2']}]);
+    });
+
+    it('reads an empty reference list as nothing held', () => {
+        expect(heldValues([held('/a', {refNodes: []})], {isReference: true}))
+            .toEqual([{path: '/a', values: null}]);
+    });
+
+    it('copes with no records at all', () => {
+        expect(heldValues(undefined, {isReference: false})).toEqual([]);
+    });
+
+    describe('reading them', () => {
+        it('answers what the records hold', async () => {
+            const client = {
+                query: () => Promise.resolve({
+                    data: {jcr: {nodesByPath: [held('/a', {value: 'sea', values: null})]}}
+                })
+            };
+
+            await expect(captureHeldValues(client, {paths: ['/a'], property: 'j:tagList', language: 'en'}))
+                .resolves.toEqual([{path: '/a', values: ['sea']}]);
+        });
+
+        // Null rather than a throw, so the dialog decides what a failed read costs it - for an add,
+        // refusing the operation rather than silently replacing what it was asked to add to.
+        it('answers null when the read fails, leaving the decision to the caller', async () => {
+            const client = {query: () => Promise.reject(new Error('unreachable'))};
+
+            await expect(captureHeldValues(client, {paths: ['/a'], property: 'j:tagList', language: 'en'}))
+                .resolves.toBeNull();
+        });
+
+        it('asks for the uuids a reference column stores', async () => {
+            const asked = [];
+            const client = {
+                query: ({query}) => {
+                    asked.push(print(query));
+                    return Promise.resolve({data: {jcr: {nodesByPath: []}}});
+                }
+            };
+
+            await captureHeldValues(client, {
+                paths: ['/a'],
+                property: 'j:defaultCategory',
+                language: 'en',
+                isReference: true
+            });
+
+            expect(asked[0]).toContain('refNodes');
         });
     });
 });

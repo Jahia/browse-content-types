@@ -6,7 +6,6 @@ import {ColumnsIcon} from './ColumnsIcon';
 import {ContentTypesColumnsPicker} from './ContentTypesColumnsPicker';
 import {ContentTypesCreateAction} from './ContentTypesCreateAction';
 import {ContentTypesSelectionBar} from './ContentTypesSelectionBar';
-import {ContentTypesUndoAction} from './ContentTypesUndoAction';
 import {MIN_SEARCH_LENGTH, isSearchTooShort} from './ContentTypesSearch';
 import {describeFilter} from './ContentTypesFilters';
 import {isBulkSelection} from './ContentTypesSelection';
@@ -178,12 +177,6 @@ export const ContentTypesToolBar = ({
                             </div>
                         </>
                     )}
-
-                    {/* The way back from the last bulk operation, kept in reach once the selection
-                        that raised it has been cleared. Its usual home is beside the Bulk menu in
-                        the selection bar; without it here, clearing a selection would quietly throw
-                        away the only way to undo what was just done to it. */}
-                    <ContentTypesUndoAction/>
                 </>
             )}
 
