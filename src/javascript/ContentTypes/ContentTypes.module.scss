@@ -610,17 +610,6 @@
     }
 }
 
-.assignError {
-    color: var(--color-danger);
-}
-
-/* What replacing is about to cost, said before the fact rather than after. */
-.bulkFieldWarning {
-    color: var(--color-warning_dark);
-    display: block;
-    margin-top: var(--spacing-small);
-}
-
 .exportSectionLabel {
     display: block;
     margin: var(--spacing-medium) 0 var(--spacing-nano);
@@ -658,9 +647,9 @@
 /*
  * A control inside a dialog fills its row, whatever kind of control it is.
  *
- * Named for where it is used rather than for the one form it was first written for. The
- * replace-a-value form and the create-target dialog both want it and neither owns it, so neither
- * can be removed on the understanding that this goes with it.
+ * Named for where it is used rather than for the one form it was first written for. That form, the
+ * replace-a-value form, is no longer in the module and this is still here - which is the whole
+ * point of the name: the create-target dialog uses it and never owned it.
  */
 .dialogControl {
     width: 100%;
@@ -683,12 +672,12 @@
  *
  * 8500 places it at Moonstone's own menu-overlay layer: above everything this module and jContent
  * draw, and deliberately *below* the 9000 its menus use, so a dropdown opened inside one of these
- * dialogs - the column picker, the value list on a bulk edit - still comes up over the dialog rather
- * than behind it.
+ * dialogs - the column picker on an export, the container list on a create - still comes up over
+ * the dialog rather than behind it.
  *
  * This is broader than this module: it raises every Moonstone Modal in the app. That is the
  * intended reading - an overlay with no z-index cannot work in any application that declares one
- * anywhere - but it is worth knowing it is not scoped to these five dialogs.
+ * anywhere - but it is worth knowing it is not scoped to this module's own dialogs.
  */
 :global(.moonstone-modal_overlay) {
     z-index: 8500;

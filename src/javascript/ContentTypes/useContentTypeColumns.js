@@ -350,8 +350,10 @@ export const useContentTypeColumns = contentType => {
                     propertyName: definition.name,
                     requiredType: definition.requiredType,
                     multiple: definition.multiple,
-                    // Carried for bulk editing, which is the only thing that writes these
-                    // properties - see ContentTypesBulkEdit.
+                    // `internationalized` is read by the untranslated column, which counts the
+                    // per-language properties a record has not filled in. `mandatory` is read by
+                    // nothing: it was what told the replace-a-value form that a property could not
+                    // be cleared, and it is what that form would want back first. See DEFERRED.md.
                     internationalized: definition.internationalized,
                     mandatory: definition.mandatory,
                     isDynamic: true,

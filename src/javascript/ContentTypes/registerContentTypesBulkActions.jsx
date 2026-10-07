@@ -30,7 +30,6 @@ import {NAMESPACE} from '../ContentTypes.register';
  *   contentType  the type being listed, which names the file
  *   t            this module's translations, for an action with no React of its own
  *   openExport     opens the export form, which the bar renders - see below
- *   openBulkEdit   opens the replace-a-value form, likewise
  *
  * They are additions, not conditions: an action that wants none of them ignores them and behaves
  * exactly as it would in jContent's bar.
@@ -49,30 +48,24 @@ export const BULK_MENU_ACTION = 'contentTypesBulkMenu';
  *
  * Priorities are spaced by ten to leave another module room to slot in between two of them.
  */
-const ENTRIES = ['editValue', 'export'];
+const ENTRIES = ['export'];
 
 /**
  * Kept for an entry another module registers into this target without a handler, and as what a new
  * entry of this module's own starts as: the menu item renderer calls `onClick`, so the handler has
- * to exist for the entry to be clickable at all. Neither of this module's own uses it.
+ * to exist for the entry to be clickable at all. This module's own one does not use it.
  */
 const notImplementedYet = () => undefined;
 
 /**
- * Exporting asks two questions first - which format, and which columns - so like the other entry it
- * opens a form the bar renders. It was a straight download while CSV was the only format and the
- * visible columns the only set; neither is true now.
+ * Exporting asks two questions first - which format, and which columns - so it opens a form the bar
+ * renders rather than downloading on the spot. It was a straight download while CSV was the only
+ * format and the visible columns the only set; neither is true now.
  */
 const openExportDialog = ({openExport}) => openExport?.();
 
-/**
- * Replacing a column's value asks which column first, so it too is a form the bar renders.
- */
-const openBulkEditDialog = ({openBulkEdit}) => openBulkEdit?.();
-
 /** Every entry now has something behind it. */
 const HANDLERS = {
-    editValue: openBulkEditDialog,
     export: openExportDialog
 };
 

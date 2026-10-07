@@ -106,8 +106,8 @@ export const ContentTypesExportDialog = ({
             onOpenChange={open => !open && onClose()}
         >
             <>
-                {/* See the note in ContentTypesBulkEditDialog: the heading is the `title`
-                    prop, and passed as a child it renders nothing. */}
+                {/* The heading is ModalHeader's `title` PROP: Moonstone renders a header only when
+                    that is set, so a heading passed as a child draws nothing at all, silently. */}
                 <ModalHeader title={t('label.export.title')}/>
                 <ModalBody>
                     <Typography className={styles.assignCount} variant="caption">

@@ -55,11 +55,12 @@ export const GET_CONTENT_TYPE_FIELDS = gql`
                     protected
                     multiple
                     requiredType
-                    # Both are for bulk editing rather than for display. An internationalized
-                    # property *must* be written with a language - without one the server answers
-                    # ConstraintViolationException: no matching property definition found - and a
-                    # mandatory one cannot be cleared, which is worth knowing before offering to.
+                    # Which properties have a per-language value, which is what the untranslated
+                    # column counts - see ContentTypesTranslations.
                     internationalized
+                    # Read by nothing today. It was what told the replace-a-value form that a
+                    # property could not be cleared, and it is what that form would want first;
+                    # see DEFERRED.md.
                     mandatory
                     # What a reference is allowed to point at, which is how an image column is told
                     # from a reference to anything else: an image column constrains its target to
@@ -209,118 +210,6 @@ export const GET_SITE_LANGUAGES = gql`
         }
     }
 `;
-
-/**
- * Replacing one of a content type's own properties across every ticked row.
- *
- * Four documents rather than one with optional arguments, because the two axes that vary cannot be
- * expressed as a nullable variable:
- *
- * - **single against multiple** is `setValue` against `setValues`, two different fields;
- * - **per-language against not** is whether `language` is passed at all. Passing it as null is not
- *   the same as omitting it: an internationalized property has one definition per language and the
- *   server answers `ConstraintViolationException: no matching property definition found` without
- *   one, while a property that is not internationalized has no per-language definition to find.
- *
- * `mutateNodes` takes the whole selection, so the cost is one round trip whatever the size of it.
- * Clearing is its own mutation below - `delete` takes no value and no type.
- */
-export const SET_PROPERTY = gql`
-    mutation setProperty($paths: [String]!, $property: String!, $type: JCRPropertyType!, $value: String!) {
-        jcr(workspace: EDIT) {
-            mutateNodes(pathsOrIds: $paths) {
-                mutateProperty(name: $property) {
-                    setValue(type: $type, value: $value)
-                }
-            }
-        }
-    }
-`;
-
-export const SET_PROPERTY_I18N = gql`
-    mutation setPropertyI18n($paths: [String]!, $property: String!, $type: JCRPropertyType!, $value: String!, $language: String!) {
-        jcr(workspace: EDIT) {
-            mutateNodes(pathsOrIds: $paths) {
-                mutateProperty(name: $property) {
-                    setValue(type: $type, value: $value, language: $language)
-                }
-            }
-        }
-    }
-`;
-
-export const SET_PROPERTY_VALUES = gql`
-    mutation setPropertyValues($paths: [String]!, $property: String!, $type: JCRPropertyType!, $values: [String]!) {
-        jcr(workspace: EDIT) {
-            mutateNodes(pathsOrIds: $paths) {
-                mutateProperty(name: $property) {
-                    setValues(type: $type, values: $values)
-                }
-            }
-        }
-    }
-`;
-
-export const SET_PROPERTY_VALUES_I18N = gql`
-    mutation setPropertyValuesI18n($paths: [String]!, $property: String!, $type: JCRPropertyType!, $values: [String]!, $language: String!) {
-        jcr(workspace: EDIT) {
-            mutateNodes(pathsOrIds: $paths) {
-                mutateProperty(name: $property) {
-                    setValues(type: $type, values: $values, language: $language)
-                }
-            }
-        }
-    }
-`;
-
-/**
- * Emptying a property across the selection.
- *
- * The server refuses this on a property the definition makes mandatory - it answers "This field is
- * mandatory" and rejects the whole mutation - so the dialog does not offer it there. See
- * `canApplyEdit`.
- */
-export const CLEAR_PROPERTY = gql`
-    mutation clearProperty($paths: [String]!, $property: String!) {
-        jcr(workspace: EDIT) {
-            mutateNodes(pathsOrIds: $paths) {
-                mutateProperty(name: $property) {
-                    delete
-                }
-            }
-        }
-    }
-`;
-
-export const CLEAR_PROPERTY_I18N = gql`
-    mutation clearPropertyI18n($paths: [String]!, $property: String!, $language: String!) {
-        jcr(workspace: EDIT) {
-            mutateNodes(pathsOrIds: $paths) {
-                mutateProperty(name: $property) {
-                    delete(language: $language)
-                }
-            }
-        }
-    }
-`;
-
-/**
- * The name each mutation kind resolves to.
- *
- * Written once and looked up by name rather than spelled out at each call site: a mutation document
- * paired with variables built for a different one is a runtime error with nothing on screen to
- * explain it, and two copies of this map are exactly how that pairing comes apart. Kept here, with
- * the documents themselves, because every surface that writes a property needs the same six and
- * none of them owns the set.
- */
-export const MUTATIONS = {
-    CLEAR_PROPERTY,
-    CLEAR_PROPERTY_I18N,
-    SET_PROPERTY,
-    SET_PROPERTY_I18N,
-    SET_PROPERTY_VALUES,
-    SET_PROPERTY_VALUES_I18N
-};
 
 /**
  * Which types may be created at a given path, as Content Editor itself resolves it.

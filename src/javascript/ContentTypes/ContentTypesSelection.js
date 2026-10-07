@@ -20,9 +20,9 @@
  * So one ticked row is still one row: the toolbar keeps the search and the create button, and the
  * row keeps its menu. The bar appears when there is genuinely a set to act on.
  *
- * The cost, which is real: the operations this module contributes - replacing a value, and
- * exporting - live only in that bar, so neither is reachable for a single record this way. Putting
- * them in the row menu is the follow-up that closes it.
+ * The cost, which is real: exporting, the one operation this module contributes, lives only in that
+ * bar, so it is not reachable for a single record this way. Putting it in the row menu is the
+ * follow-up that closes it.
  */
 export const BULK_SELECTION_FROM = 2;
 

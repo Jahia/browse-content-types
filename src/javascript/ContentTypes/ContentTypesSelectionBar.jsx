@@ -4,7 +4,6 @@ import {useTranslation} from 'react-i18next';
 import {Button, ButtonGroup, Cancel, ChevronDown, Separator, Typography} from '@jahia/moonstone';
 import {DisplayAction, DisplayActions} from '@jahia/ui-extender';
 import {ButtonRenderer, ButtonRendererNoLabel, ButtonRendererShortLabel} from '@jahia/jcontent';
-import {ContentTypesBulkEditDialog} from './ContentTypesBulkEditDialog';
 import {ContentTypesExportDialog} from './ContentTypesExportDialog';
 import {BULK_MENU_ACTION} from './registerContentTypesBulkActions';
 import {NAMESPACE} from '../ContentTypes.register';
@@ -49,17 +48,13 @@ export const ContentTypesSelectionBar = ({
 }) => {
     const {t} = useTranslation(NAMESPACE);
 
-    // Each entry in the menu opens a form, and an action's onClick has no React of its own to
-    // render one in. So the bar owns the dialogs and hands each action the way to ask for one -
-    // which keeps every entry in the menu a plain onClick rather than making one of them a
-    // component and the rest not.
+    // Exporting opens a form, and an action's onClick has no React of its own to render one in. So
+    // the bar owns the dialog and hands the action the way to ask for it - which keeps every entry
+    // in the menu a plain onClick, including any another module adds, rather than making the ones
+    // that need a form into components.
     const [isExporting, setIsExporting] = useState(false);
     const openExport = useCallback(() => setIsExporting(true), []);
     const closeExport = useCallback(() => setIsExporting(false), []);
-
-    const [isEditing, setIsEditing] = useState(false);
-    const openBulkEdit = useCallback(() => setIsEditing(true), []);
-    const closeBulkEdit = useCallback(() => setIsEditing(false), []);
 
     // Every action branches on which of these two it was handed: a single `path` for one row, or
     // `paths` for several. Passing an array of one is not the same thing and makes some of them
@@ -82,8 +77,8 @@ export const ContentTypesSelectionBar = ({
     // Memoised for the same reason `paths` is - the menu is a PureComponent, and an object rebuilt
     // on every render would reopen its whole item list each time anything above this re-rendered.
     const bulkContext = useMemo(
-        () => ({...context, nodes, fields, contentType, t, openExport, openBulkEdit}),
-        [context, nodes, fields, contentType, t, openExport, openBulkEdit]
+        () => ({...context, nodes, fields, contentType, t, openExport}),
+        [context, nodes, fields, contentType, t, openExport]
     );
 
     return (
@@ -114,8 +109,10 @@ export const ContentTypesSelectionBar = ({
             />
 
             {/* Everything that acts on the selection without publishing it: jContent's own actions
-                as loose buttons, then this module's, gathered behind one trigger rather than laid
-                out beside them, where they would bury the two that matter most. */}
+                as loose buttons, then this module's own menu. A menu for what is currently one
+                entry, because the target behind it is published for other modules to register into
+                - see registerContentTypesBulkActions - so what it holds is not this file's to
+                assume. Loose buttons would bury the two that matter most as soon as it grew. */}
             <div className={styles.selectionActions}>
                 <Separator variant="vertical"/>
                 <DisplayActions
@@ -170,15 +167,6 @@ export const ContentTypesSelectionBar = ({
 
             {/* Mounted only while open, so the queries behind it are not run for a menu nobody
                 opened, and so a cancelled form does not keep what was typed into it. */}
-            {isEditing && (
-                <ContentTypesBulkEditDialog
-                    isOpen
-                    nodes={nodes}
-                    availableFields={availableFields}
-                    visibleFields={fields}
-                    onClose={closeBulkEdit}
-                />
-            )}
             {isExporting && (
                 <ContentTypesExportDialog
                     isOpen

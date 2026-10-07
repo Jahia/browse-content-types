@@ -20,7 +20,6 @@
     "bulk": {
       "trigger": "Bulk",
       "empty": "No bulk operation is available.",
-      "editValue": "Replace a value",
       "export": "Export"
     },
     "settings": {
@@ -93,27 +92,6 @@
         "name": "JSON",
         "hint": "What the repository stores, with numbers, booleans and lists intact."
       }
-    },
-    "bulkEdit": {
-      "title": "Replace a value",
-      "count": "{{count}} record selected",
-      "count_plural": "{{count}} records selected",
-      "column": "Column",
-      "columnPlaceholder": "Choose a column",
-      "ownPropertiesOnly": "Only this content type's own properties can be changed. Metadata such as the author, the dates and the publication status is maintained by the system.",
-      "newValue": "New value",
-      "choosePlaceholder": "Choose",
-      "onePerLine": "One value per line.",
-      "languageOnly": "This property is translated: only the {{language}} version will be changed.",
-      "clear": "Empty the property instead",
-      "replaces": "{{count}} of the selected records already has a value in this column, which will be replaced.",
-      "replaces_plural": "{{count}} of the selected records already have a value in this column, which will be replaced.",
-      "replacesUnknown": "This column is not shown in the table, so how many records already have a value is not known. Their values will be replaced.",
-      "noFields": "This content type has no property that can be changed this way.",
-      "cancel": "Cancel",
-      "apply": "Replace",
-      "applyClear": "Empty",
-      "failed": "The change could not be applied. Check that you may edit this content, then try again."
     },
 
 
