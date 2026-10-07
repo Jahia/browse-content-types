@@ -1,6 +1,5 @@
 import i18next from 'i18next';
 import registerContentTypesAccordion from './ContentTypes/registerContentTypesAccordion';
-import registerContentTypesBulkActions from './ContentTypes/registerContentTypesBulkActions';
 import registerContentTypesSettings from './ContentTypes/registerContentTypesSettings';
 import registerContentTypesActionOverrides from './ContentTypes/registerContentTypesActionOverrides';
 
@@ -22,7 +21,6 @@ export default async function () {
     await i18next.loadNamespaces([NAMESPACE, 'jcontent']);
 
     registerContentTypesAccordion();
-    registerContentTypesBulkActions();
     registerContentTypesSettings();
 
     // Last, and it has to be: it wraps actions jContent has already registered, so there has to be

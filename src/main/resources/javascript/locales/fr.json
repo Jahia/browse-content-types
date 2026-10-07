@@ -17,10 +17,6 @@
       "searchTooShort": "Saisissez au moins {{count}} caractères pour rechercher",
       "columns": "Colonnes"
     },
-    "bulk": {
-      "trigger": "Actions groupées",
-      "empty": "Aucune action groupée n'est disponible."
-    },
     "settings": {
       "title": "Types de contenu",
       "description": "Choisissez les types de contenu listés dans l'accordéon Types de contenu. Ce réglage s'applique à tous ceux qui travaillent sur ce site. Tout sélectionner conserve le comportement par défaut : les types ajoutés plus tard apparaissent d'eux-mêmes.",

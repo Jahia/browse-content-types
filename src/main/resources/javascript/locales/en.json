@@ -17,10 +17,6 @@
       "searchTooShort": "Type at least {{count}} characters to search",
       "columns": "Columns"
     },
-    "bulk": {
-      "trigger": "Bulk",
-      "empty": "No bulk operation is available."
-    },
     "settings": {
       "title": "Content Types",
       "description": "Choose which content types are listed in the Content Types accordion. This applies to everyone working on this site. Selecting all of them keeps the default, so types added later appear on their own.",

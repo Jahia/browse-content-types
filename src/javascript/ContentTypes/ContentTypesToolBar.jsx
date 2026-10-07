@@ -50,12 +50,7 @@ export const ContentTypesToolBar = ({
     return (
         <div className={styles.toolBar} data-sel-role="content-types-toolbar">
             {isBulkSelection(selection) ? (
-                <ContentTypesSelectionBar
-                    nodes={selection}
-                    fields={visibleFields}
-                    contentType={contentType}
-                    onClear={onClearSelection}
-                />
+                <ContentTypesSelectionBar nodes={selection} onClear={onClearSelection}/>
             ) : (
                 <>
                     {/* First on the line, and only while nothing is ticked: creating a record is
@@ -113,8 +108,7 @@ export const ContentTypesToolBar = ({
 
 ContentTypesToolBar.propTypes = {
     search: PropTypes.string.isRequired,
-    /** The type being listed. The create action creates one of it, and the selection bar hands it
-     *  to the bulk menu's context. */
+    /** The type being listed, which the create action creates one of. */
     contentType: PropTypes.string.isRequired,
     /** That same type as the heading names it, for the create button to offer by name. */
     contentTypeLabel: PropTypes.string.isRequired,

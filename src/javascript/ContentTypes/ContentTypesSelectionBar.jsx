@@ -4,7 +4,6 @@ import {useTranslation} from 'react-i18next';
 import {Button, ButtonGroup, Cancel, ChevronDown, Separator, Typography} from '@jahia/moonstone';
 import {DisplayAction, DisplayActions} from '@jahia/ui-extender';
 import {ButtonRenderer, ButtonRendererNoLabel, ButtonRendererShortLabel} from '@jahia/jcontent';
-import {BULK_MENU_ACTION} from './registerContentTypesBulkActions';
 import {NAMESPACE} from '../ContentTypes.register';
 import styles from './ContentTypes.module.scss';
 
@@ -32,15 +31,11 @@ const publishActionFor = nodes => (
  *
  * Each of jContent's actions goes and fetches whatever it needs to know about the nodes itself,
  * given nothing but the paths below - which is why the selection needs to carry nothing on their
- * account. This module's own bulk menu is handed more, since exporting the table means exporting it
- * as displayed; see `bulkContext` below and the contract in registerContentTypesBulkActions.
+ * account, and why this bar now hands out nothing else. It used to: this module's own menu was
+ * given the rows as the table was showing them, because exporting the table meant exporting it as
+ * displayed. Nothing asks for that any more.
  */
-export const ContentTypesSelectionBar = ({
-    nodes,
-    fields,
-    contentType,
-    onClear
-}) => {
+export const ContentTypesSelectionBar = ({nodes, onClear}) => {
     const {t} = useTranslation(NAMESPACE);
 
     // Every action branches on which of these two it was handed: a single `path` for one row, or
@@ -55,17 +50,6 @@ export const ContentTypesSelectionBar = ({
     const context = useMemo(
         () => (paths.length === 1 ? {path: paths[0]} : {paths}),
         [paths]
-    );
-
-    // What this module's own operations get on top of the paths, and only they: jContent's actions
-    // below are handed the plain context, since an action written against its bar has no idea what
-    // these are and there is nothing to gain from surprising it with the extra props.
-    //
-    // Memoised for the same reason `paths` is - the menu is a PureComponent, and an object rebuilt
-    // on every render would reopen its whole item list each time anything above this re-rendered.
-    const bulkContext = useMemo(
-        () => ({...context, nodes, fields, contentType, t}),
-        [context, nodes, fields, contentType, t]
     );
 
     return (
@@ -95,11 +79,9 @@ export const ContentTypesSelectionBar = ({
                 onClick={onClear}
             />
 
-            {/* Everything that acts on the selection without publishing it: jContent's own actions
-                as loose buttons, then this module's own menu. A menu for what is currently one
-                entry, because the target behind it is published for other modules to register into
-                - see registerContentTypesBulkActions - so what it holds is not this file's to
-                assume. Loose buttons would bury the two that matter most as soon as it grew. */}
+            {/* Everything that acts on the selection without publishing it. All of it is
+                jContent's own now: this module contributes no bulk operation of its own, and the
+                menu it used to gather them behind went with the last of them. */}
             <div className={styles.selectionActions}>
                 <Separator variant="vertical"/>
                 <DisplayActions
@@ -111,25 +93,6 @@ export const ContentTypesSelectionBar = ({
                     filter={action => action.key !== 'deletePermanently' && !action.key.includes('publish')}
                     buttonProps={{size: 'default', variant: 'ghost'}}
                     render={ButtonRenderer}
-                />
-                {/*
-                    This module's own bulk operations, which are registered actions in a target of
-                    its own rather than a list written out here - so another module can add to the
-                    menu once this one is deployed. `iconEnd` goes through `buttonProps` because the
-                    exported ButtonRenderer drops the `buttonIconEnd` that jContent's composed
-                    menuAction sets, and the trigger needs to look like the menu it is.
-                */}
-                <DisplayAction
-                    menuUseElementAnchor
-                    actionKey={BULK_MENU_ACTION}
-                    {...bulkContext}
-                    render={ButtonRenderer}
-                    buttonProps={{
-                        size: 'default',
-                        variant: 'ghost',
-                        iconEnd: <ChevronDown/>,
-                        'data-sel-role': 'bulk-actions'
-                    }}
                 />
             </div>
 
@@ -159,11 +122,6 @@ ContentTypesSelectionBar.propTypes = {
     /** The rows currently ticked, in the shape the table fetched them. Never empty: the bar is not
      *  rendered without a selection, and the publish choice below has no answer for no rows. */
     nodes: PropTypes.array.isRequired,
-    /** The visible columns, in the reader's order. Passed to the bulk menu's context, where an
-     *  action another module registers can read the rows as the table is showing them. */
-    fields: PropTypes.array.isRequired,
-    /** The type being listed, likewise for the menu's context. */
-    contentType: PropTypes.string.isRequired,
     onClear: PropTypes.func.isRequired
 };
 
