@@ -66,9 +66,20 @@ export const ContentTypesColumnsPicker = ({
                 // spacing from .columnsSection's own gap instead of some of them relying on it and
                 // others falling back to Moonstone's wider built-in spacing between adjacent
                 // checkboxes.
-                <div key={field.key} className={styles.columnsRow}>
+                //
+                // A field that cannot be a column is listed here all the same, disabled, with the
+                // reason as a tooltip. The `title` goes on this wrapper rather than on the
+                // CheckboxItem because a disabled control stops reporting mouse events in some
+                // browsers, and a tooltip nobody can trigger is worse than none.
+                <div
+                    key={field.key}
+                    className={field.notSelectableReason ? styles.columnsRowBlocked : styles.columnsRow}
+                    title={field.notSelectableReason ? t('label.columns.notSelectable') : undefined}
+                    data-sel-column-blocked={field.notSelectableReason || undefined}
+                >
                     <CheckboxItem
                         checked={false}
+                        isDisabled={Boolean(field.notSelectableReason)}
                         id={`content-types-column-${field.key}`}
                         label={field.label}
                         data-sel-column={field.key}

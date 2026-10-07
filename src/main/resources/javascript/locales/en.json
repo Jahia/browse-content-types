@@ -52,6 +52,7 @@
       "visible": "Visible fields",
       "availableType": "Type-specific fields",
       "availableCommon": "Common fields",
+      "notSelectable": "This property is not selectable as a column",
       "noMatch": "No field matches.",
       "autoSaved": "Your choice is remembered",
       "reset": "Reset",

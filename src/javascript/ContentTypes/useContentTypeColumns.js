@@ -3,7 +3,7 @@ import {useQuery} from '@apollo/client';
 import {useSelector} from 'react-redux';
 import {useTranslation} from 'react-i18next';
 import {GET_CONTENT_TYPE_FIELDS, GET_CONTENT_TYPE_VALUE_LABELS} from './ContentTypes.gql';
-import {FILTER_BOOLEAN, FILTER_CHOICE, FILTER_DATE, FILTER_IMAGE, FILTER_NUMBER, FILTER_PUBLICATION, FILTER_TEXT, publicationOptions} from './ContentTypesFieldTypes';
+import {FILTER_BOOLEAN, FILTER_CHOICE, FILTER_DATE, FILTER_IMAGE, FILTER_NUMBER, FILTER_PUBLICATION, FILTER_TEXT, isImageReference, notSelectableReasonFor, publicationOptions} from './ContentTypesFieldTypes';
 import {GET_SITE_LANGUAGES} from './ContentTypes.gql';
 import {translatableProperties} from './ContentTypesTranslations';
 import {NAMESPACE} from '../ContentTypes.register';
@@ -41,23 +41,6 @@ const COMMON_FILTERS = {
  * from the full text index anyway - a price of 6560000 finds nothing however it is asked for.
  */
 const TEXT_SEARCH_TYPES = new Set(['STRING', 'NAME', 'PATH', 'URI']);
-
-/** Reference types, which hold a uuid rather than anything a reader would recognise. */
-const REFERENCE_TYPES = new Set(['REFERENCE', 'WEAKREFERENCE']);
-
-/**
- * Whether a property points at images.
- *
- * A reference records what its target must be, as an expanded node type name - so an image column
- * says `{http://www.jahia.org/jahia/mix/1.0}image` while a reference to a file or to another content
- * type says something else. Matched on the local name so the namespace can move.
- *
- * References that are not to images are left unfiltered: whether one is set is a fair question of an
- * image, which a reader sees as a thumbnail or an empty cell, and a vaguer one of a reference to a
- * content item, where what is wanted is nearly always *which* one.
- */
-const isImageReference = definition => REFERENCE_TYPES.has(definition.requiredType) &&
-    (definition.constraints || []).some(constraint => constraint.replace(/^\{[^}]*\}/, '').toLowerCase() === 'image');
 
 /**
  * The kind of filter form a content type's own property gets, or nothing where it gets none.
@@ -358,6 +341,8 @@ export const useContentTypeColumns = contentType => {
                     internationalized: definition.internationalized,
                     mandatory: definition.mandatory,
                     isDynamic: true,
+                    // Listed in the picker but not tickable - see notSelectableReasonFor.
+                    notSelectableReason: notSelectableReasonFor(definition),
                     // Contributes one of `sortJcrProperty` or `sortProperty`, or neither - which is
                     // what leaves a multi-valued column without a sort arrow. See sortingFor.
                     ...sortingFor(definition, key),
@@ -438,13 +423,21 @@ export const useContentTypeColumns = contentType => {
     // A field can disappear from under a stored choice - the module was updated, a property was
     // removed from the definition. Drop it silently rather than ask the table to render a column
     // with no data behind it.
+    //
+    // A field that is still there but may no longer be chosen goes the same way, and for the same
+    // reason: a choice made before the rule existed is still a choice nobody could make today, and
+    // leaving it would put a column on screen that the picker says is not available. Dropped from
+    // the state only - `apply` is what writes, so the stored list keeps it until the next real
+    // change, and a rule later relaxed gives the column back to whoever had chosen it.
     useEffect(() => {
         if (loading) {
             return;
         }
 
-        const known = new Set(availableFields.map(field => field.key));
-        setVisibleKeys(previous => previous.filter(key => known.has(key)));
+        const selectable = new Set(
+            availableFields.filter(field => !field.notSelectableReason).map(field => field.key)
+        );
+        setVisibleKeys(previous => previous.filter(key => selectable.has(key)));
     }, [availableFields, loading]);
 
     /**
@@ -468,11 +461,22 @@ export const useContentTypeColumns = contentType => {
 
     // A newly shown field is added at the end, in the order it was checked - the same place a
     // freshly added table column would land. Moving it anywhere else is what the arrows are for.
-    const toggleField = key => apply(
-        visibleKeys.includes(key) ?
-            visibleKeys.filter(existing => existing !== key) :
-            [...visibleKeys, key]
-    );
+    //
+    // Showing one that may not be chosen is refused here as well as disabled in the picker. The
+    // effect above would take it straight back out, so without this a blocked field would flicker
+    // on and the stored list would have been written with it in.
+    const toggleField = key => {
+        if (visibleKeys.includes(key)) {
+            apply(visibleKeys.filter(existing => existing !== key));
+            return;
+        }
+
+        if (availableFields.find(field => field.key === key)?.notSelectableReason) {
+            return;
+        }
+
+        apply([...visibleKeys, key]);
+    };
 
     // Swaps a visible field with its neighbour. Silently does nothing at either end of the list -
     // there is no neighbour to swap with, and the locked Name column is not part of this array at

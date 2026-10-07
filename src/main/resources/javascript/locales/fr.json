@@ -52,6 +52,7 @@
       "visible": "Champs visibles",
       "availableType": "Champs propres au type",
       "availableCommon": "Champs communs",
+      "notSelectable": "Cette propriété ne peut pas être affichée en colonne",
       "noMatch": "Aucun champ ne correspond.",
       "autoSaved": "Votre choix est conservé",
       "reset": "Réinitialiser",

@@ -448,6 +448,22 @@
     min-width: 0;
 }
 
+/*
+ * A field listed in the picker that cannot be chosen as a column.
+ *
+ * `composes` rather than a repeat of the three declarations: CSS modules puts both class names on
+ * the element, so the `.columnsRow > :first-child` rule above goes on applying to it and the row
+ * keeps its layout.
+ *
+ * The cursor is the only thing added to Moonstone's own disabled styling, and it is on the wrapper
+ * because the wrapper is what carries the tooltip - so what says "not available" and what explains
+ * why cover exactly the same area.
+ */
+.columnsRowBlocked {
+    composes: columnsRow;
+    cursor: not-allowed;
+}
+
 .columnsOrderButtons {
     display: flex;
     flex: 0 0 auto;

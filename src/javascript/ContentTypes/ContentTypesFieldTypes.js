@@ -44,6 +44,55 @@ export const FILTER_PUBLICATION = 'publication';
  */
 export const FILTER_IMAGE = 'image';
 
+/** Reference types, which hold a uuid rather than anything a reader would recognise. */
+const REFERENCE_TYPES = new Set(['REFERENCE', 'WEAKREFERENCE']);
+
+/**
+ * Whether a property points at images.
+ *
+ * A reference records what its target must be, as an expanded node type name - so an image column
+ * says `{http://www.jahia.org/jahia/mix/1.0}image` while a reference to a file or to another content
+ * type says something else. Matched on the local name so the namespace can move.
+ *
+ * References that are not to images are left unfiltered: whether one is set is a fair question of an
+ * image, which a reader sees as a thumbnail or an empty cell, and a vaguer one of a reference to a
+ * content item, where what is wanted is nearly always *which* one.
+ */
+export const isImageReference = definition => REFERENCE_TYPES.has(definition.requiredType) &&
+    (definition.constraints || []).some(constraint => constraint.replace(/^\{[^}]*\}/, '').toLowerCase() === 'image');
+
+/**
+ * Why a property may be listed in the columns picker but not ticked.
+ *
+ * Listed rather than hidden on purpose: someone looking for a property they know the type has
+ * should find it and be told why it is not on offer, rather than be left searching a list it was
+ * quietly dropped from.
+ *
+ * Only a content type's own properties are ever blocked. The common metadata is this module's own
+ * fixed catalog - every entry in it was written to be a column.
+ */
+export const NOT_SELECTABLE_REFERENCE = 'reference';
+
+/**
+ * Whether a property can be a column at all, and why not when it cannot.
+ *
+ * **A reference that is not to an image.** A reference stores a uuid, and a column of uuids says
+ * nothing; what a reader wants is the thing pointed at, which means resolving each one and deciding
+ * what to draw of it. An image reference is the exception the table already makes - it draws a
+ * thumbnail, or an empty cell, and both are readable. The test is the same one the image filter
+ * uses, so the two cannot drift into disagreeing about what an image column is.
+ *
+ * Returns the reason rather than a boolean so the picker can say which rule it ran into, and so a
+ * second rule can be added without every caller having to change shape.
+ */
+export const notSelectableReasonFor = definition => {
+    if (REFERENCE_TYPES.has(definition.requiredType) && !isImageReference(definition)) {
+        return NOT_SELECTABLE_REFERENCE;
+    }
+
+    return undefined;
+};
+
 /**
  * The statuses offered, in the order a record moves through them.
  *
