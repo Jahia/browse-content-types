@@ -159,6 +159,7 @@
       "failed": "La fiche n'a pas pu être créée. Réessayez."
     },
     "createTarget": {
+      "cancel": "Annuler",
       "title": "Nouveau {{type}}",
       "explanation": "Un contenu de type {{type}} ne peut pas être stocké dans un dossier de contenu : il doit être placé dans un contenu qui l'accepte. Choisissez où celui-ci doit aller.",
       "container": "Emplacement",

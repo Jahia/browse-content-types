@@ -101,7 +101,7 @@ export const ContentTypesBulkEditDialog = ({isOpen, nodes, availableFields, visi
                 <Dropdown
                     isMultiple={field.multiple}
                     hasSearch={options.length >= SEARCHABLE_FROM}
-                    className={styles.bulkEditControl}
+                    className={styles.dialogControl}
                     variant="outlined"
                     size="medium"
                     data={options}
@@ -121,7 +121,7 @@ export const ContentTypesBulkEditDialog = ({isOpen, nodes, availableFields, visi
         if (kind === 'boolean') {
             return (
                 <Dropdown
-                    className={styles.bulkEditControl}
+                    className={styles.dialogControl}
                     variant="outlined"
                     size="medium"
                     data={[
@@ -161,7 +161,7 @@ export const ContentTypesBulkEditDialog = ({isOpen, nodes, availableFields, visi
                 id="bulk-edit-value"
                 type={kind === 'number' ? 'number' : (kind === 'date' ? 'date' : 'text')}
                 value={value}
-                className={styles.bulkEditControl}
+                className={styles.dialogControl}
                 data-sel-role="bulk-edit-value"
                 onChange={event => setValue(event.target.value)}
             />
@@ -198,7 +198,7 @@ export const ContentTypesBulkEditDialog = ({isOpen, nodes, availableFields, visi
                                 <Typography variant="caption" weight="bold">{t('label.bulkEdit.column')}</Typography>
                                 <Dropdown
                                     hasSearch={fields.length >= SEARCHABLE_FROM}
-                                    className={styles.bulkEditControl}
+                                    className={styles.dialogControl}
                                     variant="outlined"
                                     size="medium"
                                     data={fields.map(candidate => ({label: candidate.label, value: candidate.key}))}

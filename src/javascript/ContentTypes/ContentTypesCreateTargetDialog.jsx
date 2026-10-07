@@ -48,7 +48,7 @@ export const ContentTypesCreateTargetDialog = ({contentTypeLabel, targets, onCan
                         </Typography>
                         <Dropdown
                             hasSearch={targets.length >= SEARCHABLE_FROM}
-                            className={styles.bulkEditControl}
+                            className={styles.dialogControl}
                             variant="outlined"
                             size="medium"
                             data={targets.map(target => ({label: target.label, value: target.path}))}
@@ -68,7 +68,7 @@ export const ContentTypesCreateTargetDialog = ({contentTypeLabel, targets, onCan
                     </div>
                 </ModalBody>
                 <ModalFooter>
-                    <Button size="big" variant="ghost" label={t('label.bulkEdit.cancel')} onClick={onCancel}/>
+                    <Button size="big" variant="ghost" label={t('label.createTarget.cancel')} onClick={onCancel}/>
                     <Button
                         size="big"
                         variant="default"

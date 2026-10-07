@@ -667,8 +667,14 @@
     }
 }
 
-/* The controls in the replace-a-value form fill their row, whatever kind they are. */
-.bulkEditControl {
+/*
+ * A control inside a dialog fills its row, whatever kind of control it is.
+ *
+ * Named for where it is used rather than for the one form it was first written for. The
+ * replace-a-value form and the create-target dialog both want it and neither owns it, so neither
+ * can be removed on the understanding that this goes with it.
+ */
+.dialogControl {
     width: 100%;
 }
 

@@ -159,6 +159,7 @@
       "failed": "The record could not be created. Try again."
     },
     "createTarget": {
+      "cancel": "Cancel",
       "title": "New {{type}}",
       "explanation": "A {{type}} cannot be stored in a content folder, so it has to go inside content that accepts it. Choose where this one belongs.",
       "container": "Where it goes",
