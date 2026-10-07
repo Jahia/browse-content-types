@@ -43,10 +43,7 @@ export const ContentTypesToolBar = ({
     moveField,
     resetToDefaults,
     selection,
-    onClearSelection,
-    fieldsByKey,
-    translatableFields,
-    languages
+    onClearSelection
 }) => {
     const {t} = useTranslation(NAMESPACE);
 
@@ -56,10 +53,6 @@ export const ContentTypesToolBar = ({
                 <ContentTypesSelectionBar
                     nodes={selection}
                     fields={visibleFields}
-                    availableFields={availableFields}
-                    fieldsByKey={fieldsByKey}
-                    translatableFields={translatableFields}
-                    languages={languages}
                     contentType={contentType}
                     onClear={onClearSelection}
                 />
@@ -119,13 +112,9 @@ export const ContentTypesToolBar = ({
 };
 
 ContentTypesToolBar.propTypes = {
-    translatableFields: PropTypes.array,
-    languages: PropTypes.array,
     search: PropTypes.string.isRequired,
-    /**
-     * The type being listed. The selection bar names an exported file with it, and the create
-     * action creates one of it.
-     */
+    /** The type being listed. The create action creates one of it, and the selection bar hands it
+     *  to the bulk menu's context. */
     contentType: PropTypes.string.isRequired,
     /** That same type as the heading names it, for the create button to offer by name. */
     contentTypeLabel: PropTypes.string.isRequired,
@@ -138,9 +127,7 @@ ContentTypesToolBar.propTypes = {
     resetToDefaults: PropTypes.func.isRequired,
     /** The ticked rows. Empty means nothing is selected, and the browse controls hold the line. */
     selection: PropTypes.array.isRequired,
-    onClearSelection: PropTypes.func.isRequired,
-    /** Every column a record could be exported by, which the export dialog offers. */
-    fieldsByKey: PropTypes.instanceOf(Map).isRequired
+    onClearSelection: PropTypes.func.isRequired
 };
 
 export default ContentTypesToolBar;

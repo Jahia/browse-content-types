@@ -19,8 +19,7 @@
     },
     "bulk": {
       "trigger": "Bulk",
-      "empty": "No bulk operation is available.",
-      "export": "Export"
+      "empty": "No bulk operation is available."
     },
     "settings": {
       "title": "Content Types",
@@ -73,25 +72,6 @@
 
     "sort": {
       "column": "Sort by {{column}}"
-    },
-    "export": {
-      "title": "Export content",
-      "count": "{{count}} record selected",
-      "count_plural": "{{count}} records selected",
-      "format": "Format",
-      "columns": "Columns to export",
-      "columnsNote": "These columns apply to this export only.",
-      "columnsReset": "Match the table",
-      "cancel": "Cancel",
-      "download": "Download",
-      "csv": {
-        "name": "CSV",
-        "hint": "What the table shows, for a spreadsheet."
-      },
-      "json": {
-        "name": "JSON",
-        "hint": "What the repository stores, with numbers, booleans and lists intact."
-      }
     },
 
 

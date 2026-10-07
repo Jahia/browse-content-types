@@ -476,11 +476,6 @@
     border-top: 1px solid var(--color-gray_light40);
 }
 
-.assignCount {
-    color: var(--color-gray_dark);
-    margin-bottom: var(--spacing-medium);
-}
-
 .assignField {
     display: flex;
     flex-direction: column;
@@ -610,40 +605,6 @@
     }
 }
 
-.exportSectionLabel {
-    display: block;
-    margin: var(--spacing-medium) 0 var(--spacing-nano);
-}
-
-.exportFormats {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-nano);
-}
-
-/*
- * One format. The radio and its description sit on a row so the hint reads as belonging to the name
- * above it rather than to the next option down.
- */
-.exportFormat {
-    display: flex;
-    align-items: flex-start;
-    gap: var(--spacing-small);
-    padding: var(--spacing-nano) var(--spacing-small);
-    border: 1px solid var(--color-gray_light);
-    border-radius: var(--border-radius);
-    cursor: pointer;
-
-    &:hover {
-        background-color: var(--color-gray_light40);
-    }
-
-    span {
-        display: flex;
-        flex-direction: column;
-    }
-}
-
 /*
  * A control inside a dialog fills its row, whatever kind of control it is.
  *
@@ -723,12 +684,6 @@
 
     /* Replaces Moonstone's own 80vh, which no longer fits once this starts 96px down. */
     max-height: calc(100vh - 128px);
-}
-
-/* The export form carries a format list and a column picker side by side with its own footer. */
-.dialogBoxWide {
-    composes: dialogBox;
-    min-width: 560px;
 }
 
 /* Holds the table to whatever height the toolbar leaves, rather than letting it run past the pane. */

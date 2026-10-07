@@ -19,8 +19,7 @@
     },
     "bulk": {
       "trigger": "Actions groupées",
-      "empty": "Aucune action groupée n'est disponible.",
-      "export": "Exporter"
+      "empty": "Aucune action groupée n'est disponible."
     },
     "settings": {
       "title": "Types de contenu",
@@ -73,25 +72,6 @@
 
     "sort": {
       "column": "Trier par {{column}}"
-    },
-    "export": {
-      "title": "Exporter le contenu",
-      "count": "{{count}} enregistrement sélectionné",
-      "count_plural": "{{count}} enregistrements sélectionnés",
-      "format": "Format",
-      "columns": "Colonnes à exporter",
-      "columnsNote": "Ces colonnes ne s'appliquent qu'à cet export.",
-      "columnsReset": "Reprendre le tableau",
-      "cancel": "Annuler",
-      "download": "Télécharger",
-      "csv": {
-        "name": "CSV",
-        "hint": "Ce que le tableau affiche, pour un tableur."
-      },
-      "json": {
-        "name": "JSON",
-        "hint": "Ce que le référentiel stocke, nombres, booléens et listes préservés."
-      }
     },
 
 

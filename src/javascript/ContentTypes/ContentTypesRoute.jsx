@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
 import {useQuery} from '@apollo/client';
 import {shallowEqual, useSelector} from 'react-redux';
 import {useTranslation} from 'react-i18next';
@@ -61,14 +61,6 @@ export const ContentTypesRoute = () => {
     // dependency on every render.
     const clearSelection = useCallback(() => setSelection([]), []);
 
-    // Indexed over the whole catalog, not only what is shown: the export dialog offers every column
-    // a record carries, including ones this reader has hidden from the table.
-    const fieldsByKey = useMemo(
-        // Name is in here without being in the picker: it is always shown, and so never in it.
-        () => new Map([...columns.availableFields, columns.nameField].map(field => [field.key, field])),
-        [columns.availableFields, columns.nameField]
-    );
-
     if (!contentType) {
         return <div className={styles.mainPane} data-sel-role="content-types-route"/>;
     }
@@ -99,9 +91,6 @@ export const ContentTypesRoute = () => {
                 moveField={columns.moveField}
                 resetToDefaults={columns.resetToDefaults}
                 selection={selection}
-                fieldsByKey={fieldsByKey}
-                translatableFields={columns.translatableFields}
-                languages={columns.languages}
                 onSearchChange={setSearch}
                 onClearSelection={clearSelection}
             />

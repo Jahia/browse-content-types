@@ -18,56 +18,26 @@ import {NAMESPACE} from '../ContentTypes.register';
  * every action in jContent's own bars gets, and all most of them need, since each goes and reads
  * whatever else it wants about those nodes itself.
  *
- * This bar adds several things to it, because some operations here cannot be written from paths
- * alone.
- * Exporting the table needs the rows *as displayed* - the same columns, in the same order, holding
- * the same values - and re-reading them from their paths would be a second query whose answer could
- * honestly differ from what the reader is looking at. So the bar passes what the table already
- * holds:
+ * This bar adds several things to it, because an operation here may need the rows *as displayed* -
+ * the same columns, in the same order, holding the same values - and re-reading them from their
+ * paths would be a second query whose answer could honestly differ from what the reader is looking
+ * at. So the bar passes what the table already holds:
  *
  *   nodes        the selected rows, in the shape ContentTypesRecordQuery fetched them
  *   fields       the visible columns, in the reader's own order
- *   contentType  the type being listed, which names the file
+ *   contentType  the type being listed
  *   t            this module's translations, for an action with no React of its own
- *   openExport     opens the export form, which the bar renders - see below
  *
  * They are additions, not conditions: an action that wants none of them ignores them and behaves
  * exactly as it would in jContent's bar.
+ *
+ * **This module registers nothing into this target of its own any more.** The menu is here for
+ * other modules to fill; an editor who opens it with nothing registered sees `menuEmptyMessage`.
  */
 export const BULK_ACTIONS_TARGET = 'contentTypesBulkActions';
 
 /** The menu is itself an action, so the bar can render it like any other. */
 export const BULK_MENU_ACTION = 'contentTypesBulkMenu';
-
-/**
- * The operations this module means to provide of its own, in the order they appear.
- *
- * Registered as ordinary actions in the target above rather than hardcoded into the menu, so they
- * are neither more nor less privileged than one another module contributes - and so replacing a
- * placeholder with the real thing is a change to one registration, not to the bar.
- *
- * Priorities are spaced by ten to leave another module room to slot in between two of them.
- */
-const ENTRIES = ['export'];
-
-/**
- * Kept for an entry another module registers into this target without a handler, and as what a new
- * entry of this module's own starts as: the menu item renderer calls `onClick`, so the handler has
- * to exist for the entry to be clickable at all. This module's own one does not use it.
- */
-const notImplementedYet = () => undefined;
-
-/**
- * Exporting asks two questions first - which format, and which columns - so it opens a form the bar
- * renders rather than downloading on the spot. It was a straight download while CSV was the only
- * format and the visible columns the only set; neither is true now.
- */
-const openExportDialog = ({openExport}) => openExport?.();
-
-/** Every entry now has something behind it. */
-const HANDLERS = {
-    export: openExportDialog
-};
 
 export const registerContentTypesBulkActions = () => {
     // The init callback can fire more than once; registering twice would throw on the second pass.
@@ -89,19 +59,9 @@ export const registerContentTypesBulkActions = () => {
     registry.add('action', BULK_MENU_ACTION, menuActionWithRenderer, {
         buttonLabel: `${NAMESPACE}:label.bulk.trigger`,
         menuTarget: BULK_ACTIONS_TARGET,
-        // What the menu says when nothing is registered in the target - which is what an editor sees
-        // if these placeholders are ever taken out before the real operations land.
+        // What the menu says when nothing is registered in the target - which, since this module
+        // contributes no entry of its own, is what an editor sees unless another module has.
         menuEmptyMessage: `${NAMESPACE}:label.bulk.empty`
-    });
-
-    ENTRIES.forEach((key, index) => {
-        registry.add('action', `contentTypesBulk_${key}`, {
-            buttonLabel: `${NAMESPACE}:label.bulk.${key}`,
-            targets: [`${BULK_ACTIONS_TARGET}:${(index + 1) * 10}`],
-            // The menu item renderer calls this with the item's own props, which carry the bar's
-            // context - so an action needs no React of its own to read the selection.
-            onClick: HANDLERS[key] || notImplementedYet
-        });
     });
 };
 

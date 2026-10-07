@@ -283,8 +283,9 @@ export const useContentTypeColumns = contentType => {
      * Only those active in edit: a language that has been switched off is not one anybody is
      * expected to have translated into, and counting it would flag every record on the site.
      *
-     * Here rather than in the table, because the export dialog needs the same list and reaches it
-     * through this hook; two components querying it separately would ask twice for one answer.
+     * Here rather than in the table, because this hook is where the columns are decided and a second
+     * component querying it separately would ask twice for one answer. The export dialog was that
+     * second component; the table is the only reader now.
      */
     const {data: languageData} = useQuery(GET_SITE_LANGUAGES, {
         variables: {sitePath: `/sites/${site}`},
@@ -382,7 +383,10 @@ export const useContentTypeColumns = contentType => {
      *
      * Deliberately not part of `availableFields`: that list is the columns picker, and Name is
      * always shown. It is published on its own so that whatever needs to name every column a record
-     * carries - the export dialog, today - can reach this one too.
+     * carries can reach this one too.
+     *
+     * **Read by nothing today.** The export dialog was its only consumer and is no longer in the
+     * module; this is kept because it is what that dialog would want back first. See DEFERRED.md.
      */
     const nameField = useMemo(() => {
         const definitions = data?.jcr?.nodeTypeByName?.properties || [];

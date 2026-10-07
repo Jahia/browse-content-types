@@ -1,10 +1,9 @@
-import React, {useCallback, useMemo, useState} from 'react';
+import React, {useMemo} from 'react';
 import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
 import {Button, ButtonGroup, Cancel, ChevronDown, Separator, Typography} from '@jahia/moonstone';
 import {DisplayAction, DisplayActions} from '@jahia/ui-extender';
 import {ButtonRenderer, ButtonRendererNoLabel, ButtonRendererShortLabel} from '@jahia/jcontent';
-import {ContentTypesExportDialog} from './ContentTypesExportDialog';
 import {BULK_MENU_ACTION} from './registerContentTypesBulkActions';
 import {NAMESPACE} from '../ContentTypes.register';
 import styles from './ContentTypes.module.scss';
@@ -39,22 +38,10 @@ const publishActionFor = nodes => (
 export const ContentTypesSelectionBar = ({
     nodes,
     fields,
-    availableFields,
-    fieldsByKey,
     contentType,
-    translatableFields,
-    languages,
     onClear
 }) => {
     const {t} = useTranslation(NAMESPACE);
-
-    // Exporting opens a form, and an action's onClick has no React of its own to render one in. So
-    // the bar owns the dialog and hands the action the way to ask for it - which keeps every entry
-    // in the menu a plain onClick, including any another module adds, rather than making the ones
-    // that need a form into components.
-    const [isExporting, setIsExporting] = useState(false);
-    const openExport = useCallback(() => setIsExporting(true), []);
-    const closeExport = useCallback(() => setIsExporting(false), []);
 
     // Every action branches on which of these two it was handed: a single `path` for one row, or
     // `paths` for several. Passing an array of one is not the same thing and makes some of them
@@ -77,8 +64,8 @@ export const ContentTypesSelectionBar = ({
     // Memoised for the same reason `paths` is - the menu is a PureComponent, and an object rebuilt
     // on every render would reopen its whole item list each time anything above this re-rendered.
     const bulkContext = useMemo(
-        () => ({...context, nodes, fields, contentType, t, openExport}),
-        [context, nodes, fields, contentType, t, openExport]
+        () => ({...context, nodes, fields, contentType, t}),
+        [context, nodes, fields, contentType, t]
     );
 
     return (
@@ -164,38 +151,18 @@ export const ContentTypesSelectionBar = ({
             </ButtonGroup>
             <DisplayAction actionKey="publishDeletion" {...context} render={ButtonRendererShortLabel}/>
             <DisplayAction actionKey="deletePermanently" {...context} render={ButtonRendererShortLabel}/>
-
-            {/* Mounted only while open, so the queries behind it are not run for a menu nobody
-                opened, and so a cancelled form does not keep what was typed into it. */}
-            {isExporting && (
-                <ContentTypesExportDialog
-                    isOpen
-                    nodes={nodes}
-                    contentType={contentType}
-                    visibleFields={fields}
-                    availableFields={availableFields}
-                    fieldsByKey={fieldsByKey}
-                    translatableFields={translatableFields}
-                    languages={languages}
-                    onClose={closeExport}
-                />
-            )}
         </div>
     );
 };
 
 ContentTypesSelectionBar.propTypes = {
-    translatableFields: PropTypes.array,
-    languages: PropTypes.array,
     /** The rows currently ticked, in the shape the table fetched them. Never empty: the bar is not
      *  rendered without a selection, and the publish choice below has no answer for no rows. */
     nodes: PropTypes.array.isRequired,
-    /** The visible columns, in the reader's order - what an export starts from. */
+    /** The visible columns, in the reader's order. Passed to the bulk menu's context, where an
+     *  action another module registers can read the rows as the table is showing them. */
     fields: PropTypes.array.isRequired,
-    /** The whole catalog, so a column can be exported without being shown in the table first. */
-    availableFields: PropTypes.array.isRequired,
-    fieldsByKey: PropTypes.instanceOf(Map).isRequired,
-    /** The type being listed, which names an exported file. */
+    /** The type being listed, likewise for the menu's context. */
     contentType: PropTypes.string.isRequired,
     onClear: PropTypes.func.isRequired
 };

@@ -23,8 +23,9 @@ export const ContentTypesColumnsPicker = ({
     moveField,
     resetToDefaults,
     // The footer states what happens to a change, and that differs by where the picker is used: the
-    // table keeps one for good, while an export dialog's lasts as long as the dialog. Overridable
-    // rather than hardcoded, so neither host has to say something untrue about the other's.
+    // table keeps one for good, while a dialog's would last only as long as the dialog. The toolbar
+    // is the only host left and takes both defaults, so these are an extension point rather than a
+    // choice anyone is currently making - kept because a second host is exactly what they are for.
     footerNoteKey = 'label.columns.autoSaved',
     resetLabelKey = 'label.columns.reset'
 }) => {
