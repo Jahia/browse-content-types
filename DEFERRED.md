@@ -1,25 +1,41 @@
 # Features held back from the first release
 
-Four features were built, work, and are deliberately not in 1.0. This file is the map back to
-them: what each one was, which commit took it out, and what is worth reworking before it returns.
+Six features were built, work, and are deliberately not in 1.0. This file is the map back to them:
+what each one was, which commit took it out, and what is worth reworking before it returns.
 
-Nothing was thrown away. The full set as it stood before any of this is the annotated tag
-**`v0-full`** (`bf2d16ae1aef0f2b4e3cb70eaf54dddeee5560f5`), also kept as the branch
-**`archive/full-feature-set`**. That branch is not maintained and will not follow this one — the
-tag is the record, the branch is only there to be noticed.
+They came out in two rounds, and the round decides which archive point to read a feature from.
+
+| Round | What came out | Tag | Branch |
+|---|---|---|---|
+| First | Assign to, Undo, inline cell editing, column filtering | **`v0-full`** (`bf2d16ae1aef0f2b4e3cb70eaf54dddeee5560f5`) | `archive/full-feature-set` |
+| Second | Tag and Categorize, Replace a value | **`v1-bulk`** (`63ef4cd2f84bc13b245ad368a7d87ea5bc723cdc`) | `archive/bulk-operations` |
+
+Nothing was thrown away. Neither branch is maintained and neither will follow this one — the tags
+are the record, the branches are only there to be noticed.
+
+`v0-full` holds everything, so it is the only record of the four in the first round. It is the
+**wrong** place to read the two bulk operations from: there they are tangled with undo, inline cell
+editing and column filtering, none of which are coming back with them. `v1-bulk` holds the same two
+with that tangle already gone, which is why it exists.
 
 **To bring one back:** `git revert <sha>`. Each removal commit took out one feature and nothing
 else, so its inverse is the feature as it was. Expect conflicts in proportion to how much the code
 around it has moved since; the list below says where to look.
 
-Before any of the four were removed, three refactors landed on `master` to cut them loose. They
-are on both lines, so neither a revert nor the code it lands in carries the tangle they undid:
+Reverting one of the two bulk removals restores its comments as they stood, including a sentence in
+`ContentTypesSelection` that lists Assign to and the column filters as things the toolbar offers.
+They have not been offered since the first round. Correct it on the way through rather than taking
+it as a description of the tree.
+
+Each round was preceded by refactors that cut the features loose, so neither a revert nor the code
+it lands in carries the tangle they undid:
 
 | Commit | What it separated |
 |---|---|
 | `309bb01` | `ContentTypesFilters` was three things in one file. Split into `ContentTypesFieldTypes` (what kind of value a column holds — the columns, the bulk editor and the CSV writer all need it), `ContentTypesSearch` (the typed term), and the filtering proper. |
 | `7e3b3ec` | The mutation-kind → document map moved from `useCellEdit` to `ContentTypes.gql`, so deleting the cell editor could not break bulk editing. |
 | `e010e99` | The read every write does before replacing a value, written out at three call sites, became `captureUndo`. |
+| `4fd2702` | The create-target dialog was using the replace-a-value form's Cancel label and its control width. Both became its own, so removing that form could not take a working dialog with it — in one case silently, a missing translation key rendering as the key. |
 
 ---
 
@@ -48,10 +64,12 @@ stamps captured with them, the restore, and the bar offering to take it back.
 **What went:** `ContentTypesUndo` (+ spec), `ContentTypesUndoAction`, `useBulkUndo`, the
 `CAPTURE_TIMESTAMPS` document, and the recording at each write.
 
-**Where to look on a revert:** one piece was never really undo and stays — adding tags or
-categories has to read what each record holds to compute the union, so that read lives on as
-`captureHeldValues` in `ContentTypesBulkFields`, with the assertions that covered it. A revert has
-to reconcile the two rather than restore a second copy.
+**Where to look on a revert:** nothing of undo is left in the tree. One piece used to be —
+adding tags or categories had to read what each record held to compute the union, so that read
+lived on as `captureHeldValues` in `ContentTypesBulkFields` — but adding to a tag list went with
+Tag and Categorize below, and the read went with it. A revert of undo now restores the only copy
+rather than a second one. **If Tag and Categorize is reverted as well, the two copies come back
+and have to be reconciled**; which order they are restored in does not change that.
 
 **Worth reworking first:** it is one level and one snapshot, by design, and it notices nothing
 another editor does to the same records in between. That is honest for a step taken straight away
@@ -96,3 +114,56 @@ needs an answer from the platform or the filter should not be offered.
 **Still in the tree unread:** `jcrProperty` on the common columns in `useContentTypeColumns`,
 which records which JCR property each column reads. Nothing consumes it today; filtering is what
 did, and it is what filtering would need first.
+
+## Tag and Categorize — `1f22b1f509adde0e0b3ae0cf3ce7328960e73546`
+
+Setting a tag list or a category list across the ticked rows, with a choice between replacing what
+each record holds and adding to it.
+
+**What went:** `ContentTypesBulkFields` (+ spec), `ContentTypesBulkFieldDialog`, the `SET_BULK_FIELD`
+mutation, the two `CAPTURE_` queries, the `.bulkFieldMode` style and the `label.bulkField.*` keys in
+both locales.
+
+**What stayed, and is not part of this:** the tags and categories **columns**. They are read by the
+record query for display and have nothing to do with writing. So are the `jmix:tagged` and
+`jmix:categorized` mixins — this module never declared them, they are Jahia's own.
+
+**Where to look on a revert:** the dialog fetched its pickers off the `@jahia/ui-extender` registry
+by Content Editor's selector-type keys, `Tag` and `Category`. Those are registry keys, not an API,
+and nothing fails at build time if they move — the dialog degrades to saying the picker is
+unavailable. Check them against the Content Editor actually deployed before concluding the revert
+worked.
+
+**Worth reworking first:** adding to a list rather than replacing it is computed in the browser —
+read every record's current values, union them with what was chosen, write the result back. That is
+a read and a write per operation and it races any other editor touching the same records in
+between. `addValues` would say it in one call, and the reason it was not used is narrow: on a
+property the mixin has defined but never created, it fails outright. Worth re-testing against the
+current platform rather than inheriting the workaround.
+
+## Replace a value — `68f0bcb1ff77beda21c5b0612df1f6e60edd8684`
+
+Setting one of a content type's own properties across the ticked rows, with a column chooser, five
+shapes of control, a clear-instead option and a count of what was about to be overwritten.
+
+**What went:** `ContentTypesBulkEdit` (+ spec), `ContentTypesBulkEditDialog`, the six
+`SET_`/`CLEAR_PROPERTY` mutations, the `MUTATIONS` map `7e3b3ec` had moved into `ContentTypes.gql`
+for exactly this, and the `label.bulkEdit.*` keys in both locales.
+
+**Where to look on a revert:** it emptied this module's bulk menu down to `export`. A clean revert
+puts the entry back by itself; a conflicted one is where to look, because the wiring is three
+separate one-line edits — `editValue` in `ENTRIES` *and* in `HANDLERS` in
+`registerContentTypesBulkActions`, and `openBulkEdit` in the bar's `bulkContext`. Miss the second or
+the third and the result is a menu entry that does nothing, which nothing fails on.
+
+**Still in the tree unread:** `mandatory` on the dynamic columns in `useContentTypeColumns`, and in
+`GET_CONTENT_TYPE_FIELDS` beside it. It was what told the form a property could not be cleared. It
+is deliberately still fetched, and the comment beside it says so. `internationalized`, which sits on
+the same two lines and reads like it belongs to the same feature, **does not** — the untranslated
+column counts per-language properties with it. Do not treat them as a pair.
+
+**Worth reworking first:** the count of records already holding a value is honest only for a column
+that is on screen, because it is computed from rows the table has already fetched; for a hidden
+column the dialog said it did not know. That is correct and it is the wrong place to leave the
+reader, since the hidden-column case is exactly when someone is least sure what they are about to
+overwrite. One query would answer it properly.
