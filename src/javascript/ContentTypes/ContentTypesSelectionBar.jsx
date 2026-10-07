@@ -4,10 +4,8 @@ import {useTranslation} from 'react-i18next';
 import {Button, ButtonGroup, Cancel, ChevronDown, Separator, Typography} from '@jahia/moonstone';
 import {DisplayAction, DisplayActions} from '@jahia/ui-extender';
 import {ButtonRenderer, ButtonRendererNoLabel, ButtonRendererShortLabel} from '@jahia/jcontent';
-import {ContentTypesBulkFieldDialog} from './ContentTypesBulkFieldDialog';
 import {ContentTypesBulkEditDialog} from './ContentTypesBulkEditDialog';
 import {ContentTypesExportDialog} from './ContentTypesExportDialog';
-import {BULK_FIELDS} from './ContentTypesBulkFields';
 import {BULK_MENU_ACTION} from './registerContentTypesBulkActions';
 import {NAMESPACE} from '../ContentTypes.register';
 import styles from './ContentTypes.module.scss';
@@ -51,17 +49,10 @@ export const ContentTypesSelectionBar = ({
 }) => {
     const {t} = useTranslation(NAMESPACE);
 
-    // Tag and Categorize opens a form, and an action's onClick has no React of its own to render
-    // one in. So the bar owns the dialogs and hands each action the way to ask for one - which keeps
-    // every entry in the menu a plain onClick, the way Export as CSV is, rather than making one of
-    // them a component and the rest not.
-    //
-    // Tag and Categorize open the same dialog on different fields, so one piece of state holds
-    // which of the two is open rather than two booleans that must never both be true.
-    const [bulkFieldKey, setBulkFieldKey] = useState(null);
-    const openBulkField = useCallback(key => setBulkFieldKey(key), []);
-    const closeBulkField = useCallback(() => setBulkFieldKey(null), []);
-
+    // Each entry in the menu opens a form, and an action's onClick has no React of its own to
+    // render one in. So the bar owns the dialogs and hands each action the way to ask for one -
+    // which keeps every entry in the menu a plain onClick rather than making one of them a
+    // component and the rest not.
     const [isExporting, setIsExporting] = useState(false);
     const openExport = useCallback(() => setIsExporting(true), []);
     const closeExport = useCallback(() => setIsExporting(false), []);
@@ -86,13 +77,13 @@ export const ContentTypesSelectionBar = ({
 
     // What this module's own operations get on top of the paths, and only they: jContent's actions
     // below are handed the plain context, since an action written against its bar has no idea what
-    // these are and there is nothing to gain from surprising it with four extra props.
+    // these are and there is nothing to gain from surprising it with the extra props.
     //
     // Memoised for the same reason `paths` is - the menu is a PureComponent, and an object rebuilt
     // on every render would reopen its whole item list each time anything above this re-rendered.
     const bulkContext = useMemo(
-        () => ({...context, nodes, fields, contentType, t, openBulkField, openExport, openBulkEdit}),
-        [context, nodes, fields, contentType, t, openBulkField, openExport, openBulkEdit]
+        () => ({...context, nodes, fields, contentType, t, openExport, openBulkEdit}),
+        [context, nodes, fields, contentType, t, openExport, openBulkEdit]
     );
 
     return (
@@ -123,8 +114,8 @@ export const ContentTypesSelectionBar = ({
             />
 
             {/* Everything that acts on the selection without publishing it: jContent's own actions
-                as loose buttons, then this module's, gathered behind one trigger because four more
-                buttons on this line would bury the two that matter most. */}
+                as loose buttons, then this module's, gathered behind one trigger rather than laid
+                out beside them, where they would bury the two that matter most. */}
             <div className={styles.selectionActions}>
                 <Separator variant="vertical"/>
                 <DisplayActions
@@ -199,14 +190,6 @@ export const ContentTypesSelectionBar = ({
                     translatableFields={translatableFields}
                     languages={languages}
                     onClose={closeExport}
-                />
-            )}
-            {bulkFieldKey && (
-                <ContentTypesBulkFieldDialog
-                    isOpen
-                    field={BULK_FIELDS[bulkFieldKey]}
-                    nodes={nodes}
-                    onClose={closeBulkField}
                 />
             )}
         </div>

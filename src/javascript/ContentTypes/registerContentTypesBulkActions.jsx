@@ -29,8 +29,7 @@ import {NAMESPACE} from '../ContentTypes.register';
  *   fields       the visible columns, in the reader's own order
  *   contentType  the type being listed, which names the file
  *   t            this module's translations, for an action with no React of its own
- *   openBulkField  opens the tag or category form, which the bar renders - see below
- *   openExport     opens the export form, likewise
+ *   openExport     opens the export form, which the bar renders - see below
  *   openBulkEdit   opens the replace-a-value form, likewise
  *
  * They are additions, not conditions: an action that wants none of them ignores them and behaves
@@ -50,23 +49,17 @@ export const BULK_MENU_ACTION = 'contentTypesBulkMenu';
  *
  * Priorities are spaced by ten to leave another module room to slot in between two of them.
  */
-const ENTRIES = ['editValue', 'tag', 'categorize', 'export'];
+const ENTRIES = ['editValue', 'export'];
 
 /**
  * Kept for an entry another module registers into this target without a handler, and as what a new
  * entry of this module's own starts as: the menu item renderer calls `onClick`, so the handler has
- * to exist for the entry to be clickable at all. None of the four uses it any more.
+ * to exist for the entry to be clickable at all. Neither of this module's own uses it.
  */
 const notImplementedYet = () => undefined;
 
 /**
- * Tag and Categorize are the same dialog on two different fields, so they are one handler told which
- * field it is about rather than two that differ by a string.
- */
-const openBulkFieldDialog = key => ({openBulkField}) => openBulkField?.(key);
-
-/**
- * Exporting asks two questions first - which format, and which columns - so like the other three it
+ * Exporting asks two questions first - which format, and which columns - so like the other entry it
  * opens a form the bar renders. It was a straight download while CSV was the only format and the
  * visible columns the only set; neither is true now.
  */
@@ -80,8 +73,6 @@ const openBulkEditDialog = ({openBulkEdit}) => openBulkEdit?.();
 /** Every entry now has something behind it. */
 const HANDLERS = {
     editValue: openBulkEditDialog,
-    tag: openBulkFieldDialog('tag'),
-    categorize: openBulkFieldDialog('categorize'),
     export: openExportDialog
 };
 

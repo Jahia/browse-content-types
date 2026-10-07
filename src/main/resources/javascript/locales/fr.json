@@ -21,8 +21,6 @@
       "trigger": "Actions groupées",
       "empty": "Aucune action groupée n'est disponible.",
       "editValue": "Remplacer une valeur",
-      "tag": "Ajouter des tags",
-      "categorize": "Catégoriser",
       "export": "Exporter"
     },
     "settings": {
@@ -76,41 +74,6 @@
 
     "sort": {
       "column": "Trier par {{column}}"
-    },
-
-    "bulkField": {
-      "count": "{{count}} enregistrement sélectionné",
-      "count_plural": "{{count}} enregistrements sélectionnés",
-      "cancel": "Annuler",
-      "apply": "Appliquer",
-      "failed": "La modification n'a pas pu être appliquée. Vérifiez que vous pouvez modifier ce contenu, puis réessayez.",
-      "noPicker": "Le sélecteur nécessaire n'est pas disponible. Content Editor n'est peut-être pas déployé.",
-      "tag": {
-        "title": "Étiqueter le contenu",
-        "label": "Étiquettes",
-        "mode": {
-          "replace": "Remplacer les tags existants",
-          "replaceHint": "Chaque enregistrement ne portera que les tags choisis ici. Les autres sont retirés.",
-          "add": "Ajouter aux tags existants",
-          "addHint": "Les tags choisis ici s'ajoutent à ceux que chaque enregistrement porte déjà. Rien n'est retiré."
-        },
-        "replaces": "{{count}} des enregistrements sélectionnés a déjà des étiquettes, qui seront remplacées.",
-        "replaces_plural": "{{count}} des enregistrements sélectionnés ont déjà des étiquettes, qui seront remplacées.",
-        "clears": "Sans sélection, appliquer supprime les étiquettes de tous les enregistrements sélectionnés."
-      },
-      "categorize": {
-        "title": "Catégoriser le contenu",
-        "label": "Catégories",
-        "mode": {
-          "replace": "Remplacer les catégories existantes",
-          "replaceHint": "Chaque enregistrement ne sera que dans les catégories choisies ici. Les autres sont retirées.",
-          "add": "Ajouter aux catégories existantes",
-          "addHint": "Les catégories choisies ici s'ajoutent à celles que chaque enregistrement porte déjà. Rien n'est retiré."
-        },
-        "replaces": "{{count}} des enregistrements sélectionnés est déjà catégorisé, et sera remplacé.",
-        "replaces_plural": "{{count}} des enregistrements sélectionnés sont déjà catégorisés, et seront remplacés.",
-        "clears": "Sans sélection, appliquer supprime les catégories de tous les enregistrements sélectionnés."
-      }
     },
     "export": {
       "title": "Exporter le contenu",

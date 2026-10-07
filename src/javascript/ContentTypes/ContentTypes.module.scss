@@ -490,18 +490,6 @@
 }
 
 /*
- * Replace-or-add, above the picker.
- *
- * Spaced off the picker below it so the two read as separate decisions rather than one block of
- * controls - the mode changes what the picker's values will do, and running them together invites
- * choosing categories without noticing which mode is on.
- */
-.bulkFieldMode {
-    gap: var(--spacing-nano);
-    margin-bottom: var(--spacing-medium);
-}
-
-/*
  * The assignee box and the list that drops out of it.
  *
  * The positioning context for the suggestions - deliberately this, and not the whole `.assignField`,

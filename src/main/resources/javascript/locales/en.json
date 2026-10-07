@@ -21,8 +21,6 @@
       "trigger": "Bulk",
       "empty": "No bulk operation is available.",
       "editValue": "Replace a value",
-      "tag": "Tag",
-      "categorize": "Categorize",
       "export": "Export"
     },
     "settings": {
@@ -76,41 +74,6 @@
 
     "sort": {
       "column": "Sort by {{column}}"
-    },
-
-    "bulkField": {
-      "count": "{{count}} record selected",
-      "count_plural": "{{count}} records selected",
-      "cancel": "Cancel",
-      "apply": "Apply",
-      "failed": "The change could not be applied. Check that you may edit this content, then try again.",
-      "noPicker": "The picker this needs is not available. Content Editor may not be deployed.",
-      "tag": {
-        "title": "Tag content",
-        "label": "Tags",
-        "mode": {
-          "replace": "Replace existing tags",
-          "replaceHint": "Each record ends up with exactly the tags chosen here. Any others it had are removed.",
-          "add": "Add to existing tags",
-          "addHint": "The tags chosen here are added to what each record already has. Nothing is removed."
-        },
-        "replaces": "{{count}} of the selected records already has tags, which will be replaced.",
-        "replaces_plural": "{{count}} of the selected records already have tags, which will be replaced.",
-        "clears": "With nothing chosen, applying removes the tags from every selected record."
-      },
-      "categorize": {
-        "title": "Categorize content",
-        "label": "Categories",
-        "mode": {
-          "replace": "Replace existing categories",
-          "replaceHint": "Each record ends up in exactly the categories chosen here. Any others it was in are removed.",
-          "add": "Add to existing categories",
-          "addHint": "The categories chosen here are added to what each record already has. Nothing is removed."
-        },
-        "replaces": "{{count}} of the selected records is already categorized, and will be replaced.",
-        "replaces_plural": "{{count}} of the selected records are already categorized, and will be replaced.",
-        "clears": "With nothing chosen, applying removes the categories from every selected record."
-      }
     },
     "export": {
       "title": "Export content",

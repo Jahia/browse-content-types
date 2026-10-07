@@ -211,36 +211,6 @@ export const GET_SITE_LANGUAGES = gql`
 `;
 
 /**
- * Setting one multi-valued property across every ticked row, in one call.
- *
- * `mutateNodes` takes the whole selection, so a hundred records cost one round trip rather than a
- * hundred. The mixin is added on the way past: a node that has never carried a tag has neither the
- * mixin nor the property, and setting a property its type does not declare is an error.
- *
- * `setValues` rather than `addValues` - partly because replacing is what the dialog offers, and
- * partly because `addValues` on a property that does not exist yet fails outright, the mixin having
- * defined the property without creating it.
- */
-export const SET_BULK_FIELD = gql`
-    mutation setBulkField(
-        $paths: [String]!,
-        $mixins: [String]!,
-        $property: String!,
-        $type: JCRPropertyType!,
-        $values: [String]!
-    ) {
-        jcr(workspace: EDIT) {
-            mutateNodes(pathsOrIds: $paths) {
-                addMixins(mixins: $mixins)
-                mutateProperty(name: $property) {
-                    setValues(type: $type, values: $values)
-                }
-            }
-        }
-    }
-`;
-
-/**
  * Replacing one of a content type's own properties across every ticked row.
  *
  * Four documents rather than one with optional arguments, because the two axes that vary cannot be
@@ -351,60 +321,6 @@ export const MUTATIONS = {
     SET_PROPERTY_VALUES,
     SET_PROPERTY_VALUES_I18N
 };
-
-/**
- * What the selected records hold, read just before a bulk operation replaces it.
- *
- * Read from the repository rather than taken from the rows on screen, because the table cannot
- * answer two of the cases: a column the reader has hidden has no values in the rows at all, and the
- * category column carries display names where what has to be written back is uuids.
- *
- * `value` and `values` are both asked for and one of them answers - checked against a site, a
- * single-valued property returns its `value` with `values` null. That is what lets one document
- * serve both shapes instead of the caller having to know which it is asking about.
- *
- * The language is always passed. It is what an internationalized property is read through, and it is
- * simply ignored by one that is not - the record query already reads every common property this way.
- */
-export const CAPTURE_VALUES = gql`
-    query captureValues($paths: [String!]!, $property: String!, $language: String!) {
-        jcr(workspace: EDIT) {
-            nodesByPath(paths: $paths) {
-                path
-                property(name: $property, language: $language) {
-                    value
-                    values
-                }
-            }
-        }
-    }
-`;
-
-/**
- * The same, for a property that holds references.
- *
- * Separate because `refNodes` cannot simply be added to the query above: asking it of a property
- * that is not a reference makes the server report an internal error on every request - the field
- * still resolves to null and the response arrives intact, so it is easy to miss and is a real error
- * the platform logs. See the same note in ContentTypesRecordQuery.
- *
- * The uuid is what is captured, since that is what the property stores and what putting it back
- * means; the display names the table shows would restore nothing.
- */
-export const CAPTURE_REFERENCES = gql`
-    query captureReferences($paths: [String!]!, $property: String!, $language: String!) {
-        jcr(workspace: EDIT) {
-            nodesByPath(paths: $paths) {
-                path
-                property(name: $property, language: $language) {
-                    refNodes {
-                        uuid
-                    }
-                }
-            }
-        }
-    }
-`;
 
 /**
  * Which types may be created at a given path, as Content Editor itself resolves it.
