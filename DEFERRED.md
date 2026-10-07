@@ -1,31 +1,71 @@
 # Features held back from the first release
 
-Six features were built, work, and are deliberately not in 1.0. This file is the map back to them:
-what each one was, which commit took it out, and what is worth reworking before it returns.
+Seven features were built, work, and are deliberately not in 1.0, along with the menu the last
+three of them hung off. This file is the map back to them: what each one was, which commit took it
+out, and what is worth reworking before it returns.
 
-They came out in two rounds, and the round decides which archive point to read a feature from.
+## The quick answer
+
+**To bring a feature back, merge its branch.** Each `feature/*` branch below is this line with that
+feature restored, already built and already passing its tests:
+
+| Branch | Restores | Tests |
+|---|---|---|
+| `feature/bulk-menu` | the `contentTypesBulkActions` menu and extension point | 127 |
+| `feature/export` | …and Export (CSV, JSON) | 207 |
+| `feature/replace-a-value` | …and Replace a value | 250 |
+| `feature/tag-categorize` | …and Tag and Categorize | 293 |
+| `feature/column-filtering` | …and column filtering | 335 |
+| `feature/inline-cell-editing` | …and inline cell editing | 385 |
+| `feature/undo` | …and Undo | 415 |
+| `feature/assign-to` | …and Assign to | 478 |
+
+**Read the "…and" literally. The branches are a stack, not a menu.** Each row contains everything
+in the rows above it, because that is the order the features came out in and the code interlocks:
+Export registered an entry in the bulk menu, so it cannot come back without it; Undo recorded the
+values each write replaced, so it cannot come back without the writes. Merging
+`feature/inline-cell-editing` brings back cell editing *and* filtering, tag, replace-a-value,
+export and the menu. There is no branch that restores one of the lower features alone.
+
+This was measured, not assumed: reverting any single removal onto `master` conflicts, in every case
+but the menu. The stack is the order in which the reverts apply cleanly.
+
+If one feature is genuinely wanted on its own, it has to be rebuilt from its branch rather than
+merged from it — take the files and the registration, drop what belonged to the features beneath.
+The per-feature sections below say what each one owned.
+
+## The archive points
+
+Three tags record the tree as it stood before each round of removals. Branches of the same content
+exist so the points are noticeable in a branch listing; the tags are the record, and neither the
+branches nor the tags are maintained.
 
 | Round | What came out | Tag | Branch |
 |---|---|---|---|
 | First | Assign to, Undo, inline cell editing, column filtering | **`v0-full`** (`bf2d16ae1aef0f2b4e3cb70eaf54dddeee5560f5`) | `archive/full-feature-set` |
 | Second | Tag and Categorize, Replace a value | **`v1-bulk`** (`63ef4cd2f84bc13b245ad368a7d87ea5bc723cdc`) | `archive/bulk-operations` |
+| Third | Export, and the bulk menu itself | **`v1-export`** (`bf9f483`) | `archive/export-and-bulk-menu` |
 
-Nothing was thrown away. Neither branch is maintained and neither will follow this one — the tags
-are the record, the branches are only there to be noticed.
+Nothing was thrown away. Prefer the **latest** tag that still holds the feature you are after: the
+earlier ones hold it tangled with everything removed later, none of which is coming back with it.
+`v0-full` is the only record of the four first-round features; it is the wrong place to read Export
+or the bulk operations from.
 
-`v0-full` holds everything, so it is the only record of the four in the first round. It is the
-**wrong** place to read the two bulk operations from: there they are tangled with undo, inline cell
-editing and column filtering, none of which are coming back with them. `v1-bulk` holds the same two
-with that tangle already gone, which is why it exists.
+The `feature/*` branches above supersede all three for actually restoring something — they are the
+same code already reconciled with this line. The tags are for reading what a feature looked like
+before anything moved.
 
-**To bring one back:** `git revert <sha>`. Each removal commit took out one feature and nothing
-else, so its inverse is the feature as it was. Expect conflicts in proportion to how much the code
-around it has moved since; the list below says where to look.
+## Reverting by hand
 
-Reverting one of the two bulk removals restores its comments as they stood, including a sentence in
-`ContentTypesSelection` that lists Assign to and the column filters as things the toolbar offers.
-They have not been offered since the first round. Correct it on the way through rather than taking
-it as a description of the tree.
+`git revert <sha>` still works, in reverse removal order — bottom of the table upwards. That is
+exactly what the branches are, so there is rarely a reason to do it by hand.
+
+Reverting any of these restores its comments as they stood, including sentences in
+`ContentTypesSelection` and `useContentTypeColumns` that describe features removed in an earlier
+round as though the module still offered them. Correct them on the way through rather than taking
+them as a description of the tree.
+
+## The refactors underneath
 
 Each round was preceded by refactors that cut the features loose, so neither a revert nor the code
 it lands in carries the tangle they undid:
@@ -40,6 +80,8 @@ it lands in carries the tangle they undid:
 ---
 
 ## Assign to — `01082314eec5cbbedad567df9320889a6012785a`
+
+**Branch:** `feature/assign-to` — the top of the stack. Carries every other feature in this file.
 
 Raising one task for the ticked rows, assigned to someone who may edit the site.
 
@@ -57,6 +99,9 @@ On a site that grants roles to users directly the last two are skipped, but it i
 slowest thing in the module.
 
 ## Undo — `371a1172be934b13b7656e3fa9d631dae5fca2a0`
+
+**Branch:** `feature/undo` — also carries inline cell editing, column filtering, Tag and
+Categorize, Replace a value, Export and the bulk menu.
 
 One level of undo behind every bulk operation: the values read before each write, the publication
 stamps captured with them, the restore, and the bar offering to take it back.
@@ -77,6 +122,9 @@ and thin as a promise. Decide whether 1.x wants the same bargain before putting 
 
 ## Inline cell editing — `5a4e1b0922a0468904e6f21c231e6e4647d51917`
 
+**Branch:** `feature/inline-cell-editing` — also carries column filtering, Tag and Categorize,
+Replace a value, Export and the bulk menu.
+
 Correcting a value in the cell that shows it: the pencil on hover, the double-click, the editor
 inside the cell, the dialog for a value too long for one, and single-record tagging from the tags
 cell.
@@ -94,6 +142,9 @@ which is correct and is a column of extra data on every row of every page. Bulk 
 the same question from the field catalog alone.
 
 ## Column filtering — `20cfc07d80ee78384ffdc05413d0143844d02e3a`
+
+**Branch:** `feature/column-filtering` — also carries Tag and Categorize, Replace a value, Export
+and the bulk menu.
 
 Setting a condition on a column from its heading, and narrowing the table by it — with the
 conditions held in the address bar, so a narrowed table was a link.
@@ -116,6 +167,8 @@ which records which JCR property each column reads. Nothing consumes it today; f
 did, and it is what filtering would need first.
 
 ## Tag and Categorize — `1f22b1f509adde0e0b3ae0cf3ce7328960e73546`
+
+**Branch:** `feature/tag-categorize` — also carries Replace a value, Export and the bulk menu.
 
 Setting a tag list or a category list across the ticked rows, with a choice between replacing what
 each record holds and adding to it.
@@ -143,6 +196,8 @@ current platform rather than inheriting the workaround.
 
 ## Replace a value — `68f0bcb1ff77beda21c5b0612df1f6e60edd8684`
 
+**Branch:** `feature/replace-a-value` — also carries Export and the bulk menu.
+
 Setting one of a content type's own properties across the ticked rows, with a column chooser, five
 shapes of control, a clear-instead option and a count of what was about to be overwritten.
 
@@ -167,3 +222,59 @@ that is on screen, because it is computed from rows the table has already fetche
 column the dialog said it did not know. That is correct and it is the wrong place to leave the
 reader, since the hidden-column case is exactly when someone is least sure what they are about to
 overwrite. One query would answer it properly.
+
+## Export — `794e29e3caba3a46c01bfc50011c2054541b08b5`
+
+**Branch:** `feature/export` — and `feature/bulk-menu` beneath it.
+
+Writing the ticked rows to a file: CSV or JSON, with a column picker so an export could carry
+columns the table was not showing.
+
+**What went:** `ContentTypesExport` (+ spec), `ContentTypesExportDialog`, `ContentTypesCsv`
+(+ spec), `ContentTypesJson` (+ spec), the `label.export.*` keys in both locales, and five styles
+whose last reader was the dialog.
+
+**What stayed, and is not this:** jContent's own `export` action, which is in the
+`selectedContentActions` target the selection bar renders. For a single ticked row that button is
+already there, with its own workspace and zip/xml choices. This was never that.
+
+**Still in the tree unread:** `nameField` in `useContentTypeColumns` — the Name column as a field
+in its own right, published so that whatever needed to name every column a record carries could
+reach it. The dialog was the only thing that did. `footerNoteKey` and `resetLabelKey` on
+`ContentTypesColumnsPicker` are in the same position: both still have their defaults, the toolbar
+takes them, and nothing overrides them now that the dialog is gone.
+
+**Where to look on a revert:** `fieldsByKey` in `ContentTypesRoute` was built from `nameField` for
+this dialog alone and went with it. A revert restores it; if it is ever rebuilt by hand instead,
+that index is the piece that is easy to miss, because the dialog degrades to offering only the
+visible columns rather than failing.
+
+**Worth reworking first:** everything was built in the browser from rows already fetched, which is
+what made the export honest — it exported the table *as displayed*. It also means an export is
+limited to the page being looked at. Exporting a whole type means deciding whether that is a
+different feature or the same one with a server behind it.
+
+## The bulk menu — `1088f3e20fc31a65d84e641e30c569496cb3b466`
+
+**Branch:** `feature/bulk-menu` — the bottom of the stack; everything else needs it.
+
+The menu in the selection bar that this module's own operations were gathered behind, and the
+`contentTypesBulkActions` registry target they were registered into.
+
+**What went:** `registerContentTypesBulkActions` entirely, its call in `ContentTypes.register`, the
+trigger in the selection bar, the `bulkContext` the bar built for it, and the `label.bulk.*` keys.
+
+**This retired a published extension point.** The target was documented for other modules to
+register their own bulk operations into. A module that did will find its action registered and
+never rendered, with nothing failing to say so. Nothing in this repository does, and the target was
+only ever reachable from a deployment of this module — but it is the one removal here that could be
+felt from outside it. If this module has already shipped anywhere, that is worth checking before
+assuming the removal is invisible.
+
+**What stayed:** the selection bar, and all of jContent's own actions in it. Ticking rows still
+does everything it did except open this module's menu.
+
+**Where to look on a revert:** the menu is built on jContent's composed `menuAction`, fetched off
+the registry by key because neither it nor its renderers are exported. It is guarded — a missing
+`menuAction` logs and returns rather than throwing, because a throw there takes the whole module's
+registration down, accordion included. Keep that guard.
