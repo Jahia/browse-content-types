@@ -1,9 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
-import {CustomDropdown, SearchInput, Typography} from '@jahia/moonstone';
-import {ColumnsIcon} from './ColumnsIcon';
-import {ContentTypesColumnsPicker} from './ContentTypesColumnsPicker';
+import {SearchInput, Typography} from '@jahia/moonstone';
 import {ContentTypesCreateAction} from './ContentTypesCreateAction';
 import {ContentTypesSelectionBar} from './ContentTypesSelectionBar';
 import {MIN_SEARCH_LENGTH, isSearchTooShort} from './ContentTypesSearch';
@@ -12,16 +10,16 @@ import {NAMESPACE} from '../ContentTypes.register';
 import styles from './ContentTypes.module.scss';
 
 /**
- * The row of controls between the type heading and the table.
+ * The left-hand side of the header's toolbar: what you do to the list you are looking at.
  *
- * The create action opens a new record of the listed type, the search box narrows the table across
- * every field at once, and the columns icon opens the picker for which fields the table shows, and
- * in what order.
+ * The create action opens a new record of the listed type, and the search box narrows the table
+ * across every field at once. Choosing which columns show sits on the toolbar's right instead,
+ * where jContent puts its own view and sort selectors - it is about how the table reads rather
+ * than about what is in it, so it is the one control that never changes with the selection.
  *
  * Ticking SEVERAL rows replaces all of that with what can be done to them, in the same place: while
  * a set is being acted on, the controls for finding content are not what is being asked for, and a
- * search or a sort clears the selection anyway. The columns picker stays either way, being about how
- * the table reads rather than about what is in it.
+ * search or a sort clears the selection anyway.
  *
  * One ticked row leaves this line alone, which is a departure from jContent - its own list switches
  * at one. Picking a single record out is not a change of mode, and having the toolbar answer it by
@@ -36,12 +34,6 @@ export const ContentTypesToolBar = ({
     onSearchChange,
     contentType,
     contentTypeLabel,
-    lockedLabel,
-    availableFields,
-    visibleFields,
-    toggleField,
-    moveField,
-    resetToDefaults,
     selection,
     onClearSelection
 }) => {
@@ -82,26 +74,6 @@ export const ContentTypesToolBar = ({
                 </>
             )}
 
-            {/* Pushes the columns control to the right end of the line. */}
-            <div className={styles.toolBarSpacer}/>
-
-            <CustomDropdown
-                variant="ghost"
-                className={styles.toolBarColumns}
-                icon={<ColumnsIcon/>}
-                aria-label={t('label.toolbar.columns')}
-                title={t('label.toolbar.columns')}
-                data-sel-role="toolbar-columns"
-            >
-                <ContentTypesColumnsPicker
-                    lockedLabel={lockedLabel}
-                    availableFields={availableFields}
-                    visibleFields={visibleFields}
-                    toggleField={toggleField}
-                    moveField={moveField}
-                    resetToDefaults={resetToDefaults}
-                />
-            </CustomDropdown>
         </div>
     );
 };
@@ -112,13 +84,7 @@ ContentTypesToolBar.propTypes = {
     contentType: PropTypes.string.isRequired,
     /** That same type as the heading names it, for the create button to offer by name. */
     contentTypeLabel: PropTypes.string.isRequired,
-    lockedLabel: PropTypes.string.isRequired,
-    availableFields: PropTypes.array.isRequired,
-    visibleFields: PropTypes.array.isRequired,
     onSearchChange: PropTypes.func.isRequired,
-    toggleField: PropTypes.func.isRequired,
-    moveField: PropTypes.func.isRequired,
-    resetToDefaults: PropTypes.func.isRequired,
     /** The ticked rows. Empty means nothing is selected, and the browse controls hold the line. */
     selection: PropTypes.array.isRequired,
     onClearSelection: PropTypes.func.isRequired

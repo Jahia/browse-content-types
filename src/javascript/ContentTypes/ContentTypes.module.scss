@@ -18,6 +18,15 @@
  *
  * `min-height: 0` is this same rule on the other axis, which is why the pane already had one.
  */
+/*
+ * The pane is the grey ground, not the surface.
+ *
+ * jContent's ContentLayout paints `--color-gray_light` and puts the list on a Paper over it, so the
+ * grey shows around the table's edge and separates it from the chrome above. This matches that.
+ *
+ * No padding of its own any more: Moonstone's Header brings its own, and the inset around the table
+ * belongs to .contentArea below, where it can be the grey frame rather than a gap in a white pane.
+ */
 .mainPane {
     display: flex;
     flex: 1 1 0;
@@ -25,17 +34,8 @@
     min-width: 0;
     max-width: 100%;
     min-height: 0;
-    padding: 16px 24px;
 
-    background-color: var(--color-light);
-}
-
-.header {
-    display: flex;
-    flex: 0 0 auto;
-    flex-direction: column;
-    gap: 2px;
-    padding-bottom: 16px;
+    background-color: var(--color-gray_light);
 }
 
 /*
@@ -163,27 +163,18 @@
 
 /* `min-width: 0` so this line shrinks with the pane rather than setting a floor under it, which
    would push its own right-hand end out of view. */
+/* Inside Moonstone's Header toolbar row now, so it brings no padding of its own - the Header's own
+   rule underneath is what closes the line. */
 .toolBar {
     display: flex;
-    flex: 0 0 auto;
+    flex: 1 1 auto;
     align-items: center;
     gap: 8px;
     min-width: 0;
-    padding-bottom: 12px;
-}
-
-/* Last on the line and the first thing to lose room, so it is told not to give any up: whatever
-   else is on this line, the way to choose columns has to stay reachable. */
-.toolBarColumns {
-    flex: 0 0 auto;
 }
 
 .search {
     flex: 0 1 280px;
-}
-
-.toolBarSpacer {
-    flex: 1 1 auto;
 }
 
 /*
@@ -708,12 +699,27 @@
 }
 
 /* Holds the table to whatever height the toolbar leaves, rather than letting it run past the pane. */
+/* The grey frame: this layer's padding is the grey left showing around the table's surface. */
 .contentArea {
     display: flex;
     flex: 1 1 0;
     min-height: 0;
     min-width: 0;
+    padding: var(--spacing-medium);
     gap: var(--spacing-medium);
+}
+
+/* The surface the list sits on, inset from the grey - jContent's Paper, without the elevation,
+   which its own content list does not draw either. */
+.tablePaper {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+
+    background-color: var(--color-light);
+    border-radius: 2px;
 }
 
 /*

@@ -2,7 +2,9 @@ import React, {useCallback, useEffect, useState} from 'react';
 import {useQuery} from '@apollo/client';
 import {shallowEqual, useSelector} from 'react-redux';
 import {useTranslation} from 'react-i18next';
-import {Typography} from '@jahia/moonstone';
+import {Chip, CustomDropdown, Header} from '@jahia/moonstone';
+import {ColumnsIcon} from './ColumnsIcon';
+import {ContentTypesColumnsPicker} from './ContentTypesColumnsPicker';
 import {GET_SITE_CONTENT_TYPES} from './ContentTypes.gql';
 import {ContentTypesTable} from './ContentTypesTable';
 import {ContentTypesToolBar} from './ContentTypesToolBar';
@@ -72,42 +74,73 @@ export const ContentTypesRoute = () => {
 
     return (
         <div className={styles.mainPane} data-sel-role="content-types-route">
-            <header className={styles.header}>
-                <Typography isNowrap variant="heading" weight="bold">
-                    {typeLabel}
-                </Typography>
-                <Typography isNowrap className={styles.subtitle} variant="caption">
-                    {contentType}
-                </Typography>
-            </header>
-            <ContentTypesToolBar
-                search={search}
-                contentType={contentType}
-                contentTypeLabel={typeLabel}
-                lockedLabel={t('label.table.name')}
-                availableFields={columns.availableFields}
-                visibleFields={columns.visibleFields}
-                toggleField={columns.toggleField}
-                moveField={columns.moveField}
-                resetToDefaults={columns.resetToDefaults}
-                selection={selection}
-                onSearchChange={setSearch}
-                onClearSelection={clearSelection}
+            {/*
+                Moonstone's own Header, which is what jContent's content list uses - see its
+                ContentHeader. Taking the component rather than drawing a title and a row of
+                controls by hand is what puts the rules in the same places on this screen as on
+                every other one: one under the title, one under the toolbar. They are the Header's,
+                not this module's, so they follow it rather than drifting from it.
+
+                The type's system name goes in `contentType`, the slot jContent puts the node type
+                chip in, rather than under the title as a caption - same information, same place
+                a reader of the content list already looks for it.
+            */}
+            <Header
+                title={typeLabel}
+                contentType={<Chip color="accent" label={contentType}/>}
+                toolbarLeft={
+                    <ContentTypesToolBar
+                        search={search}
+                        contentType={contentType}
+                        contentTypeLabel={typeLabel}
+                        selection={selection}
+                        onSearchChange={setSearch}
+                        onClearSelection={clearSelection}
+                    />
+                }
+                toolbarRight={
+                    <CustomDropdown
+                        variant="ghost"
+                        icon={<ColumnsIcon/>}
+                        aria-label={t('label.toolbar.columns')}
+                        title={t('label.toolbar.columns')}
+                        data-sel-role="toolbar-columns"
+                    >
+                        <ContentTypesColumnsPicker
+                            lockedLabel={t('label.table.name')}
+                            availableFields={columns.availableFields}
+                            visibleFields={columns.visibleFields}
+                            toggleField={columns.toggleField}
+                            moveField={columns.moveField}
+                            resetToDefaults={columns.resetToDefaults}
+                        />
+                    </CustomDropdown>
+                }
             />
-            {/* Holds the table to the height the toolbar leaves rather than letting it run past the
-                bottom of the pane - which is what `flex: 1 1 0` with `min-height: 0` is for. */}
+            {/*
+                The table sits on its own surface, inset from a grey ground - jContent's own
+                arrangement, where ContentLayout paints `--color-gray_light` and puts the table in
+                a Paper over it. The grey showing around the edge is what separates the list from
+                the chrome above it.
+
+                This layer also holds the table to the height the header leaves rather than letting
+                it run past the bottom of the pane, which is what `flex: 1 1 0` with `min-height: 0`
+                is for.
+            */}
             <div className={styles.contentArea}>
-                <ContentTypesTable
-                    contentType={contentType}
-                    search={search}
-                    visibleFields={columns.visibleFields}
-                    availableFields={columns.availableFields}
-                    selection={selection}
-                    translatableFields={columns.translatableFields}
-                    languages={columns.languages}
-                    searchableTextProperties={columns.searchableTextProperties}
-                    onSelectionChange={setSelection}
-                />
+                <div className={styles.tablePaper}>
+                    <ContentTypesTable
+                        contentType={contentType}
+                        search={search}
+                        visibleFields={columns.visibleFields}
+                        availableFields={columns.availableFields}
+                        selection={selection}
+                        translatableFields={columns.translatableFields}
+                        languages={columns.languages}
+                        searchableTextProperties={columns.searchableTextProperties}
+                        onSelectionChange={setSelection}
+                    />
+                </div>
             </div>
         </div>
     );
