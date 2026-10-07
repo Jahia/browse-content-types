@@ -118,6 +118,27 @@
 }
 
 /*
+ * The Name column takes whatever the fixed columns leave.
+ *
+ * Moonstone lays a row out as a flex container, so every cell is a flex item sized by the `width`
+ * its column asked for. With all of them fixed, a table narrower than the pane simply stopped -
+ * the row stretched to full width but its cells did not, leaving dead space on the right and the
+ * row menu stranded in the middle of it rather than at the edge.
+ *
+ * One growing cell absorbs that space, which is exactly what jContent does: `flex-grow: 1` on its
+ * own `.cellName`. Name is the right one to grow - it is the column whose values are longest and
+ * the one a reader is actually reading.
+ *
+ * `:nth-child(2)` rather than a class because Moonstone names none: with `enableSelection` the
+ * checkbox is the first cell and the first real column is the second. Positional, like the
+ * `:last-child` rule below, and harmless if the row is ever not a flex container - `flex-grow` on
+ * a table cell does nothing at all.
+ */
+.table tr > :nth-child(2) {
+    flex-grow: 1;
+}
+
+/*
  * The row menu stays put while the columns scroll under it.
  *
  * It is the last cell on the line, so with enough columns chosen it was the first thing to leave the
@@ -131,10 +152,10 @@
  * draw one, and a shadow this module alone has reads as a seam in a table that should look like
  * every other one in the product.
  *
- * The one shadow left is not decoration. The row's own bottom border is hidden behind this cell's
- * opaque background, so it is drawn back on as an inset shadow - without it the horizontal rules
- * break for the width of the pinned column. A border would not do: a table with collapsed borders
- * does not carry a sticky cell's border along with it.
+ * No shadow of its own, in either direction. There was an inset one drawing the row's bottom border
+ * back on, in the belief that this cell's opaque background was hiding it. It is not: the cell
+ * carries the same border as every other, so the inset landed a second line on top of the first and
+ * the rule under this one column read heavier than the rest of the table.
  *
  * This assumes the row menu is the last column, which is how the table builds it.
  */
@@ -144,7 +165,6 @@
     z-index: 1;
 
     background-color: var(--moon-row-background, var(--color-light));
-    box-shadow: inset 0 -1px 0 var(--color-gray_light);
 }
 
 /* Above the cells that scroll under it, and above the header's own stacking, so the corner where the
