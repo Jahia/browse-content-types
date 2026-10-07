@@ -82,8 +82,24 @@ export const NOT_SELECTABLE_REFERENCE = 'reference';
  * thumbnail, or an empty cell, and both are readable. The test is the same one the image filter
  * uses, so the two cannot drift into disagreeing about what an image column is.
  *
- * Returns the reason rather than a boolean so the picker can say which rule it ran into, and so a
- * second rule can be added without every caller having to change shape.
+ * **Rich text is deliberately NOT blocked, because it cannot be told apart here.** It was meant to
+ * be: a column of HTML markup is no more readable than a column of uuids. The selector is what
+ * separates `- text (string, richtext)` from a plain string, and the CND carries it - Jahia holds
+ * it on ExtendedPropertyDefinition - but `JCRPropertyDefinition` in the GraphQL schema does not
+ * expose it. Checked against a running 8.2 by probing the schema: `selector`, `selectorType` and
+ * `selectorOptions` all come back FieldUndefined, and the eleven fields that do exist are already
+ * every one this catalog asks for. So a rich text property arrives here as a STRING with nothing
+ * to distinguish it, and guessing - on name, on length, on whether a value looks like markup -
+ * would block plain text columns people legitimately want.
+ *
+ * The one route that does work is Content Editor's forms API, whose fields carry `selectorType`
+ * (`forms.createForm(...).sections.fieldSets.fields`). It costs a second query per content type,
+ * needs a parent path to build a form against, and makes the columns picker depend on Content
+ * Editor being deployed. Worth it only if rich text columns turn out to be a real nuisance;
+ * exposing the selector on the node type would be the better fix, and belongs in the platform.
+ *
+ * Returns the reason rather than a boolean so the picker can say which rule it ran into, and so
+ * that rule can be added without every caller having to change shape.
  */
 export const notSelectableReasonFor = definition => {
     if (REFERENCE_TYPES.has(definition.requiredType) && !isImageReference(definition)) {
