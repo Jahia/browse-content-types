@@ -126,10 +126,15 @@
  * custom property Moonstone sets on the row so the pinned cell follows the row through hover rather
  * than sitting on a patch of the wrong shade.
  *
- * Two details. The separating line is a shadow, not a border, because a table with collapsed borders
- * does not carry a sticky cell's border along with it. And the row's own bottom border would be
- * hidden behind this cell's background, so it is drawn back on as an inset shadow, which keeps the
- * horizontal rules unbroken across the pinned column.
+ * Nothing marks the edge. There was a drop shadow down the left of this cell, to say the columns
+ * were sliding under it, and it is gone: neither Moonstone nor jContent's own table-based screens
+ * draw one, and a shadow this module alone has reads as a seam in a table that should look like
+ * every other one in the product.
+ *
+ * The one shadow left is not decoration. The row's own bottom border is hidden behind this cell's
+ * opaque background, so it is drawn back on as an inset shadow - without it the horizontal rules
+ * break for the width of the pinned column. A border would not do: a table with collapsed borders
+ * does not carry a sticky cell's border along with it.
  *
  * This assumes the row menu is the last column, which is how the table builds it.
  */
@@ -139,7 +144,7 @@
     z-index: 1;
 
     background-color: var(--moon-row-background, var(--color-light));
-    box-shadow: -6px 0 6px -6px rgb(0 0 0 / 20%), inset 0 -1px 0 var(--color-gray_light);
+    box-shadow: inset 0 -1px 0 var(--color-gray_light);
 }
 
 /* Above the cells that scroll under it, and above the header's own stacking, so the corner where the
