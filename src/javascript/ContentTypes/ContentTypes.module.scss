@@ -93,21 +93,9 @@
  * width and hands the excess to the scroller above; the `min-width` is what stops a table of two
  * columns from huddling at the left edge of an empty pane.
  */
-/*
- * Fill the pane, and overflow rather than squash.
- *
- * `width: 100%` is what creates slack for the Name column to take - without it the table is exactly
- * as wide as its content and there is nothing to hand out, so auto layout spreads the surplus evenly
- * and every column drifts away from the right-hand edge. `min-width: max-content` is what stops that
- * promise from crushing the columns when there are more of them than fit: below their combined
- * natural width the table overflows and .tableScroll scrolls it, as before.
- *
- * The pair reads backwards and is the right way round: the minimum is the content, the preference is
- * the pane.
- */
 .table {
-    width: 100%;
-    min-width: max-content;
+    width: max-content;
+    min-width: 100%;
 }
 
 /*

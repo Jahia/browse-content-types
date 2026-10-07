@@ -963,13 +963,7 @@ export const ContentTypesTable = ({
             {
                 key: 'displayName',
                 label: headerLabel(t('label.table.name'), 'displayName', true),
-                // Takes whatever the fixed columns leave, which is what packs them against the
-                // right-hand edge and gives the name the room instead - jContent does the same with
-                // `flex-grow: 1` on its own name cell. NAME_COLUMN_WIDTH survives as the floor: once
-                // enough columns are shown that there is no slack left, this is what it falls back
-                // to and the table starts scrolling instead.
-                width: '100%',
-                minWidth: NAME_COLUMN_WIDTH,
+                width: NAME_COLUMN_WIDTH,
                 // Bounded and scrollable, the way every other text column already was. The whole
                 // name is in the cell, so hovering it scrolls through the part that does not fit;
                 // the tooltip stays as the quicker way to read it.
