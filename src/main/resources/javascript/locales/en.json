@@ -78,18 +78,21 @@
       "column": "Sort by {{column}}"
     },
     "create": {
-      "refused": "This type cannot be stored in a content folder.",
       "failed": "The record could not be created. Try again."
     },
     "createTarget": {
-      "cancel": "Cancel",
-      "title": "New {{type}}",
-      "explanation": "A {{type}} cannot be stored in a content folder, so it has to go inside content that accepts it. Choose where this one belongs.",
-      "container": "Where it goes",
-      "placeholder": "Choose",
-      "confirm": "Continue",
-      "tooltip": "A {{type}} goes inside content that accepts it, not in a folder.",
       "resolving": "Working out where this can go…"
+    },
+    "location": {
+      "title": "New {{type}}",
+      "explanation": "Choose where to store this {{type}}. The folder this type normally uses is already selected.",
+      "tooltip": "Choose where to create a {{type}}",
+      "none": "Choose a location.",
+      "checking": "Checking this location…",
+      "refused": "A {{type}} cannot be stored here. Choose somewhere else.",
+      "failed": "The locations could not be read. Close this and try again.",
+      "cancel": "Cancel",
+      "confirm": "Continue"
     }
   }
 }

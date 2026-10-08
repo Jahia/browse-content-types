@@ -55,12 +55,16 @@ export const typeFoldersPath = siteKey => `${siteContentsPath(siteKey)}/${TYPE_F
  * Where records of one type are created: a folder of that type's own name, under this module's own
  * folder, under the site's content folder.
  *
- * **Why a folder per type, made on the way in.** Creating a record used to ask where it should go,
- * which is a question the editor cannot get wrong but also cannot skip - and asking it every time to
- * hear the same answer is the kind of ceremony that gets in the way of the actual work. Filing by the
- * type's own name needs no answer, puts the records of a type together where somebody looking for
- * them would look, and is nothing the editor is stuck with: content moves, and a record created here
- * can be moved anywhere afterwards by the ordinary means.
+ * **Why a folder per type.** It is what the location picker opens on, so the question the header
+ * above argues for is put without costing anybody who has no opinion more than a confirmation.
+ * Filing by the type's own name puts the records of a type together where somebody looking for them
+ * would look, and is nothing the editor is stuck with: content moves, and a record created here can
+ * be moved anywhere afterwards by the ordinary means.
+ *
+ * This was for a while the whole answer, filed without a question at all - one click from wanting a
+ * record to editing one. What that traded away is in the header: a record filed in the wrong place
+ * still appears in this table, so the mistake went where nobody would see it. Offering the folder as
+ * the default keeps the click cheap and gives the path back to whoever wants it.
  *
  * This is the same bargain `tasksPath` strikes for tasks, two steps further: the containers are
  * created on first use rather than assumed to exist, and there are two of them.

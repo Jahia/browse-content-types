@@ -320,6 +320,78 @@ export const GET_NODES_OF_TYPES = gql`
     }
 `;
 
+/**
+ * What each node in the location picker has to say for itself.
+ *
+ * `parent { path }` is what lets one request fill several levels of the tree: the criteria take a
+ * LIST of paths, so the children of every open branch are asked for together and grouped by their
+ * parent on the way back. Without it the answer is one flat list with nothing saying which branch
+ * each node came from.
+ */
+const CONTAINER_NODE_FIELDS = `
+    uuid
+    name
+    path
+    displayName(language: $language)
+    primaryNodeType {
+        name
+        icon
+    }
+    parent {
+        path
+    }
+`;
+
+/**
+ * The children of one or more nodes, as the location picker draws them.
+ *
+ * **Three criteria queries rather than one**, because `nodesByCriteria` takes a single `nodeType` -
+ * the same limit `GET_NODES_OF_TYPES` documents - and a location can be any of three kinds of
+ * thing: a content folder, a page, or content that accepts children of its own. Aliased into one
+ * document so it is still one request per expansion.
+ *
+ * `pathType: PARENT` is what makes these children rather than descendants. The criteria default to
+ * ANCESTOR, which is what every other query here relies on - `GET_TYPE_PARENTS` asks for everything
+ * under the site - so this is the same field those queries leave unset.
+ *
+ * Deliberately NOT asked of the whole site at once. A tree is read one branch at a time and a site's
+ * content runs to thousands of nodes; fetching it all to show the half dozen a reader opens would
+ * cost more than every other query in this module put together.
+ */
+export const GET_CHILD_CONTAINERS = gql`
+    query getChildContainers($paths: [String]!, $language: String!) {
+        jcr(workspace: EDIT) {
+            folders: nodesByCriteria(
+                criteria: {paths: $paths, pathType: PARENT, nodeType: "jnt:contentFolder", language: $language}
+                offset: 0
+                limit: 500
+            ) {
+                nodes {
+                    ${CONTAINER_NODE_FIELDS}
+                }
+            }
+            pages: nodesByCriteria(
+                criteria: {paths: $paths, pathType: PARENT, nodeType: "jnt:page", language: $language}
+                offset: 0
+                limit: 500
+            ) {
+                nodes {
+                    ${CONTAINER_NODE_FIELDS}
+                }
+            }
+            content: nodesByCriteria(
+                criteria: {paths: $paths, pathType: PARENT, nodeType: "jnt:content", language: $language}
+                offset: 0
+                limit: 500
+            ) {
+                nodes {
+                    ${CONTAINER_NODE_FIELDS}
+                }
+            }
+        }
+    }
+`;
+
 export const GET_CONTENT_FOLDER = gql`
     query getContentFolder($path: String!) {
         jcr(workspace: EDIT) {

@@ -6,8 +6,9 @@ import {useApolloClient, useQuery} from '@apollo/client';
 import {Add, Button, Typography} from '@jahia/moonstone';
 import {CREATE_CONTENT_FOLDER, GET_CONTENT_FOLDER, GET_CREATABLE_TYPES, GET_NODES_OF_TYPES, GET_TYPE_PARENTS} from './ContentTypes.gql';
 import {foldersToEnsure, readCreatableTypeNames, siteContentsPath, typeFolderPath} from './ContentTypesCreate';
-import {TARGET_CHOICE, TARGET_FOLDER, TARGET_NONE, TARGET_RESOLVING, TARGET_SINGLE, createRoute, parentTypeNames, targetsFrom} from './ContentTypesCreateTarget';
-import {ContentTypesCreateTargetDialog} from './ContentTypesCreateTargetDialog';
+import {TARGET_RESOLVING, TARGET_SINGLE, createRoute, parentTypeNames, targetsFrom} from './ContentTypesCreateTarget';
+import {needsFolders} from './ContentTypesLocation';
+import {ContentTypesLocationPicker} from './ContentTypesLocationPicker';
 import {NAMESPACE} from '../ContentTypes.register';
 import styles from './ContentTypes.module.scss';
 
@@ -21,28 +22,29 @@ import styles from './ContentTypes.module.scss';
 const EXCLUDED_NODE_TYPES = ['jmix:studioOnly', 'jmix:hiddenType'];
 
 /**
- * What the button says about where the record will go, one per route.
+ * What the button says before it is clicked.
  *
- * A table rather than a nested conditional in the JSX: there are four routes and the tooltip is the
- * only thing that differs between three of them. Every key is given every interpolation it might
- * want, i18next ignoring what a string does not use.
+ * Two answers rather than the five there used to be, one per route: the click now always opens the
+ * picker, so where the record ends up is the picker's to say and no longer something the tooltip
+ * can promise. What is left is the one case where the button cannot be clicked yet.
  */
 const TOOLTIPS = {
-    folder: 'jcontent:label.contentEditor.CMMActions.createNewContent.tooltipForType',
-    single: 'label.createTarget.tooltip',
-    choice: 'label.createTarget.tooltip',
     resolving: 'label.createTarget.resolving',
-    none: 'label.create.refused'
+    ready: 'label.location.tooltip'
 };
 
 /**
  * Create a record of the type being listed.
  *
- * **Nothing is asked.** The record goes into a folder named after its type, inside this module's own
- * folder under the site's content folder, and whichever of those two is missing is made on the way in
- * - see typeFolderPath and foldersToEnsure. One click from wanting a record to editing one, no
- * location to answer for, and nothing the editor is committed to: content moves, so a record filed
- * here can be put anywhere afterwards.
+ * **Where it goes is asked, with the old answer offered.** A click opens the location picker on the
+ * folder this module used to file into silently - named after the type, inside this module's own
+ * folder under the site's content folder - with that folder selected. Confirming is the behaviour
+ * this button always had, one keystroke further on; the rest of the site is there for the reader who
+ * wants somewhere else. See ContentTypesLocationPicker, and ContentTypesCreate for why a path is
+ * worth asking about at all.
+ *
+ * The two folders are still made on the way in, and only for that folder - see `needsFolders`. A
+ * record filed anywhere else goes into a node that already exists.
  *
  * **The creatable check is ours, and it has to be.** CE_API.create resolves what may be created at
  * the path it is given and then branches on one type and on several - and does nothing whatsoever
@@ -63,13 +65,17 @@ const TOOLTIPS = {
  * is created before the answer is known, and a type that cannot be created here says so on a
  * disabled button rather than on a click that has already made two folders.
  *
- * **A type a content folder will not hold is filed where its own kind already live.** The refusal is
+ * **For a type a content folder will not hold, the inference says where to open.** The refusal is
  * genuine - a type constrained to a declaring parent has no home in a content folder, and the
- * repository says so outright - but it is not the end of the question. Where records of the type
- * already exist, the KINDS of node holding them are inferred and every node of those kinds in the
- * site becomes a candidate: one is filed into without asking, several are asked about, none leaves
- * the button disabled with the reason on it. See ContentTypesCreateTarget, which carries the
- * reasoning and the one limit - a type with no records anywhere has nothing to infer from.
+ * repository says so outright - so the picker cannot open on the convention folder. Where records of
+ * the type already exist, the KINDS of node holding them are inferred and every node of those kinds
+ * becomes a candidate; one candidate is a good guess at where the picker should open, several is
+ * not a guess worth making. See ContentTypesCreateTarget.
+ *
+ * That inference used to be the whole mechanism - it filed the record, or asked which of its
+ * candidates to file it into, or refused. It now only chooses where the picker opens, which is also
+ * what makes its one limit survivable: a type with no records anywhere has nothing to infer from,
+ * and what that costs now is an unselected tree rather than a disabled button.
  *
  * Content Editor does the creating. It owns the mandatory fields, the system name, the
  * unsaved-changes guard and the translations of all of it; a create form of this module's own would
@@ -87,9 +93,9 @@ export const ContentTypesCreateAction = ({contentType, contentTypeLabel}) => {
     }), shallowEqual);
 
     const [isWorking, setIsWorking] = useState(false);
-    // One of 'refused' or 'failed', or nothing. Two messages rather than one because they ask
-    // different things of the reader: a refusal is about this type and will not come right on a
-    // second click, where a failure might.
+    // 'failed', or nothing. There used to be a refusal here too - this type cannot be stored in a
+    // content folder - and it belongs to the picker now, which can say it about the one place the
+    // reader actually pointed at rather than about the type in general.
     const [problem, setProblem] = useState(null);
 
     const folderPath = typeFolderPath(site, contentType);
@@ -209,10 +215,11 @@ export const ContentTypesCreateAction = ({contentType, contentTypeLabel}) => {
     };
 
     /**
-     * The ordinary route: this module's own folder, made on the way in.
+     * The convention folder, made on the way in.
      *
-     * Only the folders are created here, and only once the type is known to be able to live in one -
-     * which is why a refusal no longer leaves an empty folder behind.
+     * Reached only by confirming the picker on that folder, so the two it creates are made when
+     * somebody has actually chosen to put a record there - which is why neither a refusal nor a
+     * reader who picks somewhere else leaves an empty folder behind.
      */
     const createInFolder = async () => {
         setIsWorking(true);
@@ -231,27 +238,48 @@ export const ContentTypesCreateAction = ({contentType, contentTypeLabel}) => {
     };
 
     /**
-     * What a click does, which depends on where this type can go.
+     * Where the picker opens, which is the module's old answer offered rather than imposed.
      *
-     * Nothing is created and nothing is asked for the ordinary case beyond what always was. The two
-     * other routes belong to a type a content folder will not hold: one container is used without a
-     * question, several put the question to the reader.
+     * The convention folder for a type that can live in one, which is nearly all of them. For a type
+     * that cannot, the one container its own kind already live in, where there is exactly one -
+     * that inference is no longer the whole mechanism, but it still knows the likeliest answer
+     * better than an empty selection does. Several candidates suggest nothing: which agency this
+     * estate belongs to is the question, and preselecting one of five is a guess wearing a default's
+     * clothes.
+     */
+    const defaultPath = isCreatable ?
+        folderPath :
+        (route.kind === TARGET_SINGLE ? route.target.path : null);
+
+    /**
+     * What a click does: ask where the record goes.
+     *
+     * Every type takes the same route now. The folder a record used to be filed into without a word
+     * is where the picker opens, so the reader who has no opinion confirms and is where they always
+     * were - and the one who does have an opinion is no longer filing their record somewhere they
+     * then have to find and move it out of.
      */
     const create = () => {
-        if (route.kind === TARGET_FOLDER) {
+        setProblem(null);
+        setIsChoosing(true);
+    };
+
+    /**
+     * The chosen location, acted on.
+     *
+     * The folders are made only for the convention folder, which is the only place this module ever
+     * creates - see `needsFolders`. Anywhere else was picked out of nodes that already exist, so
+     * there is nothing to make, and a reader who abandons the editor leaves nothing behind.
+     */
+    const confirm = path => {
+        setIsChoosing(false);
+
+        if (needsFolders(path, folderPath)) {
             createInFolder();
             return;
         }
 
-        if (route.kind === TARGET_SINGLE) {
-            // No folders to make: the container is somebody else's node, already there.
-            openEditor(route.target.path);
-            return;
-        }
-
-        if (route.kind === TARGET_CHOICE) {
-            setIsChoosing(true);
-        }
+        openEditor(path);
     };
 
     return (
@@ -276,13 +304,18 @@ export const ContentTypesCreateAction = ({contentType, contentTypeLabel}) => {
                  * that holds this type's own kind, or nowhere - and a disabled control with no
                  * reason given is its own puzzle.
                  */
-                title={t(TOOLTIPS[route.kind], {
+                title={t(TOOLTIPS[route.kind === TARGET_RESOLVING ? 'resolving' : 'ready'], {
                     typeName: contentTypeLabel,
-                    type: contentTypeLabel,
-                    parent: folderPath,
-                    path: folderPath
+                    type: contentTypeLabel
                 })}
-                disabled={isWorking || route.kind === TARGET_RESOLVING || route.kind === TARGET_NONE}
+                /*
+                 * No longer disabled for a type with nowhere inferred. That refusal was the
+                 * inference admitting it had nothing to go on - a type with no records anywhere has
+                 * no parents to learn from - and it said "cannot be created here" about a site the
+                 * reader can simply be shown. The picker is that, and whether a chosen place will
+                 * take the type is answered there, per selection.
+                 */
+                disabled={isWorking || route.kind === TARGET_RESOLVING}
                 data-sel-role="create-action"
                 data-sel-target-kind={route.kind}
                 onClick={create}
@@ -299,14 +332,15 @@ export const ContentTypesCreateAction = ({contentType, contentTypeLabel}) => {
             )}
 
             {isChoosing && (
-                <ContentTypesCreateTargetDialog
+                <ContentTypesLocationPicker
+                    contentType={contentType}
                     contentTypeLabel={contentTypeLabel}
-                    targets={targets}
+                    siteKey={site}
+                    language={language}
+                    uilang={uilang}
+                    defaultPath={defaultPath}
                     onCancel={() => setIsChoosing(false)}
-                    onConfirm={path => {
-                        setIsChoosing(false);
-                        openEditor(path);
-                    }}
+                    onConfirm={confirm}
                 />
             )}
         </>

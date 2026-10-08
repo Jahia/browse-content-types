@@ -78,18 +78,21 @@
       "column": "Trier par {{column}}"
     },
     "create": {
-      "refused": "Ce type ne peut pas être stocké dans un dossier de contenus.",
       "failed": "La fiche n'a pas pu être créée. Réessayez."
     },
     "createTarget": {
-      "cancel": "Annuler",
-      "title": "Nouveau {{type}}",
-      "explanation": "Un contenu de type {{type}} ne peut pas être stocké dans un dossier de contenu : il doit être placé dans un contenu qui l'accepte. Choisissez où celui-ci doit aller.",
-      "container": "Emplacement",
-      "placeholder": "Choisir",
-      "confirm": "Continuer",
-      "tooltip": "Un contenu de type {{type}} se place dans un contenu qui l'accepte, pas dans un dossier.",
       "resolving": "Recherche des emplacements possibles…"
+    },
+    "location": {
+      "title": "Nouveau {{type}}",
+      "explanation": "Choisissez où stocker ce {{type}}. Le dossier habituel de ce type est déjà sélectionné.",
+      "tooltip": "Choisir où créer un {{type}}",
+      "none": "Choisissez un emplacement.",
+      "checking": "Vérification de cet emplacement…",
+      "refused": "Un {{type}} ne peut pas être stocké ici. Choisissez un autre emplacement.",
+      "failed": "Les emplacements n’ont pas pu être lus. Fermez cette fenêtre et réessayez.",
+      "cancel": "Annuler",
+      "confirm": "Continuer"
     }
   }
 }

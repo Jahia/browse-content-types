@@ -763,6 +763,27 @@
  * in a div of this module's own made them one flex child instead of three, so the wrapper outgrew
  * the box, the header scrolled out of sight and the footer was left outside it.
  */
+/*
+ * The location picker's tree, given a height of its own.
+ *
+ * A fixed box that scrolls rather than a dialog that grows with the branch somebody opened: the
+ * tree is lazily loaded, so its height changes on every expansion, and a dialog that resized each
+ * time would move the Continue button out from under the pointer on the way to the thing being
+ * picked.
+ *
+ * The border is what makes it read as one region. Without it a tree of folders sits in the body as
+ * a list of words with nothing saying where it ends and the selected-path line below it begins.
+ */
+.locationTree {
+    overflow: auto;
+    min-height: 240px;
+    max-height: 320px;
+    margin: var(--spacing-small) 0;
+    padding: var(--spacing-nano) 0;
+    border: 1px solid var(--color-gray_dark20);
+    border-radius: 2px;
+}
+
 .dialogBox {
     position: relative;
     min-width: 480px;
