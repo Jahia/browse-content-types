@@ -4,6 +4,47 @@ Seven features were built, work, and are deliberately not in 1.0, along with the
 three of them hung off. This file is the map back to them: what each one was, which commit took it
 out, and what is worth reworking before it returns.
 
+Not all of them are coming back, though. Read the next section first — it is what decides which of
+the branches below anybody should still be merging.
+
+## What is meant to come back
+
+Five of the seven features are intended to return, two are being kept as code only, and the menu
+they hang off returns with them:
+
+| | Meant to ship again |
+|---|---|
+| the bulk menu | yes |
+| Export | yes |
+| Replace a value | yes |
+| Tag and Categorize | yes |
+| column filtering | yes |
+| Undo | yes |
+| inline cell editing | **no** |
+| Assign to | **no** |
+
+Decided 2026-10-08. "Kept as code only" means exactly that — the branches stay, nothing is deleted,
+and the decision can be taken again. What it changes is which shape this file is a map to.
+
+The two terms used for those shapes elsewhere: the **basic version** is `master`; the **complete
+version** is `master` plus everything marked yes — the five features and the menu.
+
+**The complete version is not one of the branches below.** The nearest is `feature/undo`, and it
+carries inline cell editing, which sits beneath Undo in the stack. Building it means `feature/undo`
+with `5a4e1b09` taken back out — not a clean cherry-pick, because the Undo commit wrote to
+`useCellEdit.js` after `5a4e1b09` had deleted it, so the removal needs a conflict resolved. The Name
+column's editor wiring spans two commits as well; see "Inline cell editing" below.
+
+**Undo does not depend on inline cell editing, despite sitting directly on top of it.** Checked
+rather than assumed: `ContentTypesUndo.js`, `useBulkUndo.js` and `ContentTypesUndoAction.jsx`
+contain no reference to a cell anywhere. The coupling runs the other way — the Undo commit adds 25
+lines to `useCellEdit.js` so that a cell edit registers what it replaced. Remove the cell editor and
+that hook goes with it, leaving undo whole.
+
+**Assign to costs nothing to leave out.** It is the top of the stack and nothing below depends on
+it, so excluding it is simply never merging it. The one thing it leaves behind either way is the
+`[ct:taskTarget]` mixin in `definitions.cnd`, which cannot be removed — see "Assign to" below.
+
 ## The quick answer
 
 **To bring a feature back, merge its branch.** Each `feature/*` branch below is this line with that
@@ -16,14 +57,16 @@ feature restored, already built and already passing its tests:
 | `feature/replace-a-value` | …and Replace a value | 250 |
 | `feature/tag-categorize` | …and Tag and Categorize | 293 |
 | `feature/column-filtering` | …and column filtering | 335 |
-| `feature/inline-cell-editing` | …and inline cell editing | 385 |
+| `feature/inline-cell-editing` | …and inline cell editing *(not meant to ship)* | 385 |
 | `feature/undo` | …and Undo | 415 |
-| `feature/assign-to` | …and Assign to | 478 |
+| `feature/assign-to` | …and Assign to *(not meant to ship)* | 478 |
 
 **Read the "…and" literally. The branches are a stack, not a menu.** Each row contains everything
 in the rows above it, because that is the order the features came out in and the code interlocks:
 Export registered an entry in the bulk menu, so it cannot come back without it; Undo recorded the
-values each write replaced, so it cannot come back without the writes. Merging
+values each write replaced, so it cannot come back without the bulk operations beneath it — the
+bulk writes, which is all "the writes" has ever meant here, and not the cell editor it happens to
+sit above. Merging
 `feature/inline-cell-editing` brings back cell editing *and* filtering, tag, replace-a-value,
 export and the menu. There is no branch that restores one of the lower features alone.
 
@@ -83,6 +126,10 @@ it lands in carries the tangle they undid:
 
 **Branch:** `feature/assign-to` — the top of the stack. Carries every other feature in this file.
 
+**Not meant to ship again** (2026-10-08). Kept as code. Because it is the top of the stack and
+nothing below depends on it, leaving it out costs nothing: it is simply never merged, and the
+branch below it is unaffected.
+
 Raising one task for the ticked rows, assigned to someone who may edit the site.
 
 **What went:** `ContentTypesAssignDialog`, `ContentTypesTasks` (+ spec), `useEditableUsers`, eight
@@ -101,7 +148,8 @@ slowest thing in the module.
 ## Undo — `371a1172be934b13b7656e3fa9d631dae5fca2a0`
 
 **Branch:** `feature/undo` — also carries inline cell editing, column filtering, Tag and
-Categorize, Replace a value, Export and the bulk menu.
+Categorize, Replace a value, Export and the bulk menu. Inline cell editing is not meant to ship, so
+this branch is the base the complete version is built from rather than the complete version itself.
 
 One level of undo behind every bulk operation: the values read before each write, the publication
 stamps captured with them, the restore, and the bar offering to take it back.
@@ -124,6 +172,12 @@ and thin as a promise. Decide whether 1.x wants the same bargain before putting 
 
 **Branch:** `feature/inline-cell-editing` — also carries column filtering, Tag and Categorize,
 Replace a value, Export and the bulk menu.
+
+**Not meant to ship again** (2026-10-08). Kept as code. This one is awkward where Assign to is not,
+because it sits in the MIDDLE of the stack with Undo on top of it — so the intended set is not any
+branch here and has to be built by taking this commit back out of `feature/undo`. Undo itself is
+unaffected: it never reads a cell, and the only link is the hook this feature's `useCellEdit.js`
+registers with it. See "What is meant to come back".
 
 Correcting a value in the cell that shows it: the pencil on hover, the double-click, the editor
 inside the cell, the dialog for a value too long for one, and single-record tagging from the tags
