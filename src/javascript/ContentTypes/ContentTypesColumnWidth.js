@@ -1,3 +1,5 @@
+import {LANGUAGE_PROPERTY_NAMES, isLanguageField} from './ContentTypesFieldTypes';
+
 /**
  * How wide each column of the table asks to be.
  *
@@ -27,8 +29,28 @@ const COMMON_COLUMN_WIDTH = '160px';
 /**
  * The three common fields that do not hold one short value, and so are given a text column's width
  * and its hover-to-scroll: a path is as deep as the tree, and tags and categories are lists.
+ *
+ * Still all three, though the path now takes a width of its own below. What this set decides as well
+ * as the width is `isScrollable` - see ContentTypesTable - and a path is the field that needs it
+ * most: no width makes a path that is as deep as the tree fit, so hovering has to remain the way to
+ * read the rest of it.
  */
 export const WIDE_COMMON_FIELDS = new Set(['path', 'tags', 'categories']);
+
+/**
+ * The path, which is the longest thing this table draws.
+ *
+ * Sixty per cent over the text column the three wide fields share. That width was one size for three
+ * fields with different problems: a tag list is a handful of short words and usually fits, while a
+ * path is every ancestor's name joined, and the column was showing the first segment or two of
+ * something whose useful end is on the right. The extra room buys roughly two more segments before
+ * the scroll is needed.
+ *
+ * Shortened before it is drawn, which is what makes this enough rather than hopeless: the site
+ * prefix is stripped, every row being in that site by construction. See the path cell in
+ * ContentTypesTable.
+ */
+const PATH_COLUMN_WIDTH = '352px';
 
 /**
  * Common fields holding one short thing: a user name, or a lock icon.
@@ -50,8 +72,12 @@ const SHORT_COMMON_FIELDS = new Set(['createdBy', 'lastModifiedBy', 'publishedBy
  * shared by every language, and the French label is "Publié par" - ten characters. Measured at this
  * width it came out as "Publicat…", so the column keeps the wider one and only English would have
  * benefited. ("Publicateur" was tried as a one-word French heading and dropped: it is not a word
- * French Jahia uses, and at eleven characters it truncated too.) "Modified by" stays wide for the
- * same reason.
+ * French Jahia uses, and at eleven characters it truncated too.)
+ *
+ * **`lastModifiedBy` is out for exactly the same reason, and shortening its heading did not change
+ * that.** "Modified by" became "Modif. by", which would fit - but the French became "Modif. par",
+ * the same ten characters as "Publié par". The abbreviation buys the English heading room it has
+ * nothing to do with and leaves the French where it was, so the column keeps the wider width.
  *
  * The column keeps `isScrollable`, so a login longer than it can still be read by hovering.
  */
@@ -72,6 +98,12 @@ const DATE_COLUMN_WIDTH = 'calc(14ch + 32px)';
 
 /** The width a common field asks for, by what it holds rather than by being common. */
 export const commonColumnWidth = key => {
+    // Before the wide fields, which it is still one of: it shares their hover-to-scroll and no
+    // longer shares their width.
+    if (key === 'path') {
+        return PATH_COLUMN_WIDTH;
+    }
+
     if (WIDE_COMMON_FIELDS.has(key)) {
         return DEFAULT_COLUMN_WIDTH;
     }
@@ -101,11 +133,15 @@ const NUMERIC_TYPES = new Set(['LONG', 'DOUBLE', 'DECIMAL']);
  * The cost of the approach is that a site naming the field something else gets the default width; the
  * list is the place to add it.
  *
- * **This only ever reaches a property with no value list.** A language or country that offers one is
- * measured from the labels it draws instead - see columnWidthFor - which is the better measure and
- * the reason `country` itself is no longer sized from here. On this site `languages` is a
- * `choicelist`, so it already takes that path; the language names below are for the plain-string
- * case, `forceLanguage` among them, which otherwise asks for a full 220px to show `en`.
+ * **For a country, this only ever reaches a property with no value list.** A country that offers one
+ * is measured from the labels it draws instead - see columnWidthFor - which is the better measure
+ * and the reason `country` itself is no longer sized from here.
+ *
+ * **A language is different, and is handled before either path.** It no longer draws its labels at
+ * all: the cell draws the stored code in a badge, so measuring the labels would size the column for
+ * text that does not appear in it. The language names are not listed here - they come from
+ * `LANGUAGE_PROPERTY_NAMES`, which is also what the badges match on, so the two cannot disagree
+ * about what a language column is.
  */
 const CODE_PROPERTIES = new Set([
     'country',
@@ -113,13 +149,7 @@ const CODE_PROPERTIES = new Set([
     'country_code',
     'countryiso',
     'isocountrycode',
-    'language',
-    'languages',
-    'languagecode',
-    'language_code',
-    'lang',
-    'forcelanguage',
-    'locale'
+    ...LANGUAGE_PROPERTY_NAMES
 ]);
 
 /*
@@ -146,6 +176,14 @@ const MAX_CHOICE_CH = 14;
  * twelve characters was reasoning from what is stored rather than from what is drawn.
  */
 export const columnWidthFor = field => {
+    // Before the value list, deliberately. A language column draws two- and three-letter codes in
+    // badges whatever its definition offers as labels, so what the labels measure is not what the
+    // column holds. Twelve characters is about three badges, and the column still scrolls on hover
+    // for a record that speaks more languages than that.
+    if (isLanguageField(field)) {
+        return NARROW_COLUMN_WIDTH;
+    }
+
     if (field.valueOptions?.length > 0) {
         const longest = field.valueOptions.reduce((most, option) => Math.max(most, option.label.length), 0);
         const ch = Math.min(Math.max(longest, MIN_CHOICE_CH), MAX_CHOICE_CH);

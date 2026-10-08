@@ -71,10 +71,16 @@ export const ContentTypesColumnsPicker = ({
                 // reason as a tooltip. The `title` goes on this wrapper rather than on the
                 // CheckboxItem because a disabled control stops reporting mouse events in some
                 // browsers, and a tooltip nobody can trigger is worse than none.
+                //
+                // The reason names its own message, with the generic one behind it: a rule added
+                // to notSelectableReasonFor before anybody writes its wording still says something
+                // true, rather than showing a reader the key.
                 <div
                     key={field.key}
                     className={field.notSelectableReason ? styles.columnsRowBlocked : styles.columnsRow}
-                    title={field.notSelectableReason ? t('label.columns.notSelectable') : undefined}
+                    title={field.notSelectableReason ?
+                        t([`label.columns.notSelectable.${field.notSelectableReason}`, 'label.columns.notSelectable.default']) :
+                        undefined}
                     data-sel-column-blocked={field.notSelectableReason || undefined}
                 >
                     <CheckboxItem

@@ -31,17 +31,17 @@
       "name": "Nom"
     },
     "field": {
-      "type": "Type de contenu",
+      "type": "Type",
       "createdBy": "Créateur",
-      "createdDate": "Date de création",
-      "lastModified": "Dernière modification",
-      "lastModifiedBy": "Modifié par",
+      "createdDate": "Créé",
+      "lastModified": "Modifié",
+      "lastModifiedBy": "Modif. par",
       "missingTranslations": "Traductions manquantes",
       "publicationStatus": "Publication",
       "tags": "Tags",
       "categories": "Catégories",
       "lock": "Verrou",
-      "publishedOn": "Publié le",
+      "publishedOn": "Publié",
       "publishedBy": "Publié par",
       "path": "Chemin",
       "systemName": "Nom système",
@@ -52,12 +52,20 @@
       "visible": "Champs visibles",
       "availableType": "Champs propres au type",
       "availableCommon": "Champs communs",
-      "notSelectable": "Cette propriété ne peut pas être affichée en colonne",
+      "notSelectable": {
+        "default": "Cette propriété ne peut pas être affichée en colonne",
+        "reference": "Une référence vers un autre contenu n’est pas disponible en colonne",
+        "richtext": "Une colonne de texte riche afficherait du balisage HTML, pas du texte lisible"
+      },
       "noMatch": "Aucun champ ne correspond.",
       "autoSaved": "Votre choix est conservé",
       "reset": "Réinitialiser",
       "moveUp": "Monter",
       "moveDown": "Descendre"
+    },
+    "chips": {
+      "more": "Afficher {{count}} de plus",
+      "less": "Afficher moins"
     },
     "boolean": {
       "true": "vrai",
@@ -66,12 +74,9 @@
     "lock": {
       "locked": "Verrouillé"
     },
-
     "sort": {
       "column": "Trier par {{column}}"
     },
-
-
     "create": {
       "refused": "Ce type ne peut pas être stocké dans un dossier de contenus.",
       "failed": "La fiche n'a pas pu être créée. Réessayez."

@@ -2,8 +2,8 @@ import {useEffect, useMemo, useState} from 'react';
 import {useQuery} from '@apollo/client';
 import {useSelector} from 'react-redux';
 import {useTranslation} from 'react-i18next';
-import {GET_CONTENT_TYPE_FIELDS, GET_CONTENT_TYPE_VALUE_LABELS} from './ContentTypes.gql';
-import {FILTER_BOOLEAN, FILTER_CHOICE, FILTER_DATE, FILTER_IMAGE, FILTER_NUMBER, FILTER_PUBLICATION, FILTER_TEXT, isImageReference, notSelectableReasonFor, publicationOptions} from './ContentTypesFieldTypes';
+import {GET_CONTENT_TYPE_FIELDS, GET_CONTENT_TYPE_FORM_FIELDS} from './ContentTypes.gql';
+import {FILTER_BOOLEAN, FILTER_CHOICE, FILTER_DATE, FILTER_IMAGE, FILTER_NUMBER, FILTER_PUBLICATION, FILTER_TEXT, isMediaReference, notSelectableReasonFor, publicationOptions} from './ContentTypesFieldTypes';
 import {GET_SITE_LANGUAGES} from './ContentTypes.gql';
 import {translatableProperties} from './ContentTypesTranslations';
 import {NAMESPACE} from '../ContentTypes.register';
@@ -181,7 +181,7 @@ const filterTypeFor = (definition, valueLabels) => {
         return FILTER_CHOICE;
     }
 
-    if (isImageReference(definition)) {
+    if (isMediaReference(definition)) {
         return FILTER_IMAGE;
     }
 
@@ -208,7 +208,12 @@ export const useContentTypeColumns = contentType => {
     // Not part of `loading`: a column is worth showing as soon as its values arrive, and the labels
     // only change how those values read. Blocking the table on a second round trip would trade a
     // brief moment of raw codes for a longer wait on everything.
-    const {data: labelData} = useQuery(GET_CONTENT_TYPE_VALUE_LABELS, {
+    //
+    // The selector it also carries is less forgiving about arriving late - until it does, a rich
+    // text property is tickable, and one already in a stored choice is drawn for a moment before
+    // the effect below takes it back out. Still not worth waiting for: that is a flicker in a menu
+    // nobody has opened yet, against every row of the table waiting on a query it does not need.
+    const {data: formData} = useQuery(GET_CONTENT_TYPE_FORM_FIELDS, {
         variables: {
             type: contentType,
             language: language || uilang || 'en',
@@ -218,20 +223,30 @@ export const useContentTypeColumns = contentType => {
     });
 
     /**
-     * Every constrained property of this type: the labels for looking a stored value up, and the
-     * values in the order the definition lists them.
+     * What the form says about each of this type's properties: the labels for looking a stored value
+     * up, the values in the order the definition lists them, and the selector each field is edited
+     * with.
      *
-     * Two shapes of the same thing because they are read differently. A cell looks one value up, once
-     * per row, so that wants a map; the filter form offers the whole list, and an object would not
-     * keep the definition's order for a list of numeric codes.
+     * Two shapes of the same value list because they are read differently. A cell looks one value up,
+     * once per row, so that wants a map; the filter form offers the whole list, and an object would
+     * not keep the definition's order for a list of numeric codes.
      */
-    const {labelsByProperty, optionsByProperty} = useMemo(() => {
+    const {labelsByProperty, optionsByProperty, selectorsByProperty} = useMemo(() => {
         const byProperty = {};
         const optionsFor = {};
+        const selectorFor = {};
 
         const collect = formField => {
             if (formField.declaringNodeType !== contentType) {
                 return;
+            }
+
+            // The one thing the node type definition cannot answer: which control the CND gave the
+            // property, and so whether a STRING holds plain text or markup. Kept for every field
+            // that reports one rather than only the rich text ones, so a second rule reading the
+            // selector has it already. See notSelectableReasonFor.
+            if (formField.selectorType) {
+                selectorFor[formField.name] = formField.selectorType;
             }
 
             const labels = {};
@@ -253,11 +268,11 @@ export const useContentTypeColumns = contentType => {
             }
         };
 
-        const sections = labelData?.forms?.createForm?.sections || [];
+        const sections = formData?.forms?.createForm?.sections || [];
         sections.forEach(section => (section.fieldSets || []).forEach(fieldSet => (fieldSet.fields || []).forEach(collect)));
 
-        return {labelsByProperty: byProperty, optionsByProperty: optionsFor};
-    }, [labelData, contentType]);
+        return {labelsByProperty: byProperty, optionsByProperty: optionsFor, selectorsByProperty: selectorFor};
+    }, [formData, contentType]);
 
     /*
      * The languages the missing-translations column compares, and the only new request this column
@@ -342,7 +357,7 @@ export const useContentTypeColumns = contentType => {
                     mandatory: definition.mandatory,
                     isDynamic: true,
                     // Listed in the picker but not tickable - see notSelectableReasonFor.
-                    notSelectableReason: notSelectableReasonFor(definition),
+                    notSelectableReason: notSelectableReasonFor(definition, selectorsByProperty[definition.name]),
                     // Contributes one of `sortJcrProperty` or `sortProperty`, or neither - which is
                     // what leaves a multi-valued column without a sort arrow. See sortingFor.
                     ...sortingFor(definition, key),
@@ -351,13 +366,13 @@ export const useContentTypeColumns = contentType => {
                     jcrProperty: definition.name,
                     // A value list decides how the column is filtered, whatever type the codes are
                     // stored as: the listed values are the only ones it can hold, so it is chosen
-                    // from rather than typed into. An image is filtered on whether there is one.
+                    // from rather than typed into. Media is filtered on whether there is any.
                     filterType: filterTypeFor(definition, valueLabels),
                     valueLabels,
                     valueOptions: optionsByProperty[definition.name]
                 };
             });
-    }, [data, contentType, labelsByProperty, optionsByProperty]);
+    }, [data, contentType, labelsByProperty, optionsByProperty, selectorsByProperty]);
 
     /**
      * The Name column as a field in its own right.

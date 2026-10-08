@@ -240,6 +240,28 @@
     flex: 0 0 auto;
 }
 
+/*
+ * A video preview, sized and shaped as Moonstone's own small thumbnail.
+ *
+ * The 40px is Moonstone's `.moonstone-thumbnail_small`, matched deliberately rather than guessed:
+ * a cell can hold both kinds at once - a picture and an animated version of it - and two previews
+ * of different sizes side by side read as a mistake.
+ *
+ * `cover` rather than `contain`, which is what Moonstone's preview variant does to an image: a
+ * portrait cropped to the square is recognisable, where one letterboxed into it is mostly
+ * background.
+ */
+.referenceVideo {
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+
+    border-radius: var(--moon-radius_small);
+    background-color: var(--moon-color-gray_light40);
+
+    object-fit: cover;
+}
+
 .referenceMore {
     flex: 0 0 auto;
 
@@ -275,6 +297,52 @@
     flex-wrap: nowrap;
     align-items: center;
     gap: 4px;
+}
+
+/*
+ * The same list with everything shown.
+ *
+ * Wrapping is the whole difference: closed, the chips are a single line that the cell clips, and
+ * opened they have to be readable, which means going onto as many lines as they need. The row grows
+ * to fit - a table row treats its height as a minimum - so this is what makes the arrow reveal
+ * anything rather than just unclip it.
+ */
+.chipListExpanded {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+}
+
+/*
+ * The arrow that shows the rest.
+ *
+ * Grey and borderless, so it reads as a control belonging to the cell rather than as another chip:
+ * the chips are the content, and a fourth thing shaped like them would be counted as one. It darkens
+ * on hover and takes the focus ring, both of which say it can be clicked - there being nothing else
+ * about a small grey chevron that does.
+ */
+.chipListToggle {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+
+    color: var(--color-gray_dark40);
+
+    background: none;
+    cursor: pointer;
+}
+
+.chipListToggle:hover {
+    color: var(--color-gray_dark80);
+}
+
+.chipListToggle svg {
+    width: 16px;
+    height: 16px;
 }
 
 /*
@@ -802,24 +870,20 @@
  * property list is allowed to be clipped - the full text is on the cell's own title attribute -
  * since the language chip is what has to survive a narrow column.
  */
+/*
+ * The languages a record is behind in, as a row of badges.
+ *
+ * A row that wraps rather than a column of one language per line. Each entry used to be a badge
+ * followed by the names of what it was missing, which needed a line of its own; a badge is two
+ * characters, so a record short in four languages still fits across a cell that no longer sets the
+ * row's height. What each badge was carrying beside it is its tooltip now.
+ */
 .missingTranslations {
     display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
-}
-
-.missingTranslationLine {
-    display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: var(--spacing-nano);
     min-width: 0;
-
-    > :last-child {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
 }
 
 /*

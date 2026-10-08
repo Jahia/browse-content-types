@@ -31,17 +31,17 @@
       "name": "Name"
     },
     "field": {
-      "type": "Content Type",
+      "type": "Type",
       "createdBy": "Creator",
-      "createdDate": "Created date",
-      "lastModified": "Last modification",
-      "lastModifiedBy": "Modified by",
+      "createdDate": "Created",
+      "lastModified": "Modified",
+      "lastModifiedBy": "Modif. by",
       "missingTranslations": "Missing translations",
       "publicationStatus": "Publication",
       "tags": "Tags",
       "categories": "Categories",
       "lock": "Lock",
-      "publishedOn": "Published on",
+      "publishedOn": "Published",
       "publishedBy": "Publisher",
       "path": "Path",
       "systemName": "System name",
@@ -52,12 +52,20 @@
       "visible": "Visible fields",
       "availableType": "Type-specific fields",
       "availableCommon": "Common fields",
-      "notSelectable": "This property is not selectable as a column",
+      "notSelectable": {
+        "default": "This property is not selectable as a column",
+        "reference": "A reference to another content item is not available as a column",
+        "richtext": "A rich text column would show HTML markup rather than readable text"
+      },
       "noMatch": "No field matches.",
       "autoSaved": "Your choice is remembered",
       "reset": "Reset",
       "moveUp": "Move up",
       "moveDown": "Move down"
+    },
+    "chips": {
+      "more": "Show {{count}} more",
+      "less": "Show fewer"
     },
     "boolean": {
       "true": "true",
@@ -66,12 +74,9 @@
     "lock": {
       "locked": "Locked"
     },
-
     "sort": {
       "column": "Sort by {{column}}"
     },
-
-
     "create": {
       "refused": "This type cannot be stored in a content folder.",
       "failed": "The record could not be created. Try again."

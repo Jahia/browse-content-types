@@ -76,7 +76,8 @@ export const GET_CONTENT_TYPE_FIELDS = gql`
 `;
 
 /**
- * What a constrained property's stored values are called, in the reader's language.
+ * What Content Editor's own form says about a type's fields: what a stored value is called, and
+ * which control the field is edited with.
  *
  * A choicelist keeps a code - `swimmingPool`, `house`, `AF` - and the label lives in the defining
  * module's resource bundle, not in the content, so the stored value on its own means nothing to
@@ -95,9 +96,15 @@ export const GET_CONTENT_TYPE_FIELDS = gql`
  * accompanies it, `uiLocale: en` answers Swimming Pool. So the language the table is being read in
  * is passed as `uiLocale`, not as `locale`. Both carry it, since the form is asked for nothing but
  * its constraints and `locale` has nothing left to influence.
+ *
+ * `selectorType` rides along for a second reason entirely: it is the only place the selector from
+ * the CND - `- text (string, richtext)` - can be read at all, the node type definition above having
+ * no field for it. It is what tells a rich text property from a plain string, and so what makes one
+ * unselectable as a column. See notSelectableReasonFor. Asking for it here is free; asking the form
+ * a second time for it alone would not be.
  */
-export const GET_CONTENT_TYPE_VALUE_LABELS = gql`
-    query getContentTypeValueLabels($type: String!, $language: String!, $path: String!) {
+export const GET_CONTENT_TYPE_FORM_FIELDS = gql`
+    query getContentTypeFormFields($type: String!, $language: String!, $path: String!) {
         forms {
             createForm(primaryNodeType: $type, uiLocale: $language, locale: $language, uuidOrPath: $path) {
                 sections {
@@ -105,6 +112,7 @@ export const GET_CONTENT_TYPE_VALUE_LABELS = gql`
                         fields {
                             name
                             declaringNodeType
+                            selectorType
                             valueConstraints {
                                 value {
                                     string

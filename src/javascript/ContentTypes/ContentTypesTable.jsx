@@ -3,12 +3,12 @@ import PropTypes from 'prop-types';
 import {useQuery} from '@apollo/client';
 import {shallowEqual, useSelector} from 'react-redux';
 import {useTranslation} from 'react-i18next';
-import {Button, Chip, DataTable, Loader, Lock, Pagination, SortIndicator, Thumbnail, Typography} from '@jahia/moonstone';
+import {Button, ChevronDown, ChevronUp, Chip, DataTable, Loader, Lock, Pagination, SortIndicator, Thumbnail, Typography} from '@jahia/moonstone';
 import {ContextualMenu, DisplayAction, registry} from '@jahia/ui-extender';
 import {ButtonRendererNoLabel} from '@jahia/jcontent';
 import {buildRecordQuery} from './ContentTypesRecordQuery';
 import {missingTranslations} from './ContentTypesTranslations';
-import {labelForValue} from './ContentTypesFieldTypes';
+import {isLanguageField, labelForValue, languageCodeFor} from './ContentTypesFieldTypes';
 import {MIN_SEARCH_LENGTH, sanitiseTokens} from './ContentTypesSearch';
 import {WIDE_COMMON_FIELDS, columnWidthFor, commonColumnWidth} from './ContentTypesColumnWidth';
 import {siteRelativePath} from './ContentTypesPaths';
@@ -197,7 +197,10 @@ const renderBoolean = (value, t, key) => {
  * It also settles what the joined form could not: a tag containing a comma was indistinguishable
  * from two tags.
  */
-const renderChipList = values => {
+const ChipList = ({values, selectorAttribute = 'data-sel-tag', titleFor, limit}) => {
+    const {t} = useTranslation(NAMESPACE);
+    const [isExpanded, setIsExpanded] = useState(false);
+
     // Deduplicated, which a set of labels should be anyway, and which lets the label itself be the
     // key rather than a position that changes meaning as the list does.
     const items = [...new Set((values || []).filter(Boolean))];
@@ -205,13 +208,118 @@ const renderChipList = values => {
         return '-';
     }
 
+    // Capped where a caller asks for it - see MAX_CELL_ITEMS. Counted AFTER deduplicating, so a
+    // value stored twice does not spend one of the places and then turn up again behind the arrow
+    // as though it were something else.
+    const shown = (limit && !isExpanded) ? items.slice(0, limit) : items;
+    const hidden = items.length - shown.length;
+    const canExpand = hidden > 0 || isExpanded;
+
     return (
-        <span className={styles.chipList}>
-            {items.map(value => (
-                <Chip key={value} color="default" label={value} data-sel-tag={value}/>
+        <span className={isExpanded ? styles.chipListExpanded : styles.chipList}>
+            {shown.map(value => (
+                // The attribute names what KIND of thing the chip holds, which a test selecting one
+                // needs and a reader of the markup does too. Parameters rather than a second copy
+                // of this function: a language badge and a tag are drawn identically on purpose,
+                // and two functions would be free to stop being.
+                //
+                // `title` reaches the DOM because Moonstone's Chip takes every div prop - which is
+                // the same reason the selector attribute arrives. A chip with nothing more to say
+                // than its own label passes none, rather than a tooltip repeating what is read.
+                <Chip
+                    key={value}
+                    color="default"
+                    label={value}
+                    title={titleFor?.(value)}
+                    {...{[selectorAttribute]: value}}
+                />
             ))}
+            {canExpand && (
+                /*
+                 * The rest, a click away rather than counted and left there.
+                 *
+                 * A button and not a bare icon: it is the one thing in a row that can be clicked
+                 * for its own sake, so it has to be reachable by keyboard and has to say what it
+                 * does. `stopPropagation` because the row underneath responds to clicks of its own,
+                 * and opening a record is not what somebody asking to see two more tags meant.
+                 *
+                 * The row grows to fit when it opens - a table row treats its height as a minimum,
+                 * so the cell's content decides, which is the same property the image previews
+                 * rely on.
+                 */
+                <button
+                    type="button"
+                    className={styles.chipListToggle}
+                    aria-expanded={isExpanded}
+                    title={isExpanded ? t('label.chips.less') : t('label.chips.more', {count: hidden})}
+                    aria-label={isExpanded ? t('label.chips.less') : t('label.chips.more', {count: hidden})}
+                    data-sel-role="chip-list-toggle"
+                    onClick={event => {
+                        event.stopPropagation();
+                        setIsExpanded(current => !current);
+                    }}
+                >
+                    {isExpanded ? <ChevronUp/> : <ChevronDown/>}
+                </button>
+            )}
         </span>
     );
+};
+
+ChipList.propTypes = {
+    /** The labels to draw, in the order they should read. Deduplicated here. */
+    values: PropTypes.array,
+
+    /** Which kind of thing the chips hold, for the selector each one carries. */
+    selectorAttribute: PropTypes.string,
+
+    /** Given a drawn label, the tooltip it should carry - or nothing for no tooltip. */
+    titleFor: PropTypes.func,
+
+    /** How many to draw before the rest go behind the arrow. Omitted means all of them, no arrow. */
+    limit: PropTypes.number
+};
+
+/** A list of labels as one chip each, for a caller with no element of its own to render. */
+const renderChipList = (values, options = {}) => <ChipList values={values} {...options}/>;
+
+/**
+ * A language column: one badge per language, holding the code rather than its name.
+ *
+ * Drawn like a tag because it is the same kind of thing - a short label belonging to a set, where
+ * what a reader does is scan for one rather than read the line. Neutral for the same reason: a
+ * language is not a status.
+ *
+ * The codes come from `languageCodeFor`, which falls back to the label where the stored value is not
+ * a code - so a badge never shows something nobody can read, it just occasionally shows a longer
+ * word. Deduplicated by `renderChipList`, which also matters more here than for tags: `en` and `EN`
+ * stored on the same record are one language and would otherwise be two badges.
+ *
+ * **The name the code stands for is kept, as the badge's tooltip.** Trading "English" for EN is a
+ * trade only while the reader knows the codes, and two-letter codes are not equally guessable in
+ * every language - so what was given up is a hover away rather than gone. A code that IS its own
+ * label - the fallback above, and a definition offering no labels at all - gets no tooltip, since
+ * repeating the badge in a tooltip tells a reader nothing.
+ */
+const renderLanguageChips = (field, values) => {
+    const names = new Map();
+    const codes = (values || []).map(value => {
+        const code = languageCodeFor(field, value);
+        const name = labelForValue(field, value);
+        // Against the stored VALUE rather than against the code: a definition offering no labels at
+        // all answers with the value itself, so `en` would differ from `EN` and earn a tooltip
+        // saying "en" - the badge again, in lower case. A real label is one that is not the value.
+        if (name && name !== value) {
+            names.set(code, name);
+        }
+
+        return code;
+    });
+
+    return renderChipList(codes, {
+        selectorAttribute: 'data-sel-language',
+        titleFor: code => names.get(code)
+    });
 };
 
 /**
@@ -276,13 +384,18 @@ const COMMON_RENDERERS = {
         );
     },
     /*
-     * The properties this record has in one language and not in another, grouped by the language
-     * that is missing them.
+     * The languages this record is behind in, one badge each, with what each is missing in its
+     * tooltip.
      *
-     * One line per language rather than one run-on string: a record short in two languages is two
+     * A badge per language rather than one run-on string: a record short in two languages is two
      * separate pieces of work, and reading "fr: Title, Subtitle de: Body" as one line invites
-     * mis-parsing it. A complete record shows nothing at all - not a dash - because a dash reads as
-     * "no value here" where the truth is "nothing missing", which is the opposite.
+     * mis-parsing it. The names themselves are a hover away rather than written out, because the
+     * question this column is scanned for is which languages are behind - the list of fields is
+     * read only once somebody has decided to act on one of them, and printing it cost the column's
+     * whole width and a taller row for every record with a gap.
+     *
+     * A complete record shows nothing at all - not a dash - because a dash reads as "no value here"
+     * where the truth is "nothing missing", which is the opposite.
      */
     missingTranslations: (data, {languages, translatableFields}) => {
         const gaps = missingTranslations(data, languages, translatableFields);
@@ -293,12 +406,18 @@ const COMMON_RENDERERS = {
         return (
             <span className={styles.missingTranslations} data-sel-missing-languages={gaps.length}>
                 {gaps.map(gap => (
-                    <span key={gap.language} className={styles.missingTranslationLine} data-sel-missing-language={gap.language}>
-                        <Chip color="warning" label={gap.language}/>
-                        <Typography variant="caption" title={gap.properties.join(', ')}>
-                            {gap.properties.join(', ')}
-                        </Typography>
-                    </span>
+                    // The badge alone, with what is missing in its tooltip. The names used to be
+                    // written out beside it, which is the whole column's width spent on a list that
+                    // is only read when somebody has already decided to act on that language - and
+                    // on a record short in two languages it was two lines of it, pushing every row
+                    // taller. What the column is scanned for is WHICH languages are behind.
+                    <Chip
+                        key={gap.language}
+                        color="warning"
+                        label={gap.language}
+                        title={gap.properties.join(', ')}
+                        data-sel-missing-language={gap.language}
+                    />
                 ))}
             </span>
         );
@@ -308,7 +427,12 @@ const COMMON_RENDERERS = {
     // Joined the same way a multi-valued content type field is, so a list reads the same wherever it
     // came from. A node without the mixin has no property at all and shows the same dash as one that
     // has it and was left empty - the distinction is not one an editor of this table can act on.
-    tags: data => renderChipList(data.tags?.values),
+    // Three, then an arrow for the rest - the same cap the image previews use, from the same
+    // constant. A row of tags is scanned, not read, and a record carrying a dozen of them was
+    // setting the width of the column for every record that carries two. The difference from the
+    // images is that these can be shown in place: a tag is a word, so the rest fit in the row once
+    // somebody asks for them, where three more thumbnails would not.
+    tags: data => renderChipList(data.tags?.values, {limit: MAX_CELL_ITEMS}),
     categories: data => joinOrDash(data.categories?.refNodes?.map(node => node.displayName)),
     lock: (data, {t}) => renderLock(data, t),
     // Shortened to where it sits inside the site, since every row in this table is in that site by
@@ -320,8 +444,15 @@ const COMMON_RENDERERS = {
     id: data => data.uuid
 };
 
-/** How many referenced images a cell draws before it stops and counts the rest. */
-const MAX_THUMBNAILS = 3;
+/**
+ * How many items a cell draws before it stops and counts the rest.
+ *
+ * Shared by the image previews and the tag chips rather than one number each, so a cell holding
+ * three of something always looks like a cell holding three of something. Both overflow the same
+ * way too - a muted `+N` after the last one drawn - which is what makes the count read as "there is
+ * more here" rather than as part of the content.
+ */
+const MAX_CELL_ITEMS = 3;
 
 /**
  * A value a browser can be sent to, or null.
@@ -374,21 +505,34 @@ const renderLinkList = items => (
 );
 
 /**
- * The preview address for a referenced node, or null if it has none.
+ * What to draw for a referenced node, and which element draws it - or null where there is nothing.
  *
  * Built here rather than taken from the server. `thumbnailUrl` answers with a bare `?t=thumbnail`,
  * which a browser is entitled to keep serving from its cache after the image behind it changes -
  * so re-cropping a picture would leave the old one on screen. Stamping the node's own last-modified
  * date into the address is how jContent's media grid and its preview both avoid that, and it costs
  * nothing here because the date arrives with the reference.
+ *
+ * **Three cases, and two of them have no rendition to ask for.** Jahia's image service generates
+ * none for WebP and none for video, so for both the original file stands in as its own preview.
+ * They differ in what can draw them: an `<img>` renders the WebP, and a `<video>` is needed for the
+ * video - pointing an `<img>` at a `.webm` draws a broken image, which is worse than the file name
+ * it replaced.
+ *
+ * Video was falling through all of this until now. An animated portrait on a real site is a WebM,
+ * so it had no thumbnail, was not WebP, is not a link, and ended up drawn as its file name in plain
+ * text - which is the one thing a picture column is not for.
  */
-const thumbnailFor = node => {
+const previewFor = node => {
     if (!node?.path) {
         return null;
     }
 
-    const isWebp = node.content?.mimeType?.value === 'image/webp';
-    if (!node.hasThumbnail && !isWebp) {
+    const mimeType = node.content?.mimeType?.value || '';
+    const isWebp = mimeType === 'image/webp';
+    const isVideo = mimeType.startsWith('video/');
+
+    if (!node.hasThumbnail && !isWebp && !isVideo) {
         return null;
     }
 
@@ -397,10 +541,14 @@ const thumbnailFor = node => {
     const path = node.path.replace(/[^/]/g, encodeURIComponent);
     const contextPath = window.contextJsParameters?.contextPath || '';
     const stamp = node.lastModified?.value ? `lastModified=${encodeURIComponent(node.lastModified.value)}` : '';
-    // WebP has no rendition to ask for, so the original file stands in as its own preview.
-    const query = [stamp, isWebp ? '' : 't=thumbnail'].filter(Boolean).join('&');
+    // Neither WebP nor video has a rendition to ask for - see above.
+    const query = [stamp, (isWebp || isVideo) ? '' : 't=thumbnail'].filter(Boolean).join('&');
+    const url = `${contextPath}/files/default${path}${query ? `?${query}` : ''}`;
 
-    return `${contextPath}/files/default${path}${query ? `?${query}` : ''}`;
+    // A media fragment naming the very start of the video, which is what gets a frame on screen
+    // rather than an empty black box before anybody hovers. `preload="metadata"` is enough for that
+    // in Chrome and Firefox; Safari wants to be told which moment to show.
+    return {kind: isVideo ? 'video' : 'image', url: isVideo ? `${url}#t=0.001` : url};
 };
 
 /**
@@ -423,26 +571,114 @@ const thumbnailFor = node => {
  *
  * `alt` carries it too, which is what a reader who cannot see the image gets.
  */
-const renderThumbnails = previews => {
-    const shown = previews.slice(0, MAX_THUMBNAILS);
+const renderPreviews = previews => {
+    const shown = previews.slice(0, MAX_CELL_ITEMS);
     const hidden = previews.length - shown.length;
 
     return (
         <span className={styles.referenceCell}>
-            {shown.map(({node, url}) => (
+            {shown.map(({node, preview}) => (
                 <span key={node.uuid || node.path} className={styles.referenceThumb} title={node.displayName}>
-                    <Thumbnail
-                        size="small"
-                        variant="preview"
-                        src={url || undefined}
-                        alt={node.displayName}
-                        imgProps={{loading: 'lazy'}}
-                    />
+                    {preview?.kind === 'video' ? (
+                        /*
+                         * The video itself, showing its first frame and playing while hovered.
+                         *
+                         * An animated portrait is a thing to see moving, and a still frame of one
+                         * says little - but twenty-five of them playing at once in a table is a
+                         * page nobody can read and a decoder doing work nobody asked for. Hovering
+                         * is the gesture that already means "this row, this cell" everywhere else
+                         * here, and it is what the tooltip answers to.
+                         *
+                         * `muted` is what lets it play at all: a browser refuses to start audio
+                         * nobody asked for, and a hover is not the gesture that would permit it.
+                         * `play()` is a promise and rejects where the policy still says no, so the
+                         * rejection is swallowed - a preview that will not start is the still frame,
+                         * which is what was there anyway.
+                         */
+                        <video
+                            muted
+                            loop
+                            playsInline
+                            className={styles.referenceVideo}
+                            src={preview.url}
+                            preload="metadata"
+                            aria-label={node.displayName}
+                            onMouseEnter={event => {
+                                const played = event.currentTarget.play();
+                                if (played) {
+                                    played.catch(() => {});
+                                }
+                            }}
+                            onMouseLeave={event => {
+                                event.currentTarget.pause();
+                                event.currentTarget.currentTime = 0;
+                            }}
+                        />
+                    ) : (
+                        <Thumbnail
+                            size="small"
+                            variant="preview"
+                            src={preview?.url || undefined}
+                            alt={node.displayName}
+                            imgProps={{loading: 'lazy'}}
+                        />
+                    )}
                 </span>
             ))}
             {hidden > 0 && <span className={styles.referenceMore}>{`+${hidden}`}</span>}
         </span>
     );
+};
+
+/**
+ * The values of a multi-valued property, each kind drawn the way its single-valued twin is.
+ *
+ * Its own function because every one of these kinds has to be checked again here: a multi-valued
+ * property never reaches the single value cases in `renderDynamicField`, so without this a
+ * multi-valued boolean or date would be the one of its kind in the table still shown as the raw
+ * string it is stored as.
+ *
+ * Lifted out of `renderDynamicField` when the language badges pushed that function past the
+ * complexity the lint allows. The split is where the data changes shape - one payload against a
+ * list of plain values - rather than at whatever line happened to bring the count down.
+ */
+const renderMultipleValues = (field, payloadValues, context) => {
+    const {t} = context;
+    const values = payloadValues || [];
+    if (values.length === 0) {
+        return '-';
+    }
+
+    if (isLanguageField(field)) {
+        return renderLanguageChips(field, values);
+    }
+
+    if (field.requiredType === 'BOOLEAN') {
+        return (
+            <span className={styles.chipList}>
+                {values.map((value, index) => renderBoolean(value, t, index))}
+            </span>
+        );
+    }
+
+    if (field.requiredType === 'DATE') {
+        // Each date is its own element now, carrying its own tooltip, so they cannot be joined
+        // into one string. The commas between them come from a rule instead - see .dateList,
+        // which also explains why they are not written into the text.
+        return (
+            <span className={styles.dateList}>
+                {values.filter(Boolean).map((value, index) => renderDate(value, context, index))}
+            </span>
+        );
+    }
+
+    // The same treatment a single value gets, so a field holding several addresses is no less
+    // usable than one holding a single address.
+    return renderLinkList(values.map((value, index) => ({
+        key: index,
+        href: linkHref(value),
+        text: labelForValue(field, value)
+    })));
 };
 
 /**
@@ -466,10 +702,10 @@ const renderDynamicField = (field, payload, context) => {
     }
 
     const referenced = field.multiple ? payload.refNodes : (payload.refNode && [payload.refNode]);
-    const previews = (referenced || []).map(node => ({node, url: thumbnailFor(node)}));
+    const previews = (referenced || []).map(node => ({node, preview: previewFor(node)}));
 
-    if (previews.some(preview => preview.url)) {
-        return renderThumbnails(previews);
+    if (previews.some(entry => entry.preview)) {
+        return renderPreviews(previews);
     }
 
     // A reference to a link reads as the link itself: the title an editor gave it, pointing where it
@@ -493,40 +729,7 @@ const renderDynamicField = (field, payload, context) => {
             })));
         }
 
-        const values = payload.values || [];
-        if (values.length === 0) {
-            return '-';
-        }
-
-        // Checked here as well as below, because a multi-valued property never reaches the single
-        // value cases: without this a multi-valued boolean or date would be the one of its kind in
-        // the table still shown as the raw string it is stored as.
-        if (field.requiredType === 'BOOLEAN') {
-            return (
-                <span className={styles.chipList}>
-                    {values.map((value, index) => renderBoolean(value, t, index))}
-                </span>
-            );
-        }
-
-        if (field.requiredType === 'DATE') {
-            // Each date is its own element now, carrying its own tooltip, so they cannot be joined
-            // into one string. The commas between them come from a rule instead - see .dateList,
-            // which also explains why they are not written into the text.
-            return (
-                <span className={styles.dateList}>
-                    {values.filter(Boolean).map((value, index) => renderDate(value, context, index))}
-                </span>
-            );
-        }
-
-        // The same treatment a single value gets, so a field holding several addresses is no less
-        // usable than one holding a single address.
-        return renderLinkList(values.map((value, index) => ({
-            key: index,
-            href: linkHref(value),
-            text: labelForValue(field, value)
-        })));
+        return renderMultipleValues(field, payload.values, context);
     }
 
     if (payload.refNode) {
@@ -546,6 +749,12 @@ const renderDynamicField = (field, payload, context) => {
     // hour, seconds, timezone offset and all.
     if (field.requiredType === 'DATE') {
         return renderDate(payload.value, context);
+    }
+
+    // One language is drawn as a badge too, so a `forceLanguage` column and a `languages` column read
+    // as the same kind of thing rather than one being prose and the other a set.
+    if (isLanguageField(field)) {
+        return renderLanguageChips(field, [payload.value]);
     }
 
     // A property holding an address becomes one, which is what makes browsing a link type - where
