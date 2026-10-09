@@ -821,7 +821,9 @@ export const ContentTypesTable = ({
     searchableTextProperties,
     languages,
     selection,
-    onSelectionChange
+    previewedPath,
+    onSelectionChange,
+    onRowClick
 }) => {
     const {t} = useTranslation(NAMESPACE);
     const {site, language, uilang} = useSelector(state => ({
@@ -1274,7 +1276,15 @@ export const ContentTypesTable = ({
                     rowProps={({data: row}) => ({
                         'data-sel-role': 'content-row',
                         'data-sel-path': row.path,
-                        onContextMenu: event => openContextMenu(event, row)
+                        // Marks the row the side panel is showing, so it reads as the source of
+                        // what is on the right rather than as one of a list with nothing chosen.
+                        'data-sel-previewed': row.path === previewedPath ? 'true' : undefined,
+                        className: row.path === previewedPath ? styles.rowPreviewed : undefined,
+                        onContextMenu: event => openContextMenu(event, row),
+                        // The row itself opens the panel. The checkbox and the row menu already
+                        // stop their own clicks from reaching here, so neither selects a row for
+                        // preview as a side effect of what it was actually for.
+                        onClick: () => onRowClick(row)
                     })}
                     // The checkboxes deal in paths; the bar above needs the rows themselves, for
                     // their display names and for the two node type flags behind the publish
@@ -1307,6 +1317,12 @@ export const ContentTypesTable = ({
 };
 
 ContentTypesTable.propTypes = {
+    /** The path of the row the side panel is currently showing, or nothing when it is closed. */
+    previewedPath: PropTypes.string,
+
+    /** Given the row that was clicked, which is what the side panel is opened on. */
+    onRowClick: PropTypes.func,
+
     contentType: PropTypes.string.isRequired,
     search: PropTypes.string,
     visibleFields: PropTypes.array,
@@ -1328,7 +1344,9 @@ ContentTypesTable.defaultProps = {
     visibleFields: [],
     translatableFields: [],
     languages: [],
-    searchableTextProperties: []
+    searchableTextProperties: [],
+    // Called on every row click, so it has a default rather than a guard at the call site.
+    onRowClick: () => {}
 };
 
 export default ContentTypesTable;

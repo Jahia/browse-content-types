@@ -1,6 +1,7 @@
 import React, {useCallback, useEffect, useState} from 'react';
 import {useQuery} from '@apollo/client';
-import {shallowEqual, useSelector} from 'react-redux';
+import {shallowEqual, useDispatch, useSelector} from 'react-redux';
+import {JContentSidePanelContextProvider, SidePanel, cmCloseSidePanel, cmSetSidePanelSelection} from '@jahia/jcontent';
 import {useTranslation} from 'react-i18next';
 import {Chip, CustomDropdown, Header} from '@jahia/moonstone';
 import {ColumnsIcon} from './ColumnsIcon';
@@ -31,10 +32,18 @@ export const ContentTypesRoute = () => {
      * heading and the create button were the two places still asking in the content language, so
      * the button read "New Bien immobilier" to an English reader.
      */
-    const {site, uilang, path} = useSelector(state => ({
+    const dispatch = useDispatch();
+    const {site, uilang, path, language, jcontentMode, jcontentSelection, sidePanelSelection, isFullScreen} = useSelector(state => ({
         site: state.site,
         uilang: state.uilang,
-        path: state.jcontent.path
+        path: state.jcontent.path,
+        // The panel's own, rather than this module's: the content language is what a preview
+        // renders in, and the mode and selection are what its tabs ask about.
+        language: state.language,
+        jcontentMode: state.jcontent.mode,
+        jcontentSelection: state.jcontent.selection,
+        sidePanelSelection: state.jcontent.sidePanelSelection,
+        isFullScreen: state.jcontent.previewIsFullScreen
     }), shallowEqual);
 
     const contentType = (path || '/').substring(1);
@@ -58,6 +67,48 @@ export const ContentTypesRoute = () => {
     // it.
     const columns = useContentTypeColumns(contentType);
     const [selection, setSelection] = useState([]);
+
+    /*
+     * The record the side panel is showing.
+     *
+     * Two pieces of state for one thing, deliberately. jContent keeps the open/closed truth in its
+     * own store as a PATH - `state.jcontent.sidePanelSelection` - and its panel's close button
+     * dispatches against that store, so a module holding the selection only in state of its own
+     * would find that button did nothing. The node itself is kept here because the provider wants
+     * the record, not the path, and this module's rows are the only place it exists: jContent
+     * resolves the same way, against the rows its own layout is drawing.
+     */
+    const [previewNode, setPreviewNode] = useState(null);
+
+    // Closed from inside the panel, or by anything else that writes to that store. Clearing the
+    // node here is what takes the panel off screen, the render below asking for both.
+    useEffect(() => {
+        if (!sidePanelSelection) {
+            setPreviewNode(null);
+        }
+    }, [sidePanelSelection]);
+
+    // A record of one type has nothing to do with the next, and the rows it was resolved from are
+    // gone. Closed through jContent's own action so its store does not keep a path this screen is
+    // no longer showing.
+    useEffect(() => {
+        dispatch(cmCloseSidePanel());
+    }, [contentType, dispatch]);
+
+    /*
+     * Whether the panel can be offered at all.
+     *
+     * These four arrive from jContent over module federation, and a jContent that does not export
+     * them yet answers with undefined rather than failing to load - so the check is what keeps this
+     * module working against one. The panel is simply not offered there; everything else is
+     * unaffected.
+     */
+    const hasSidePanel = Boolean(SidePanel && JContentSidePanelContextProvider &&
+        cmSetSidePanelSelection && cmCloseSidePanel);
+
+    // Both, because they are two stores answering one question and only agreement means open - see
+    // previewNode. A stale node whose path the store has moved on from draws nothing.
+    const isPanelOpen = hasSidePanel && Boolean(previewNode) && sidePanelSelection === previewNode.path;
 
     // Stable, so that the table clearing the selection from an effect does not make that effect a
     // dependency on every render.
@@ -128,19 +179,61 @@ export const ContentTypesRoute = () => {
                 is for.
             */}
             <div className={styles.contentArea}>
-                <div className={styles.tablePaper}>
-                    <ContentTypesTable
-                        contentType={contentType}
-                        search={search}
-                        visibleFields={columns.visibleFields}
-                        availableFields={columns.availableFields}
-                        selection={selection}
-                        translatableFields={columns.translatableFields}
-                        languages={columns.languages}
-                        searchableTextProperties={columns.searchableTextProperties}
-                        onSelectionChange={setSelection}
-                    />
-                </div>
+                {/*
+                    Hidden while the panel is full screen, which is jContent's own behaviour for
+                    the same control - its ContentLayout drops the list entirely rather than
+                    squeezing it to nothing beside a panel asking for the whole pane.
+                */}
+                {!(isPanelOpen && isFullScreen) && (
+                    <div className={styles.tablePaper}>
+                        <ContentTypesTable
+                            contentType={contentType}
+                            search={search}
+                            visibleFields={columns.visibleFields}
+                            availableFields={columns.availableFields}
+                            selection={selection}
+                            translatableFields={columns.translatableFields}
+                            languages={columns.languages}
+                            searchableTextProperties={columns.searchableTextProperties}
+                            previewedPath={isPanelOpen ? previewNode.path : undefined}
+                            onSelectionChange={setSelection}
+                            onRowClick={node => {
+                                // The node for the provider, the path for jContent's store. The
+                                // thunk declines while rows are ticked, which is its own rule and
+                                // the right one: a bulk selection is not a request to preview one
+                                // record. The effect above then clears the node it refused.
+                                setPreviewNode(node);
+                                dispatch(cmSetSidePanelSelection(node.path));
+                            }}
+                        />
+                    </div>
+                )}
+
+                {/*
+                    jContent's own panel, not a copy of it: the preview, details, history and
+                    usages tabs are whatever is registered on `sidePanelTabsActions`, so this screen
+                    shows what the content list shows and follows it when it changes. Preview is
+                    first because it registers at position 1, which is also what makes it the tab
+                    that opens.
+
+                    The provider is what the tabs read their node from, and it is jContent's too -
+                    it is what resolves the form definition, the technical info and whether there is
+                    a preview at all. Rendered only with a node, which is what its own contract asks
+                    for here.
+                */}
+                {isPanelOpen && (
+                    <div className={isFullScreen ? styles.sidePanelFullScreen : styles.sidePanel} data-sel-role="content-types-side-panel">
+                        <JContentSidePanelContextProvider
+                            sidePanelSelection={previewNode}
+                            selection={jcontentSelection || []}
+                            language={language}
+                            jcontentMode={jcontentMode}
+                            isFullScreen={Boolean(isFullScreen)}
+                        >
+                            <SidePanel/>
+                        </JContentSidePanelContextProvider>
+                    </div>
+                )}
             </div>
         </div>
     );
