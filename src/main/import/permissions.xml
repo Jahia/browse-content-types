@@ -3,6 +3,18 @@
              xmlns:jcr="http://www.jcp.org/jcr/1.0"
              xmlns:j="http://www.jahia.org/jahia/1.0"
              xmlns:jnt="http://www.jahia.org/jahia/nt/1.0">
+    <!--
+        Under jContentAccordions, which is where jContent declares the access permission for each
+        of its own accordions - pages, content folders, media. An accordion that declares none is
+        shown to everyone, whatever an administrator has revoked elsewhere, so this is what lets
+        Content Types be taken away from a role the way the others can.
+    -->
+    <jContent jcr:primaryType="jnt:permission">
+        <jContentAccordions jcr:primaryType="jnt:permission">
+            <contentTypesAccordionAccess jcr:primaryType="jnt:permission"/>
+        </jContentAccordions>
+    </jContent>
+
     <site-admin jcr:primaryType="jnt:permission">
         <siteAdminContentTypes jcr:primaryType="jnt:permission"/>
     </site-admin>

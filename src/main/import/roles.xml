@@ -1,11 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-    Adds the permission to the existing site-administrator role rather than defining that role:
-    a module's roles.xml merges into what is already there.
+    Adds the permissions to the existing roles rather than defining those roles: a module's
+    roles.xml merges into what is already there. Verified against core's DocumentViewImportHandler,
+    which appends to a multi-valued j:permissionNames rather than replacing it, so jContent's own
+    grants on these roles are not disturbed.
 -->
 <roles jcr:primaryType="jnt:roles"
        xmlns:jcr="http://www.jcp.org/jcr/1.0"
        xmlns:j="http://www.jahia.org/jahia/1.0"
        xmlns:jnt="http://www.jahia.org/jahia/nt/1.0">
-    <site-administrator jcr:primaryType="jnt:role" j:permissionNames="siteAdminContentTypes"/>
+    <!--
+        Granted rather than left for an administrator to find, so that installing the module shows
+        the accordion to the people who already browse content. The point of the permission is that
+        it can be REVOKED - an administrator who takes the content tree away from a role can now
+        take this away too, which was not possible while the accordion declared no permission.
+    -->
+    <editor jcr:primaryType="jnt:role" j:permissionNames="contentTypesAccordionAccess"/>
+
+    <site-administrator jcr:primaryType="jnt:role" j:permissionNames="siteAdminContentTypes contentTypesAccordionAccess"/>
 </roles>
