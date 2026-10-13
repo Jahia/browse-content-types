@@ -26,6 +26,30 @@ describe('ContentTypesCounts', () => {
         it('selects from the type', () => {
             expect(typeCountQuery('jnt:text', '/sites/luxe')).toContain('from [jnt:text]');
         });
+
+        /*
+         * The statement travels as a GraphQL variable, which keeps it out of the GraphQL document -
+         * but it is still assembled by concatenation, and at the JCR-SQL2 layer both values are
+         * query text. Neither layer protects the other.
+         */
+        it('refuses a type name that is not one, rather than building a statement around it', () => {
+            expect(typeCountQuery('jnt:text] union select * from [rep:root', '/sites/luxe')).toBeNull();
+            expect(typeCountQuery('", "', '/sites/luxe')).toBeNull();
+            expect(typeCountQuery('', '/sites/luxe')).toBeNull();
+        });
+
+        it('closes nothing early when the site path carries a quote', () => {
+            const query = typeCountQuery('jnt:text', '/sites/lu"xe');
+            // Doubled, which is how the grammar escapes a quote inside a literal.
+            expect(query).toContain('isdescendantnode("/sites/lu""xe")');
+        });
+
+        // Every name this asks about comes from the repository's own type registry.
+        it('accepts the type names a real site answers with', () => {
+            expect(typeCountQuery('luxe:blogPost', '/sites/luxe')).not.toBeNull();
+            expect(typeCountQuery('jnt:content', '/sites/luxe')).not.toBeNull();
+            expect(typeCountQuery('nt:base', '/sites/luxe')).not.toBeNull();
+        });
     });
 
     describe('countAlias', () => {

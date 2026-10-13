@@ -14,7 +14,25 @@ import {parse} from 'graphql';
  */
 
 /**
- * The query that counts one type.
+ * The shape of a JCR node type name: an optional namespace prefix and a local name.
+ *
+ * An allow-list rather than an escape, because this value lands in a selector - `[name]` - and a
+ * selector is a position where escaping is not enough to make an arbitrary string safe. Every name
+ * this module asks about comes from the repository's own type registry, so anything failing this
+ * test is not a type and there is nothing to count.
+ */
+const JCR_TYPE_NAME = /^[a-zA-Z][a-zA-Z0-9]*:[a-zA-Z0-9_]+$|^[a-zA-Z][a-zA-Z0-9_]*$/;
+
+/**
+ * A value on its way into a double-quoted JCR-SQL2 string literal.
+ *
+ * Doubling the quote is how the grammar escapes it, the same rule SQL uses. Without this a `"` in
+ * the value closes the literal early and the rest of it is read as query syntax.
+ */
+const escapeLiteral = value => String(value).replace(/"/g, '""');
+
+/**
+ * The query that counts one type, or null for a type name that is not one.
  *
  * **Exactly this type, not this type and its subtypes.** `select * from [T]` matches every subtype
  * of T as well, which for a base type means it matches most of the site: asked that way,
@@ -26,12 +44,19 @@ import {parse} from 'graphql';
  *
  * Scoped to the site by `isdescendantnode`, since the choice being made is per site.
  *
- * Built as a string and passed as a **variable** rather than interpolated into the document, so a
- * type name is data rather than query text.
+ * **Two layers, and only one of them is parameterised.** The statement travels to the server as a
+ * GraphQL *variable*, so nothing here can reshape the GraphQL document - but the statement itself
+ * is assembled by concatenation, and at the JCR-SQL2 layer both values ARE query text. Neither
+ * layer protects the other, so the type name is allow-listed and the path is escaped here.
  */
-export const typeCountQuery = (typeName, sitePath) =>
-    `select * from [${typeName}] where isdescendantnode("${sitePath}") ` +
-    `and [jcr:primaryType] = "${typeName}"`;
+export const typeCountQuery = (typeName, sitePath) => {
+    if (!JCR_TYPE_NAME.test(String(typeName))) {
+        return null;
+    }
+
+    return `select * from [${typeName}] where isdescendantnode("${escapeLiteral(sitePath)}") ` +
+        `and [jcr:primaryType] = "${typeName}"`;
+};
 
 /**
  * The alias one type's count is returned under.
@@ -73,11 +98,18 @@ export const buildTypeCountDocument = typeNames => {
     `);
 };
 
-/** The variables that go with it, named to match. */
+/**
+ * The variables that go with it, named to match.
+ *
+ * A name that is not a usable type name yields no statement, and the alias is then sent as an
+ * empty string rather than as null: the document declares every alias `String!`, so omitting one
+ * would have the server reject the whole request and cost the counts of every other type. An
+ * empty query simply answers nothing, which `readTypeCounts` already reports as "not counted".
+ */
 export const buildTypeCountVariables = (typeNames, sitePath) => {
     const variables = {};
     (typeNames || []).forEach((name, index) => {
-        variables[countAlias(index)] = typeCountQuery(name, sitePath);
+        variables[countAlias(index)] = typeCountQuery(name, sitePath) || '';
     });
 
     return variables;
