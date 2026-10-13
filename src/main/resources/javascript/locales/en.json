@@ -8,7 +8,7 @@
     "contentError": "The content could not be loaded.",
     "publication": {
       "published": "Published",
-      "modified": "Modified",
+      "modified": "Unpublished changes",
       "unpublished": "Unpublished",
       "notPublished": "Never published"
     },
@@ -34,8 +34,8 @@
       "type": "Type",
       "createdBy": "Creator",
       "createdDate": "Created",
-      "lastModified": "Modified",
-      "lastModifiedBy": "Modif. by",
+      "lastModified": "Last modified",
+      "lastModifiedBy": "Modified by",
       "missingTranslations": "Missing translations",
       "publicationStatus": "Publication",
       "tags": "Tags",

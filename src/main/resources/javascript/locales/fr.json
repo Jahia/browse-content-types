@@ -1,14 +1,14 @@
 {
   "label": {
     "accordion": "Types de contenu",
-    "noTypes": "Aucun type de contenu éditorial n'est disponible sur ce site.",
-    "typesError": "Les types de contenu n'ont pas pu être chargés.",
-    "noContent": "Aucun contenu de ce type n'a été trouvé sur ce site.",
+    "noTypes": "Aucun type de contenu éditorial n’est disponible sur ce site.",
+    "typesError": "Les types de contenu n’ont pas pu être chargés.",
+    "noContent": "Aucun contenu de ce type n’a été trouvé sur ce site.",
     "noSearchResults": "Aucun contenu de ce type ne correspond à « {{terms}} ».",
-    "contentError": "Le contenu n'a pas pu être chargé.",
+    "contentError": "Le contenu n’a pas pu être chargé.",
     "publication": {
       "published": "Publié",
-      "modified": "Modifié",
+      "modified": "Modifications non publiées",
       "unpublished": "Dépublié",
       "notPublished": "Jamais publié"
     },
@@ -19,7 +19,7 @@
     },
     "settings": {
       "title": "Types de contenu",
-      "description": "Choisissez les types de contenu listés dans l'accordéon Types de contenu. Ce réglage s'applique à tous ceux qui travaillent sur ce site. Tout sélectionner conserve le comportement par défaut : les types ajoutés plus tard apparaissent d'eux-mêmes.",
+      "description": "Choisissez les types de contenu listés dans l’accordéon Types de contenu. Ce réglage s’applique à tous ceux qui travaillent sur ce site. Tout sélectionner conserve le comportement par défaut : les types ajoutés plus tard apparaissent d’eux-mêmes.",
       "selectedCount": "{{count}} sur {{total}} sélectionnés",
       "save": "Enregistrer",
       "saved": "Enregistré. L’accordéon liste désormais les types sélectionnés.",
@@ -34,8 +34,8 @@
       "type": "Type",
       "createdBy": "Créateur",
       "createdDate": "Créé",
-      "lastModified": "Modifié",
-      "lastModifiedBy": "Modif. par",
+      "lastModified": "Dernière modification",
+      "lastModifiedBy": "Modifié par",
       "missingTranslations": "Traductions manquantes",
       "publicationStatus": "Publication",
       "tags": "Tags",
@@ -78,7 +78,7 @@
       "column": "Trier par {{column}}"
     },
     "create": {
-      "failed": "La fiche n'a pas pu être créée. Réessayez."
+      "failed": "La fiche n’a pas pu être créée. Réessayez."
     },
     "createTarget": {
       "resolving": "Recherche des emplacements possibles…"
