@@ -1,5 +1,3 @@
-<jnt = 'http://www.jahia.org/jahia/nt/1.0'>
-<jmix = 'http://www.jahia.org/jahia/mix/1.0'>
 <ct = 'http://www.jahia.org/jahia/content-types/1.0'>
 
 /**
@@ -27,6 +25,15 @@
  * A weak reference, so that deleting a record leaves the task standing rather than refusing the
  * deletion. A task outliving the content it named is a loose end somebody can close; content that
  * cannot be deleted because an old task mentions it is a problem with no way out.
+ *
+ * **`ct:targetNode`, prefixed.** An unprefixed name on a MIXIN lands in the default namespace,
+ * shared with every other definition using that name - and `jnt:workflowTask` already declares a
+ * bare `targetNode`, single-valued where this one is multiple. A node carrying both would hold
+ * two definitions of one name with different cardinality: JCR allows the pair, so nothing fails
+ * on registration and the ambiguity surfaces later, as a read that answers the wrong shape. A
+ * concrete type can afford the bare name because the type itself carries the namespace; a mixin
+ * that can land on anything cannot, which is why Jahia's own jmix: definitions prefix every
+ * property they declare.
  */
 [ct:taskTarget] mixin
- - targetNode (weakreference) multiple
+ - ct:targetNode (weakreference) multiple

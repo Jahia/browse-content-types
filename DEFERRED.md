@@ -137,8 +137,16 @@ GraphQL documents, the `assignTo` bulk-menu entry, and the task-shaped undo.
 
 **What stayed, and must not be removed:** the `[ct:taskTarget]` mixin in `definitions.cnd`.
 Jahia's `DefinitionsBundleChecker` treats removing a registered node type as a MAJOR change and
-refuses the whole module deployment — and a definition stays registered after the module is
+refuses the whole module deployment - and a definition stays registered after the module is
 uninstalled, so there is no clean way back. It is a mixin nothing applies. Leave it there.
+
+**Its property was renamed before 1.0.0, and the branch has to follow.** It is now
+`ct:targetNode`, not the bare `targetNode` it was written with. Unprefixed, it landed in the
+default namespace and collided with `jnt:workflowTask`'s own `targetNode`, which is single-valued
+where this one is multiple - a node carrying both would hold two definitions of one name with
+different cardinality. The rename was only possible because nothing had registered the definition
+yet; after 1.0.0 that window closes, which is the same rule as the paragraph above. **A revert of
+`feature/assign-to` has to rename the property at every point it reads or writes it.**
 
 **Worth reworking first:** working out who may be given a task costs three round trips over access
 control, because the site's grants have to answer before it is known which groups need expanding.
