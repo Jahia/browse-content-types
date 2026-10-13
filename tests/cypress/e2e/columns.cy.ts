@@ -1,5 +1,5 @@
 import {deleteSite} from '@jahia/cypress';
-import {closeColumnsPicker, columnEntry, columnKeyFor, openAccordion, openColumnsPicker, resetColumns, table, toggleColumn} from '../support/contentTypes';
+import {closeColumnsPicker, columnEntry, columnKeyFor, openAccordion, openColumnsPicker, resetColumns, table, toggleColumn, leaveJContent} from '../support/contentTypes';
 import {addProduct, createTestSite, waitForRows} from '../support/fixtures';
 
 /**
@@ -21,6 +21,7 @@ describe('Columns picker', () => {
     });
 
     after(() => {
+        leaveJContent();
         deleteSite(SITE_KEY);
     });
 

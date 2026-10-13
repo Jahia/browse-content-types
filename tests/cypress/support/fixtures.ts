@@ -1,5 +1,8 @@
 import {addNode, createSite} from '@jahia/cypress';
 
+/** Any type the test module ships: the warm-up only needs a complete, resolvable path. */
+const WARMUP_TYPE = 'bctnt:product';
+
 export const TEST_TEMPLATE_SET = 'browse-content-types-test-module';
 
 /**
@@ -20,8 +23,26 @@ export const TEST_TEMPLATE_SET = 'browse-content-types-test-module';
  * answers for is not a cosmetic detail. The sites here are created and deleted one at a time, so
  * sharing the name costs nothing.
  */
-export const createTestSite = (siteKey: string) =>
+export const createTestSite = (siteKey: string) => {
     createSite(siteKey, {templateSet: TEST_TEMPLATE_SET, serverName: 'localhost', locale: 'en'});
+
+    /*
+     * Opened once here, and the result thrown away.
+     *
+     * `createSite` returns when the node is written, which is earlier than the app can act on it:
+     * the site's module list, the registry and jContent's own resolution of the new key all have to
+     * settle, and until they do the accordion does not draw. Left to the first test, that race is
+     * paid for by whichever assertion happens to be first - measured, the opening test of a spec
+     * runs 20-26s against 5-6s for the rest, and is the one that intermittently fails.
+     *
+     * Absorbing it in the fixture puts the wait where it belongs. It is a wait for readiness, not a
+     * retry of the thing under test: the tests still assert everything they did before, and a
+     * module that never draws still fails them.
+     */
+    cy.loginAndStoreSession();
+    cy.visit(`/jahia/jcontent/${siteKey}/en/contentTypes/${WARMUP_TYPE}`);
+    return cy.get('[data-sel-role="content-types-route"]', {timeout: 120000}).should('exist');
+};
 
 /**
  * A folder of products, planted in the site's own contents.

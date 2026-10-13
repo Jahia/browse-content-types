@@ -1,5 +1,5 @@
 import {deleteSite} from '@jahia/cypress';
-import {openAccordion, rows, rowFor, selectType, table} from '../support/contentTypes';
+import {openAccordion, rows, rowFor, selectType, table, leaveJContent} from '../support/contentTypes';
 import {addProduct, addSupplier, createTestSite, waitForRows} from '../support/fixtures';
 
 /**
@@ -19,6 +19,7 @@ describe('Listing records of a type', () => {
     });
 
     after(() => {
+        leaveJContent();
         deleteSite(SITE_KEY);
     });
 

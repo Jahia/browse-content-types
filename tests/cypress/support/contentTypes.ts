@@ -73,6 +73,21 @@ export const accordionEntry = () =>
 /** Any accordion at all, as proof that jContent itself drew - see the negative permission test. */
 export const anyAccordionEntry = () => cy.get('section.moonstone-accordionItem');
 
+/**
+ * Leaves jContent before the site it is showing is deleted.
+ *
+ * Deleting a site out from under the running app is not a quiet operation: jContent keeps polling
+ * the site it still thinks it is on, its queries start answering PathNotFoundException, and its own
+ * bundle then throws on a result it does not guard -
+ * `Cannot read properties of undefined (reading 'contentTypesAsTree')`. That is jContent's to fix,
+ * not this module's, but it fails the spec that happened to be unmounting at the time and it does
+ * so in an `after` hook, which takes the rest of the file down with it.
+ *
+ * Navigating to a plain server-rendered page unmounts the app first, so there is nothing left
+ * querying by the time the site goes.
+ */
+export const leaveJContent = () => cy.visit('/cms/login');
+
 export const tree = () => cy.get('[data-sel-role="content-types-tree"]');
 
 export const typeItem = (typeName: string) =>
@@ -111,7 +126,23 @@ export const openColumnsPicker = () => {
     return cy.get('[data-sel-role="columns-picker"]').should('be.visible');
 };
 
-export const closeColumnsPicker = () => cy.get('body').type('{esc}');
+export const closeColumnsPicker = () => {
+    /*
+     * Dismissed through Moonstone's own overlay, not with Escape.
+     *
+     * The dropdown lays a full-screen `menu_overlay` over the page while it is open, and Escape
+     * does not take it down. It stays, invisible, covering the very button that opens the picker -
+     * so the NEXT attempt to open it fails with "covered by another element", pointing at the
+     * toolbar button and saying nothing about the overlay that is actually in the way.
+     */
+    cy.get('body').then($body => {
+        if ($body.find('.moonstone-menu_overlay').length > 0) {
+            cy.get('.moonstone-menu_overlay').first().click({force: true});
+        }
+    });
+
+    return cy.get('.moonstone-menu_overlay').should('not.exist');
+};
 
 export const columnEntry = (key: string) => cy.get(`[data-sel-column="${key}"]`);
 
@@ -130,7 +161,14 @@ export const toggleColumn = (key: string) => columnEntry(key).click({force: true
  * Forced for the same reason as the checkboxes: the control lives inside a dropdown that Moonstone
  * animates, and Cypress intermittently computes it as covered by its own container mid-transition.
  */
-export const resetColumns = () => cy.get('[data-sel-role="columns-reset"]').click({force: true});
+export const resetColumns = () => {
+    // Asserted visible before the click, which is what makes Cypress re-query it. `force` alone
+    // does not help here: the failure is a DETACHED element, not a covered one - the picker
+    // re-renders as the ticked column is applied, so a reference taken a moment earlier is pointing
+    // at a node that is no longer in the document by the time the click lands.
+    cy.get('[data-sel-role="columns-reset"]').should('be.visible');
+    return cy.get('[data-sel-role="columns-reset"]').click({force: true});
+};
 
 /**
  * The key the module gives one of a type's own properties.

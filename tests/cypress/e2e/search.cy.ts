@@ -1,5 +1,5 @@
 import {deleteSite} from '@jahia/cypress';
-import {clearSearch, openAccordion, rowFor, search} from '../support/contentTypes';
+import {clearSearch, openAccordion, rowFor, search, leaveJContent} from '../support/contentTypes';
 import {addProduct, createTestSite, waitForRows} from '../support/fixtures';
 
 /** Narrowing a listing by what was typed. */
@@ -14,6 +14,7 @@ describe('Searching within a type', () => {
     });
 
     after(() => {
+        leaveJContent();
         deleteSite(SITE_KEY);
     });
 
