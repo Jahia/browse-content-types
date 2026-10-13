@@ -46,15 +46,31 @@ jobs:
           docker compose up -d
           timeout 600 bash -c 'until curl -sf http://localhost:8080/cms/login > /dev/null; do sleep 10; done'
 
-      - name: Provision the dependencies and deploy both modules
+      - name: Provision the dependencies
         working-directory: tests
         run: |
           curl -sf -u root:root1234 -X POST http://localhost:8080/modules/api/provisioning \
             -H "Origin: http://localhost:8080" -H "Content-Type: application/yaml" \
             --data-binary @provisioning-manifest-build.yml
+
+      # An uploaded bundle is referenced by its FILE NAME, not by a path or a file: URL, and one
+      # call carries one bundle. Getting either wrong does not fail the step: the API answers 200
+      # with empty install/start lists and deploys nothing, which surfaces minutes later as the
+      # accordion simply not being there.
+      - name: Deploy the module
+        working-directory: tests
+        run: |
           curl -sf -u root:root1234 -X POST http://localhost:8080/modules/api/provisioning \
-            -H "Origin: http://localhost:8080" -F script='[{"installBundle":["file:/tmp/bct.jar","file:/tmp/bct-test.jar"],"autoStart":true}]' \
-            -F file=@../target/browse-content-types-1.0.0-SNAPSHOT.jar \
+            -H "Origin: http://localhost:8080" \
+            -F 'script=[{"installBundle":["browse-content-types-1.0.0-SNAPSHOT.jar"],"autoStart":true}]' \
+            -F file=@../target/browse-content-types-1.0.0-SNAPSHOT.jar
+
+      - name: Deploy the test module
+        working-directory: tests
+        run: |
+          curl -sf -u root:root1234 -X POST http://localhost:8080/modules/api/provisioning \
+            -H "Origin: http://localhost:8080" \
+            -F 'script=[{"installBundle":["browse-content-types-test-module-1.0.0-SNAPSHOT.jar"],"autoStart":true}]' \
             -F file=@jahia-module/target/browse-content-types-test-module-1.0.0-SNAPSHOT.jar
 
       - name: Run the suite
@@ -71,8 +87,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: e2e-results
-          path: |
-            tests/results
+          path: tests/results
           retention-days: 7
 
       - name: Jahia log, for triage
