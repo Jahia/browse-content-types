@@ -88,13 +88,6 @@ export const ContentTypesRoute = () => {
         }
     }, [sidePanelSelection]);
 
-    // A record of one type has nothing to do with the next, and the rows it was resolved from are
-    // gone. Closed through jContent's own action so its store does not keep a path this screen is
-    // no longer showing.
-    useEffect(() => {
-        dispatch(cmCloseSidePanel());
-    }, [contentType, dispatch]);
-
     /*
      * Whether the panel can be offered at all.
      *
@@ -102,9 +95,23 @@ export const ContentTypesRoute = () => {
      * them yet answers with undefined rather than failing to load - so the check is what keeps this
      * module working against one. The panel is simply not offered there; everything else is
      * unaffected.
+     *
+     * Read before anything dispatches one of them rather than just before the panel is drawn. An
+     * effect runs even on a render that returned early, so a check sitting below these would be
+     * reached only after `cmCloseSidePanel()` had already thrown on the very undefined it exists
+     * to guard against.
      */
     const hasSidePanel = Boolean(SidePanel && JContentSidePanelContextProvider &&
         cmSetSidePanelSelection && cmCloseSidePanel);
+
+    // A record of one type has nothing to do with the next, and the rows it was resolved from are
+    // gone. Closed through jContent's own action so its store does not keep a path this screen is
+    // no longer showing.
+    useEffect(() => {
+        if (hasSidePanel) {
+            dispatch(cmCloseSidePanel());
+        }
+    }, [contentType, dispatch, hasSidePanel]);
 
     // Both, because they are two stores answering one question and only agreement means open - see
     // previewNode. A stale node whose path the store has moved on from draws nothing.
@@ -198,6 +205,12 @@ export const ContentTypesRoute = () => {
                             previewedPath={isPanelOpen ? previewNode.path : undefined}
                             onSelectionChange={setSelection}
                             onRowClick={node => {
+                                // Nothing to open against a jContent that does not export the
+                                // panel, and the row click is simply inert there - see hasSidePanel.
+                                if (!hasSidePanel) {
+                                    return;
+                                }
+
                                 // The node for the provider, the path for jContent's store. The
                                 // thunk declines while rows are ticked, which is its own rule and
                                 // the right one: a bulk selection is not a request to preview one
