@@ -19,8 +19,28 @@
     <packaging>bundle</packaging>
     <description>Adds a Content Types accordion to jContent</description>
 
+    <!--
+        Declared rather than inherited. Without it the built manifest carries the jahia-modules
+        parent's own coordinates, so Jahia-Source-Control-Connection points into jahia-private and
+        the "download sources" link in Module Management offers a repository that does not contain
+        this module.
+    -->
+    <scm>
+        <connection>scm:git:git@github.com:Jahia/browse-content-types.git</connection>
+        <developerConnection>scm:git:git@github.com:Jahia/browse-content-types.git</developerConnection>
+        <url>https://github.com/Jahia/browse-content-types</url>
+        <tag>HEAD</tag>
+    </scm>
+
     <properties>
         <yarn.arguments>build:production</yarn.arguments>
+        <!--
+            No version floor yet, deliberately. The side panel this module opens on a row needs
+            exports that jContent does not ship at the time of writing (Jahia/jcontent#2842), and
+            ContentTypesRoute feature-detects them so the module degrades to "no side panel" rather
+            than failing. Once that lands, pin the version that carries it -
+            `jcontent=<version>` - and the feature detection becomes a belt to that braces.
+        -->
         <jahia-depends>jcontent</jahia-depends>
         <sonar.sources>src/javascript</sonar.sources>
     </properties>
