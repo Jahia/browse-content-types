@@ -1,0 +1,29 @@
+name: Build
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The versions the Maven build installs through frontend-maven-plugin, so what runs here is
+      # what runs in a release build rather than whatever the runner happens to ship.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.12.0'
+          cache: yarn
+
+      - run: yarn install --frozen-lockfile
+
+      # Lint before tests: it is the gate that was red on master with nothing to catch it, which is
+      # the whole reason this workflow exists.
+      - run: yarn lint
+
+      - run: yarn test
+
+      - run: yarn build:production
