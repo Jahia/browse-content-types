@@ -58,6 +58,39 @@ Build and deploy it the same way as the module under test.
 | `provisioning-manifest-snapshot.yml` | a nightly — everything resolved from Nexus |
 | `assets/dependencies.yml` | the external modules both variants need |
 
+## Where this stands
+
+Run against Jahia 8.2.3.0 (Discovery) with jcontent 3.7.2. Best full-suite run: **17 of 24**, with
+`listing` (6/6), `search` (5/5) and `settings` (3/3) all green together; `columns` has reached 5/6
+and `accordion` 3/4 on their own.
+
+Two things are known and are **not** module defects:
+
+- **`accordion.cy.ts`'s permission pair needs a licensed Jahia.** Discovery caps backend users, and
+  over the cap it does not refuse the login - it serves jContent as a **503 licence page**. Read
+  naively that looks like the accordion being hidden, which would make the negative test pass for
+  entirely the wrong reason. The spec probes for it and skips with the reason logged.
+- **The first spec of a run is flaky on a cold instance.** The accordion is a federated bundle
+  loading against a site created seconds earlier; when the first load lands before the registry,
+  the site's module list and jContent's start-up agree, the screen stays empty with no error to
+  retry against. `openAccordion` reloads up to twice before giving up, which covers most of it. A
+  dedicated instance per run - what the CI workflow does - is the real answer.
+
+### Environment traps this suite already pays for
+
+Each of these fails **silently**, and each looks exactly like a module bug:
+
+| Trap | What you see |
+|---|---|
+| A content type without `jmix:droppableContent` | fixtures fail, every table renders empty |
+| An upper-case site key | the site is created and healthy, and the accordion never opens on it |
+| A site server name other than `localhost` | same: the accordion never opens |
+| `cy.session` on every navigation | it clears `localStorage`, so the columns picker "forgets" a choice it saved correctly |
+| `ELECTRON_RUN_AS_NODE=1` (VS Code terminals) | Cypress will not start: `bad option: --smoke-test` |
+
+`run.sh` unsets that last one and sets the instance variables, so `./run.sh` is the way to run this
+locally.
+
 ## Conventions
 
 Site-per-suite: every spec creates its own site in `before()` and deletes it in `after()`, so runs

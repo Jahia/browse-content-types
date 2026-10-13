@@ -1,6 +1,6 @@
-import {createSite, deleteSite} from '@jahia/cypress';
+import {deleteSite} from '@jahia/cypress';
 import {openAccordion, typeItem} from '../support/contentTypes';
-import {TEST_TEMPLATE_SET, addProduct} from '../support/fixtures';
+import {addProduct, createTestSite} from '../support/fixtures';
 
 /**
  * The administrator's choice of which types the accordion lists.
@@ -11,11 +11,11 @@ import {TEST_TEMPLATE_SET, addProduct} from '../support/fixtures';
  * whenever the first answered from cache while the second was still in flight.
  */
 describe('Choosing which types are listed', () => {
-    const SITE_KEY = 'bctSettings';
+    const SITE_KEY = 'bctsettings';
     const sitePath = '/sites/' + SITE_KEY;
 
     before(() => {
-        createSite(SITE_KEY, {templateSet: TEST_TEMPLATE_SET, serverName: 'localhost', locale: 'en'});
+        createTestSite(SITE_KEY);
         addProduct(SITE_KEY, {name: 'hammer', title: 'Hammer', price: 12.5});
     });
 

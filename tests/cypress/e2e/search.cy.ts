@@ -1,13 +1,13 @@
-import {createSite, deleteSite} from '@jahia/cypress';
+import {deleteSite} from '@jahia/cypress';
 import {clearSearch, openAccordion, rowFor, search} from '../support/contentTypes';
-import {TEST_TEMPLATE_SET, addProduct, waitForRows} from '../support/fixtures';
+import {addProduct, createTestSite, waitForRows} from '../support/fixtures';
 
 /** Narrowing a listing by what was typed. */
 describe('Searching within a type', () => {
-    const SITE_KEY = 'bctSearch';
+    const SITE_KEY = 'bctsearch';
 
     before(() => {
-        createSite(SITE_KEY, {templateSet: TEST_TEMPLATE_SET, serverName: 'localhost', locale: 'en'});
+        createTestSite(SITE_KEY);
         addProduct(SITE_KEY, {name: 'hammer', title: 'Hammer', price: 12.5});
         addProduct(SITE_KEY, {name: 'wrench', title: 'Wrench', price: 8});
         addProduct(SITE_KEY, {name: 'screwdriver', title: 'Screwdriver', price: 5});

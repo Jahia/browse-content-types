@@ -23,6 +23,13 @@
     <properties>
         <jahia-module-type>templatesSet</jahia-module-type>
         <jahia-deploy-on-site>all</jahia-deploy-on-site>
+        <!--
+            So that a site built on this template set has the module under test enabled on it.
+            The accordion declares `requireModuleInstalledOnSite`, so without this jContent hides it
+            on every site the suite creates - and the symptom is not an error but a redirect to the
+            dashboard, which reads like a broken URL rather than a missing module.
+        -->
+        <jahia-depends>browse-content-types</jahia-depends>
     </properties>
 
     <repositories>

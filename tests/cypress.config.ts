@@ -22,10 +22,11 @@ export default defineConfig({
         specPattern: ['**/*.cy.ts'],
         supportFile: 'cypress/support/e2e.ts',
         setupNodeEvents(on, config) {
-            // Reads JAHIA_URL / SUPER_USER_PASSWORD from the environment and sets baseUrl + env
-            // from them, so a run points at an instance without this file naming one.
-            require('@jahia/cypress/dist/plugins/registerPlugins').registerPlugins(on, config);
-            return config;
+            // Delegated to a plain JS file rather than required here: this config is TypeScript and
+            // Cypress bundles it with webpack before running it, which resolves an inlined deep
+            // require at bundle time.
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
+            return require('./cypress/plugins/index.js')(on, config);
         }
     }
 });

@@ -6,6 +6,12 @@
 /**
  * The type the suite browses.
  *
+ * `jmix:droppableContent` is what makes a record creatable under the site's own `/contents`:
+ * `jnt:contentFolder` accepts `+ * (jmix:droppableContent)` and nothing else, and
+ * `jmix:editorialContent` does not imply it. Without it every fixture fails with
+ * `ConstraintViolationException: No child node definition`, and the table then renders empty -
+ * which reads as the listing being broken rather than as the content never having been created.
+ *
  * `jmix:editorialContent`, so it is listed by the accordion without an administrator having chosen
  * anything - which is the state the listing tests want, and the state the settings test changes.
  *
@@ -14,13 +20,12 @@
  * of what it points at, a multi-valued property gets no sort at all, and a choicelist is filtered
  * by picking rather than by typing. One property per branch of that logic.
  */
-[bctnt:product] > jnt:content, jmix:editorialContent, mix:title
+[bctnt:product] > jnt:content, jmix:editorialContent, jmix:droppableContent, mix:title
  - bctnt:price (double)
  - bctnt:releasedOn (date)
  - bctnt:reference (string)
  - bctnt:tags (string) multiple
- - bctnt:category (string) < '{"type":"choicelist"}' = 'tools' mandatory
-   < 'tools', 'parts', 'spares'
+ - bctnt:category (string, choicelist) < 'tools', 'parts', 'spares'
  // Internationalized, so the missing-translations column has something to count.
  - bctnt:summary (string, textarea) i18n
 
@@ -29,5 +34,5 @@
  * are testable at all - and so that selecting a type is observably a choice rather than the only
  * thing on offer.
  */
-[bctnt:supplier] > jnt:content, jmix:editorialContent, mix:title
+[bctnt:supplier] > jnt:content, jmix:editorialContent, jmix:droppableContent, mix:title
  - bctnt:country (string)

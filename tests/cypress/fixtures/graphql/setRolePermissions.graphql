@@ -1,0 +1,10 @@
+# Replaces what a role grants. Used to revoke one permission and to restore the original set.
+mutation setRolePermissions($rolePath: String!, $permissions: [String]!) {
+    jcr {
+        mutateNode(pathOrId: $rolePath) {
+            mutateProperty(name: "j:permissionNames") {
+                setValues(values: $permissions)
+            }
+        }
+    }
+}

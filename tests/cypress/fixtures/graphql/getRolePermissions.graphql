@@ -1,0 +1,10 @@
+# What a role currently grants, so a test can put it back exactly as it found it.
+query getRolePermissions($rolePath: String!) {
+    jcr(workspace: EDIT) {
+        nodeByPath(path: $rolePath) {
+            permissions: property(name: "j:permissionNames") {
+                values
+            }
+        }
+    }
+}

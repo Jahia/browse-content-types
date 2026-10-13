@@ -1,6 +1,6 @@
-import {createSite, deleteSite} from '@jahia/cypress';
-import {closeColumnsPicker, columnEntry, columnKeyFor, openAccordion, openColumnsPicker, table} from '../support/contentTypes';
-import {TEST_TEMPLATE_SET, addProduct, waitForRows} from '../support/fixtures';
+import {deleteSite} from '@jahia/cypress';
+import {closeColumnsPicker, columnEntry, columnKeyFor, openAccordion, openColumnsPicker, resetColumns, table, toggleColumn} from '../support/contentTypes';
+import {addProduct, createTestSite, waitForRows} from '../support/fixtures';
 
 /**
  * Choosing which columns a type's table shows, and that the choice survives leaving the screen.
@@ -10,12 +10,12 @@ import {TEST_TEMPLATE_SET, addProduct, waitForRows} from '../support/fixtures';
  * never checked.
  */
 describe('Columns picker', () => {
-    const SITE_KEY = 'bctColumns';
+    const SITE_KEY = 'bctcolumns';
     const PRICE = columnKeyFor('bctnt:price');
     const TAGS = columnKeyFor('bctnt:tags');
 
     before(() => {
-        createSite(SITE_KEY, {templateSet: TEST_TEMPLATE_SET, serverName: 'localhost', locale: 'en'});
+        createTestSite(SITE_KEY);
         addProduct(SITE_KEY, {name: 'hammer', title: 'Hammer', price: 12.5});
         addProduct(SITE_KEY, {name: 'drill', title: 'Drill', price: 99.9});
     });
@@ -44,7 +44,7 @@ describe('Columns picker', () => {
         waitForRows(2);
 
         openColumnsPicker();
-        columnEntry(PRICE).click();
+        toggleColumn(PRICE);
         closeColumnsPicker();
 
         // The value, not just the header: a column whose accessor reads undefined would still
@@ -57,7 +57,7 @@ describe('Columns picker', () => {
         waitForRows(2);
 
         openColumnsPicker();
-        columnEntry(PRICE).click();
+        toggleColumn(PRICE);
         closeColumnsPicker();
         table().should('contain.text', '99.9');
 
@@ -71,12 +71,12 @@ describe('Columns picker', () => {
         waitForRows(2);
 
         openColumnsPicker();
-        columnEntry(PRICE).click();
+        toggleColumn(PRICE);
         closeColumnsPicker();
         table().should('contain.text', '99.9');
 
         openColumnsPicker();
-        cy.get('[data-sel-role="columns-reset"]').click();
+        resetColumns();
         closeColumnsPicker();
         table().should('not.contain.text', '99.9');
     });

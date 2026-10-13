@@ -1,6 +1,27 @@
-import {addNode} from '@jahia/cypress';
+import {addNode, createSite} from '@jahia/cypress';
 
 export const TEST_TEMPLATE_SET = 'browse-content-types-test-module';
+
+/**
+ * **Site keys here are lower case, and that is load-bearing.**
+ *
+ * A key with an upper-case letter creates a site that looks entirely healthy - the node is there,
+ * the template set is right, the modules are installed - but jContent will not open an accordion
+ * on it, so every spec using it fails on the route never rendering and reads as the module being
+ * broken. Measured: the same spec is 0/5 as `bctSearch` and 5/5 as `bctsearch`.
+ */
+
+/**
+ * The suite's site.
+ *
+ * **`localhost` as the server name, for every site.** Giving each site a name of its own looks
+ * tidier and is worse: measured, the same spec goes from 2/6 to 0/6, because the accordion then
+ * never opens on it. Jahia resolves the app shell through the server name, and a name nothing
+ * answers for is not a cosmetic detail. The sites here are created and deleted one at a time, so
+ * sharing the name costs nothing.
+ */
+export const createTestSite = (siteKey: string) =>
+    createSite(siteKey, {templateSet: TEST_TEMPLATE_SET, serverName: 'localhost', locale: 'en'});
 
 /**
  * A folder of products, planted in the site's own contents.

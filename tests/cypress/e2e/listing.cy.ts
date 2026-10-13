@@ -1,6 +1,6 @@
-import {createSite, deleteSite} from '@jahia/cypress';
+import {deleteSite} from '@jahia/cypress';
 import {openAccordion, rows, rowFor, selectType, table} from '../support/contentTypes';
-import {TEST_TEMPLATE_SET, addProduct, addSupplier, waitForRows} from '../support/fixtures';
+import {addProduct, addSupplier, createTestSite, waitForRows} from '../support/fixtures';
 
 /**
  * The listing itself: picking a type shows every record of it, and only of it.
@@ -8,10 +8,10 @@ import {TEST_TEMPLATE_SET, addProduct, addSupplier, waitForRows} from '../suppor
  * The point the module exists for, so this is the suite that says whether it works at all.
  */
 describe('Listing records of a type', () => {
-    const SITE_KEY = 'bctListing';
+    const SITE_KEY = 'bctlisting';
 
     before(() => {
-        createSite(SITE_KEY, {templateSet: TEST_TEMPLATE_SET, serverName: 'localhost', locale: 'en'});
+        createTestSite(SITE_KEY);
         addProduct(SITE_KEY, {name: 'hammer', title: 'Hammer', price: 12.5});
         addProduct(SITE_KEY, {name: 'wrench', title: 'Wrench', price: 8});
         addProduct(SITE_KEY, {name: 'drill', title: 'Drill', price: 99.9, category: 'parts'});
