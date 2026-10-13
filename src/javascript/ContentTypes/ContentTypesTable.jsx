@@ -53,7 +53,9 @@ const MAX_NAME_LENGTH = 300;
  * registers its content list as `CONTENT_DATA`, and reusing that would replace its entry rather
  * than add to it.
  */
-const REFETCHER = 'contentTypesTable';
+// Namespaced, because the refetcher registry is shared by every module on the page and a bare
+// name is one collision away from another module's table being refetched instead of this one.
+const REFETCHER = 'browse-content-types:table';
 
 /**
  * How long after a menu closes the table waits before reloading.
@@ -537,8 +539,12 @@ const previewFor = node => {
     }
 
     // Every character escaped except the separators, so a file whose name has a space or an accent
-    // in it still resolves. Same expression jContent builds its own file URLs with.
-    const path = node.path.replace(/[^/]/g, encodeURIComponent);
+    // in it still resolves. Same expression jContent builds its own file URLs with, plus the `u`
+    // flag: without it an astral character - an emoji in a file name - is matched as two lone
+    // surrogates, and `encodeURIComponent` throws URIError on a lone surrogate. That throw escapes
+    // a cell renderer and takes the whole listing down, so the flag is what keeps one oddly named
+    // file from being a dead screen for everyone.
+    const path = node.path.replace(/[^/]/gu, encodeURIComponent);
     const contextPath = window.contextJsParameters?.contextPath || '';
     const stamp = node.lastModified?.value ? `lastModified=${encodeURIComponent(node.lastModified.value)}` : '';
     // Neither WebP nor video has a rendition to ask for - see above.
@@ -878,10 +884,16 @@ export const ContentTypesTable = ({
 
     // Reset the sort whenever the chosen column disappears - hiding a column that the table was
     // sorted by would otherwise keep silently requesting a sort the picker no longer offers.
+    //
+    // Back to the first page with it, for the reason toggleSort gives: this is a change of ordering
+    // like any other, so the page number means nothing across it. Without this, unticking the sorted
+    // column drops the reader into an arbitrary slice of a different ordering with nothing on screen
+    // saying more than a column was removed.
     useEffect(() => {
         if (sortBy !== 'displayName' && !visibleFields.some(field => field.key === sortBy)) {
             setSortBy('displayName');
             setSortDirection('ascending');
+            setCurrentPage(1);
         }
     }, [visibleFields, sortBy]);
 
@@ -893,7 +905,15 @@ export const ContentTypesTable = ({
 
     // Rebuilt only when the set of content-type-specific columns actually shown changes - not on
     // every render, and not when a common field becomes visible, since those are always fetched.
-    const dynamicFieldsKey = dynamicFields.map(field => field.key).join(',');
+    //
+    // The key carries the three things `dynamicFieldSelection` reads, not just the name. Cardinality
+    // decides `value` against `values` and the required type decides whether a reference block is
+    // emitted at all - so two types that declare the same property differently (a double on one, a
+    // multi-valued string on the other) would otherwise share a key, leave the document unrebuilt,
+    // and have every cell of that column read as empty for the rest of the session.
+    const dynamicFieldsKey = dynamicFields
+        .map(field => `${field.key}:${field.requiredType}:${field.multiple}`)
+        .join(',');
     // Joined for the same reason: the language list is a fresh array out of a query result, and the
     // document only changes when the set of languages does.
     const languagesKey = languages.join(',');
@@ -964,7 +984,10 @@ export const ContentTypesTable = ({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     } : null), [isSearching, terms, nameTerms, searchablePropertiesKey]);
 
-    const ready = Boolean(site) && Boolean(contentType);
+    // `language` earns its place alongside the other two because the document declares it
+    // `String!`: issued a render early, the operation is rejected outright rather than answering
+    // with less, and the table is replaced by the generic error until the store catches up.
+    const ready = Boolean(site) && Boolean(contentType) && Boolean(language);
 
     const {data, loading, error, previousData, refetch} = useQuery(recordQuery, {
         variables: {
@@ -1218,6 +1241,24 @@ export const ContentTypesTable = ({
 
     const rows = fetched;
     const totalItems = serverTotal;
+
+    /*
+     * Back to the first page when the one being shown is past the end.
+     *
+     * Deleting the last row of the last page leaves the offset where it was while the total shrinks
+     * under it, so the query asks for records beyond the end and answers with none. That is not the
+     * empty state - the total is not zero, the type still has content - so the table draws an empty
+     * body under a pager reading page 5 of 4, and only clicking a page number recovers it.
+     *
+     * The first page rather than the new last one: the rows that were being looked at are gone,
+     * and landing somewhere else near the end would be as arbitrary as landing at the start while
+     * pretending to be a considered choice.
+     */
+    useEffect(() => {
+        if (totalItems > 0 && (currentPage - 1) * itemsPerPage >= totalItems) {
+            setCurrentPage(1);
+        }
+    }, [totalItems, currentPage, itemsPerPage]);
 
     // What a bulk action deleted is gone from the rows the refetch brings back, but would otherwise
     // still be selected - and the bar would still be offering to act on it. Dropping whatever the

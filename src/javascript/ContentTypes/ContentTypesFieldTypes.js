@@ -207,7 +207,18 @@ export const publicationOptions = t => PUBLICATION_STATUSES.map(status => ({
  * Falls through to the value for anything not in the map: a property with no value list, and a code
  * that is stored but no longer offered by the definition, which would otherwise render as nothing.
  */
-export const labelForValue = (field, value) => field?.valueLabels?.[value] ?? value;
+export const labelForValue = (field, value) => {
+    const labels = field?.valueLabels;
+    // `hasOwnProperty` rather than a plain lookup: the labels are a plain object and the value is
+    // content, so a record holding `__proto__` or `constructor` would otherwise answer with
+    // something off Object.prototype - an object or a function where a label was expected, which
+    // `??` does not catch because it is not nullish, and which React throws on as a child.
+    if (labels && Object.prototype.hasOwnProperty.call(labels, value)) {
+        return labels[value];
+    }
+
+    return value;
+};
 
 /**
  * The property names that hold a language rather than prose.

@@ -4,7 +4,7 @@ import {registry} from '@jahia/ui-extender';
 import {ACCORDION_KEY} from './registerContentTypesAccordion';
 
 /**
- * jContent actions that cannot work in this accordion, hidden while it is the one on screen.
+ * Some jContent actions cannot work in this accordion, and are hidden while it is on screen.
  *
  * **Why any of them cannot work.** Overriding `routeComponent` means jContent's own ContentRoute
  * never runs, and some of its actions do not act by themselves - they write into redux and rely on

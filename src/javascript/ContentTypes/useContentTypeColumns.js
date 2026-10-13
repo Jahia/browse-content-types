@@ -7,8 +7,7 @@ import {FILTER_BOOLEAN, FILTER_CHOICE, FILTER_DATE, FILTER_IMAGE, FILTER_NUMBER,
 import {GET_SITE_LANGUAGES} from './ContentTypes.gql';
 import {translatableProperties} from './ContentTypesTranslations';
 import {NAMESPACE} from '../ContentTypes.register';
-
-const STORAGE_PREFIX = 'content-types:columns:';
+import {clearStoredKeys, columnKeyFor, isRenderable, readStoredKeys, sortingFor, storageKeyFor, writeStoredKeys} from './ContentTypesColumnCatalog';
 
 /**
  * Which property a common field can be filtered on, and with what kind of form.
@@ -116,50 +115,6 @@ export const COMMON_FIELDS = [
  */
 const DEFAULT_VISIBLE_KEYS = COMMON_FIELDS.filter(field => field.isDefault).map(field => field.key);
 
-/** A binary property (a large file's own bytes) has no reasonable display as a table cell. */
-const isRenderable = definition => !definition.hidden && !definition.protected && definition.requiredType !== 'BINARY';
-
-/**
- * How a property gets ordered, if it can be.
- *
- * There are two mechanisms and they are not interchangeable, so a field carries whichever one suits
- * it and the query sends only that one.
- *
- * `sortJcrProperty` names a property for the criteria query's own `ordering`, which sorts in the
- * repository against the property as what it actually is - a number as a number, a date as a date.
- * That is the right answer for any plain value, and it is what makes a numeric column sortable at
- * all: `fieldSorter` compares the *text* a GraphQL field returned, so it put a column of prices in
- * the order 1, 11, 12, 2 and there is no numeric mode to ask it for.
- *
- * `sortProperty` names a GraphQL field path for `fieldSorter`, and is kept for the one case ordering
- * cannot serve: a reference, where the repository would order by the stored uuid - nothing anybody
- * can see - and what is wanted is the name of the node it points at, which only exists once GraphQL
- * has resolved it.
- */
-const sortingFor = (definition, key) => {
-    // Nothing to order a row by: a multi-valued property holds a list, not a value.
-    if (definition.multiple) {
-        return {};
-    }
-
-    if (definition.requiredType === 'REFERENCE' || definition.requiredType === 'WEAKREFERENCE') {
-        return {sortProperty: `${key}.refNode.displayName`};
-    }
-
-    return {sortJcrProperty: definition.name};
-};
-
-const readStoredKeys = storageKey => {
-    try {
-        const stored = window.localStorage.getItem(storageKey);
-        return stored ? JSON.parse(stored) : DEFAULT_VISIBLE_KEYS;
-    } catch {
-        // A private window, a full quota, or corrupted JSON all land here. None of them should
-        // stop the table from showing something - they just mean today's choice starts fresh.
-        return DEFAULT_VISIBLE_KEYS;
-    }
-};
-
 /**
  * Everything about the Name and Content Type columns picker for one content type: the catalog of
  * fields it could show, which of them are currently visible, and the one place that choice is
@@ -193,9 +148,9 @@ export const useContentTypeColumns = contentType => {
     const site = useSelector(state => state.site);
     const uilang = useSelector(state => state.uilang);
     const language = useSelector(state => state.language);
-    const storageKey = `${STORAGE_PREFIX}${site}:${contentType}`;
+    const storageKey = storageKeyFor(site, contentType);
 
-    const {data, loading} = useQuery(GET_CONTENT_TYPE_FIELDS, {
+    const {data, loading, error} = useQuery(GET_CONTENT_TYPE_FIELDS, {
         variables: {type: contentType, language: uilang || 'en'},
         skip: !contentType
     });
@@ -213,7 +168,7 @@ export const useContentTypeColumns = contentType => {
     // text property is tickable, and one already in a stored choice is drawn for a moment before
     // the effect below takes it back out. Still not worth waiting for: that is a flicker in a menu
     // nobody has opened yet, against every row of the table waiting on a query it does not need.
-    const {data: formData} = useQuery(GET_CONTENT_TYPE_FORM_FIELDS, {
+    const {data: formData, error: formError} = useQuery(GET_CONTENT_TYPE_FORM_FIELDS, {
         variables: {
             type: contentType,
             language: language || uilang || 'en',
@@ -285,7 +240,7 @@ export const useContentTypeColumns = contentType => {
      * component querying it separately would ask twice for one answer. The export dialog was that
      * second component; the table is the only reader now.
      */
-    const {data: languageData} = useQuery(GET_SITE_LANGUAGES, {
+    const {data: languageData, error: languageError} = useQuery(GET_SITE_LANGUAGES, {
         variables: {sitePath: `/sites/${site}`},
         skip: !site
     });
@@ -341,7 +296,7 @@ export const useContentTypeColumns = contentType => {
         return definitions
             .filter(definition => definition.declaringNodeType?.name === contentType && isRenderable(definition))
             .map(definition => {
-                const key = `ct_${definition.name.replace(/[^a-zA-Z0-9]/g, '_')}`;
+                const key = columnKeyFor(definition.name);
                 const valueLabels = labelsByProperty[definition.name];
                 return {
                     key,
@@ -427,12 +382,12 @@ export const useContentTypeColumns = contentType => {
         ...contentTypeFields
     ], [contentTypeFields, t]);
 
-    const [visibleKeys, setVisibleKeys] = useState(() => readStoredKeys(storageKey));
+    const [visibleKeys, setVisibleKeys] = useState(() => readStoredKeys(storageKey, DEFAULT_VISIBLE_KEYS));
 
     // A different type means a different storage key and a different catalog: read that type's
     // own choice instead of carrying the previous type's selection over.
     useEffect(() => {
-        setVisibleKeys(readStoredKeys(storageKey));
+        setVisibleKeys(readStoredKeys(storageKey, DEFAULT_VISIBLE_KEYS));
     }, [storageKey]);
 
     // A field can disappear from under a stored choice - the module was updated, a property was
@@ -444,8 +399,13 @@ export const useContentTypeColumns = contentType => {
     // leaving it would put a column on screen that the picker says is not available. Dropped from
     // the state only - `apply` is what writes, so the stored list keeps it until the next real
     // change, and a rule later relaxed gives the column back to whoever had chosen it.
+    //
+    // Not on a failed query, though. A failure leaves `availableFields` holding the common fields
+    // alone, which is indistinguishable here from a type that declares nothing of its own - and
+    // pruning against it would quietly throw away every content-type column the reader had chosen,
+    // on a screen that otherwise looks like it loaded.
     useEffect(() => {
-        if (loading) {
+        if (loading || error) {
             return;
         }
 
@@ -453,7 +413,7 @@ export const useContentTypeColumns = contentType => {
             availableFields.filter(field => !field.notSelectableReason).map(field => field.key)
         );
         setVisibleKeys(previous => previous.filter(key => selectable.has(key)));
-    }, [availableFields, loading]);
+    }, [availableFields, loading, error]);
 
     /**
      * Applies a choice and remembers it, so leaving the screen and coming back shows the same
@@ -466,12 +426,7 @@ export const useContentTypeColumns = contentType => {
      */
     const apply = keys => {
         setVisibleKeys(keys);
-        try {
-            window.localStorage.setItem(storageKey, JSON.stringify(keys));
-        } catch {
-            // A private window, or a full quota. The choice still applies for this visit and simply
-            // will not be there on the next one, which beats refusing to make the change at all.
-        }
+        writeStoredKeys(storageKey, keys);
     };
 
     // A newly shown field is added at the end, in the order it was checked - the same place a
@@ -496,10 +451,26 @@ export const useContentTypeColumns = contentType => {
     // Swaps a visible field with its neighbour. Silently does nothing at either end of the list -
     // there is no neighbour to swap with, and the locked Name column is not part of this array at
     // all, so the first entry here is already the first field after it.
+    //
+    // The neighbour is the one the reader can SEE, which is not always the adjacent entry.
+    // `visibleKeys` is the stored choice and can still hold a key whose definition has not arrived,
+    // and such a key draws no row in the picker - while the picker bounds its arrows against the
+    // fields it actually drew. Stepping over the unresolved ones is what keeps the two in step:
+    // swapping with one would look like the arrow did nothing, while quietly reordering the stored
+    // list behind it.
     const moveField = (key, direction) => {
+        const resolved = new Set(visibleFields.map(field => field.key));
         const index = visibleKeys.indexOf(key);
-        const target = index + direction;
-        if (index === -1 || target < 0 || target >= visibleKeys.length) {
+        if (index === -1) {
+            return;
+        }
+
+        let target = index + direction;
+        while (target >= 0 && target < visibleKeys.length && !resolved.has(visibleKeys[target])) {
+            target += direction;
+        }
+
+        if (target < 0 || target >= visibleKeys.length) {
             return;
         }
 
@@ -516,12 +487,7 @@ export const useContentTypeColumns = contentType => {
      * same reason the settings panel stores an empty list rather than every type.
      */
     const resetToDefaults = () => {
-        try {
-            window.localStorage.removeItem(storageKey);
-        } catch {
-            // Nothing to undo if it could not be read or written in the first place.
-        }
-
+        clearStoredKeys(storageKey);
         setVisibleKeys(DEFAULT_VISIBLE_KEYS);
     };
 
@@ -543,7 +509,11 @@ export const useContentTypeColumns = contentType => {
         toggleField,
         moveField,
         resetToDefaults,
-        loading
+        loading,
+        // Published so the screen can say a definition could not be read, rather than drawing a
+        // type that appears to declare nothing. The three are reported as one: a reader cannot act
+        // on which of them failed, and any of them failing degrades the same columns.
+        error: error || formError || languageError
     };
 };
 

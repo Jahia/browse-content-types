@@ -89,7 +89,12 @@ export const ContentTypesTree = () => {
 
     // Opening the accordion lands on '/' when nothing was visited before, so select the first
     // type, the way every other accordion opens on its first entry rather than on nothing.
-    const first = (!loading && !error && !selected) ? types[0]?.name : undefined;
+    //
+    // Both queries have to have answered, not just the type list. `types` falls back to the
+    // editorial set while the administrator's choice is still loading, and this one is issued
+    // elsewhere too - so it can answer from cache on the first render and navigate to a type the
+    // choice excludes, leaving the main pane somewhere the tree has no row for.
+    const first = (!loading && !settings.loading && !error && !selected) ? types[0]?.name : undefined;
 
     useEffect(() => {
         if (first) {

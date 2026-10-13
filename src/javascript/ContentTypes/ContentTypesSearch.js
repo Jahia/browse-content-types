@@ -11,8 +11,13 @@
  * Characters the full text parser reads as syntax. Left in a term they change the query, and a
  * stray quote makes it invalid outright: the server answers with a RepositoryException rather
  * than an empty result.
+ *
+ * `_` is in the set for a different reason from the rest. The full text parser makes nothing of it,
+ * but the same words are also used as the pattern of a `LIKE`, where it is the wildcard matching
+ * any single character - so a search for `a_c` quietly also finds `abc`, which reads as the search
+ * being wrong rather than as a pattern doing its job.
  */
-const FULLTEXT_OPERATORS = /["'()[\]^~?:\\*%]/g;
+const FULLTEXT_OPERATORS = /["'()[\]^~?:\\*%_]/g;
 
 /** Words the parser reads as operators rather than as something to look for. */
 const BOOLEAN_WORDS = new Set(['and', 'or', 'not']);
