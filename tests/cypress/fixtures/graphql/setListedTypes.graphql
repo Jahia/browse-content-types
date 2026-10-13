@@ -1,0 +1,18 @@
+# The administrator's choice of which content types the accordion lists.
+#
+# The same document the settings panel sends. Used here rather than driving the admin screen,
+# because what these tests are about is whether the ACCORDION honours the choice - the screen that
+# writes it is a separate concern.
+#
+# The mixin is added on every save: the site does not carry it until the first one, and adding it
+# again is harmless.
+mutation setListedTypes($sitePath: String!, $types: [String]!) {
+    jcr {
+        mutateNode(pathOrId: $sitePath) {
+            addMixins(mixins: ["ct:contentTypesListing"])
+            mutateProperty(name: "ct:listedTypes") {
+                setValues(values: $types)
+            }
+        }
+    }
+}

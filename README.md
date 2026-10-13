@@ -77,6 +77,19 @@ yarn lint:fix
 `yarn lint`, `yarn test` and `yarn build:production` all run in CI on every push and pull request —
 see [`.github/workflows/build.yml`](.github/workflows/build.yml).
 
+### End-to-end tests
+
+The unit specs cover the rules; they cannot tell you whether the accordion renders inside a real
+jContent, whether a role can see it, or whether two queries settle in the order the code assumes.
+That is [`tests/`](tests/) — a Cypress suite driving a live Jahia, with its own
+[README](tests/README.md). It runs nightly and on pull requests via
+[`.github/workflows/e2e.yml`](.github/workflows/e2e.yml).
+
+```bash
+cd tests && yarn install
+JAHIA_URL=http://localhost:8080 SUPER_USER_PASSWORD=root1234 yarn e2e:ci
+```
+
 ### How it is laid out
 
 | Path | What it holds |

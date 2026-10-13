@@ -1,0 +1,3 @@
+# For a pull request: the module under test and its test module are BUILT by the pipeline and
+# deployed from the local artifacts, so only the external dependencies are resolved here.
+- include: "assets/dependencies.yml"

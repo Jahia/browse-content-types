@@ -1,0 +1,8 @@
+# The modules the suite needs on the instance beyond the module under test.
+#
+# jcontent is the surface browse-content-types extends, so the accordion does not exist without it.
+# Pinned to a version rather than LATEST so a run that fails says something about this repository
+# rather than about whatever was published this morning.
+- installBundle:
+    - "mvn:org.jahia.modules/jcontent/3.7.2"
+  autoStart: true

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <artifactId>jahia-modules</artifactId>
+        <groupId>org.jahia.modules</groupId>
+        <version>8.2.0.0</version>
+    </parent>
+
+    <!--
+        The content types the Cypress suite browses. A module of its own rather than definitions
+        added to browse-content-types: the module under test must not carry types that exist only
+        so that it can be tested, and the suite needs properties of several shapes - a number, a
+        date, a reference, a multi-valued string - to have anything to say about columns.
+    -->
+    <groupId>org.jahia.se.modules</groupId>
+    <artifactId>browse-content-types-test-module</artifactId>
+    <name>Browse Content Types Test Module</name>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>bundle</packaging>
+    <description>Content types for the browse-content-types Cypress suite</description>
+
+    <properties>
+        <jahia-module-type>templatesSet</jahia-module-type>
+        <jahia-deploy-on-site>all</jahia-deploy-on-site>
+    </properties>
+
+    <repositories>
+        <repository>
+            <id>jahia-public</id>
+            <name>Jahia Public Repository</name>
+            <url>https://devtools.jahia.com/nexus/content/groups/public</url>
+            <releases>
+                <enabled>true</enabled>
+                <updatePolicy>never</updatePolicy>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
+</project>

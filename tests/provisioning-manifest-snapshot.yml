@@ -1,0 +1,7 @@
+# For a nightly: nothing is built locally, every module is resolved from Nexus.
+- include: "assets/dependencies.yml"
+
+- installBundle:
+    - "mvn:org.jahia.se.modules/browse-content-types/1.0.0-SNAPSHOT"
+    - "mvn:org.jahia.se.modules/browse-content-types-test-module/1.0.0-SNAPSHOT"
+  autoStart: true

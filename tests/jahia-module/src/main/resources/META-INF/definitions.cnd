@@ -1,0 +1,33 @@
+<jnt = 'http://www.jahia.org/jahia/nt/1.0'>
+<jmix = 'http://www.jahia.org/jahia/mix/1.0'>
+<mix = 'http://www.jcp.org/jcr/mix/1.0'>
+<bctnt = 'http://www.jahia.org/browse-content-types-test/nt/1.0'>
+
+/**
+ * The type the suite browses.
+ *
+ * `jmix:editorialContent`, so it is listed by the accordion without an administrator having chosen
+ * anything - which is the state the listing tests want, and the state the settings test changes.
+ *
+ * Each property is a different SHAPE rather than a different name, because what the column catalog
+ * decides is driven by shape: a number sorts in the repository while a reference sorts by the name
+ * of what it points at, a multi-valued property gets no sort at all, and a choicelist is filtered
+ * by picking rather than by typing. One property per branch of that logic.
+ */
+[bctnt:product] > jnt:content, jmix:editorialContent, mix:title
+ - bctnt:price (double)
+ - bctnt:releasedOn (date)
+ - bctnt:reference (string)
+ - bctnt:tags (string) multiple
+ - bctnt:category (string) < '{"type":"choicelist"}' = 'tools' mandatory
+   < 'tools', 'parts', 'spares'
+ // Internationalized, so the missing-translations column has something to count.
+ - bctnt:summary (string, textarea) i18n
+
+/**
+ * A second type, so that "the tree lists more than one" and "the settings screen can narrow to one"
+ * are testable at all - and so that selecting a type is observably a choice rather than the only
+ * thing on offer.
+ */
+[bctnt:supplier] > jnt:content, jmix:editorialContent, mix:title
+ - bctnt:country (string)
