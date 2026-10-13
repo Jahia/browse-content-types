@@ -18,11 +18,13 @@ const babel = ['babel-jest', {
 
 module.exports = {
     rootDir: __dirname,
-    testEnvironment: 'node',
+    // jsdom rather than node: a component test needs a DOM to render into, and under `node` there
+    // is none - which is why every .js module here has a spec and no .jsx file could have one.
+    testEnvironment: 'jsdom',
     testMatch: ['<rootDir>/src/javascript/**/*.spec.{js,jsx}'],
     transform: {'^.+\\.jsx?$': babel},
     // A component cannot be rendered in a test without this: the source imports its CSS module, and
     // jest has no idea what to do with SCSS. The stand-in answers each class with its own name.
-    moduleNameMapper: {'\.(scss|css)$': '<rootDir>/src/javascript/__mocks__/styleMock.js'},
+    moduleNameMapper: {'\\.(scss|css)$': '<rootDir>/src/javascript/__mocks__/styleMock.js'},
     collectCoverageFrom: ['src/javascript/**/*.{js,jsx}']
 };
