@@ -89,6 +89,35 @@ const COMMON_RECORD_FIELDS = `
     # what keeps the bar from costing a request of its own every time a row is ticked.
     isPage: isNodeType(type: {multi: ANY, types: ["jnt:page"]})
     isFolder: isNodeType(type: {multi: ANY, types: ["jnt:contentFolder", "jnt:folder"]})
+    # What jContent's preview needs to render a record as more than naked markup.
+    #
+    # The side panel's Preview tab builds its render context from the NODE, not from the path -
+    # see buildPreviewContexts in jcontent. Without these three it has nothing to work with and
+    # falls back to rendering the node standalone: the content comes out, and none of the page's
+    # CSS or JS does, which reads as the preview being broken rather than as a query missing
+    # fields. They are jcontent's own NodePreviewFields fragment, named the same way so the two
+    # can be compared at a glance.
+    #
+    # displayableNode is the one that matters most here. A record nested inside a page cannot be
+    # rendered on its own - the render servlet answers for content that stands alone and 404s for
+    # anything that does not - so this resolves to whatever CAN be rendered, and its page supplies
+    # the stylesheets.
+    jView: property(name: "j:view") {
+        value
+    }
+    displayableNode {
+        uuid
+        workspace
+        path
+        isFolder: isNodeType(type: {multi: ANY, types: ["jnt:contentFolder", "jnt:folder"]})
+    }
+    # Ancestors that are pages, nearest last: the hosting page is what an in-context render is
+    # anchored to.
+    pageAncestors: ancestors(fieldFilter: {filters: {fieldName: "primaryNodeType.name", evaluation: AMONG, values: ["jnt:page"]}}) {
+        uuid
+        workspace
+        path
+    }
 `;
 
 /**
