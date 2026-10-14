@@ -66,10 +66,19 @@ and `accordion` 3/4 on their own.
 
 Two things are known and are **not** module defects:
 
-- **`accordion.cy.ts`'s permission pair needs a licensed Jahia.** Discovery caps backend users, and
-  over the cap it does not refuse the login - it serves jContent as a **503 licence page**. Read
-  naively that looks like the accordion being hidden, which would make the negative test pass for
-  entirely the wrong reason. The spec probes for it and skips with the reason logged.
+- **The permission REVOKE test is pending, and not because the gate is in doubt.** Confirmed on a
+  live instance: the permission is registered under
+  `/modules/browse-content-types/<version>/permissions/jContent/jContentAccordions/`, next to
+  jContent's own four `*AccordionAccess` permissions - module permissions live there, not under the
+  core `/permissions` tree - and the `editor` role carries the grant. The positive direction passes.
+  What does not work is revoking: writing `j:permissionNames` persists (read back, it is gone) and
+  the next request still behaves as though it were there, through a fresh login, three reloads,
+  `CacheHelper.flushAllCaches()` and a full container restart. The likely answer is to drive the
+  change through the roles administration screen so the product re-saves the role itself.
+- **A second backend user can hit a licence ceiling.** Seen once: jContent answered a 503 licence
+  page rather than refusing the login, which renders as no accordion and would make the negative
+  test pass for the wrong reason. The spec probes for it and skips with the reason logged; on a
+  healthy instance it does not trip.
 - **The first spec of a run is flaky on a cold instance.** The accordion is a federated bundle
   loading against a site created seconds earlier; when the first load lands before the registry,
   the site's module list and jContent's start-up agree, the screen stays empty with no error to

@@ -113,13 +113,20 @@ describe('Content Types accordion', () => {
         /*
          * **Pending, and not because the gate is in doubt.**
          *
-         * The positive direction above passes: a user holding the role sees the accordion, and
-         * `/roles/editor` carries `contentTypesAccordionAccess` exactly as roles.xml grants it. What
-         * is not covered is the revoke direction, and the obstacle is Jahia rather than the module -
-         * writing `j:permissionNames` on the role does not make the next request see the change.
-         * Tried and insufficient: a fresh login after the write, three reloads, and
-         * `CacheHelper.flushAllCaches()`. The entry is still drawn, so the assertion would be
-         * measuring a stale permission rather than the gate.
+         * The positive direction above passes, and everything it depends on is confirmed on a live
+         * instance: the permission is registered at
+         * `/modules/browse-content-types/<version>/permissions/jContent/jContentAccordions/contentTypesAccordionAccess`
+         * - alongside jContent's own four `*AccordionAccess` permissions, which is where module
+         * permissions live rather than under the core `/permissions` tree - and `/roles/editor`
+         * carries the grant exactly as roles.xml writes it.
+         *
+         * What is not covered is the revoke direction, and the obstacle is Jahia rather than the
+         * module. Writing `j:permissionNames` on the role DOES persist - read back, the permission
+         * is gone - and the next request still behaves as though it were there. Tried and
+         * insufficient: a fresh login after the write, three reloads,
+         * `CacheHelper.flushAllCaches()`, and a full container restart. So Jahia is resolving the
+         * role from something a JCR write does not invalidate, and the assertion would be measuring
+         * that rather than the gate.
          *
          * Left as pending rather than deleted, because the behaviour IS worth covering and the
          * missing piece is only how to make a role change take effect - most likely driving it
