@@ -1,6 +1,7 @@
 import React from 'react';
 import {registry} from '@jahia/ui-extender';
-import {AccordionItem, Grain} from '@jahia/moonstone';
+import {AccordionItem} from '@jahia/moonstone';
+import {ContentTypesIcon} from './ContentTypesIcon';
 import {ContentTypesTree} from './ContentTypesTree';
 import {ContentTypesRoute} from './ContentTypesRoute';
 import {NAMESPACE} from '../ContentTypes.register';
@@ -19,7 +20,7 @@ const registerContentTypesAccordion = () => {
 
     registry.add('accordionItem', ACCORDION_KEY, renderDefaultContentTrees, {
         targets: ['jcontent:75'],
-        icon: <Grain/>,
+        icon: <ContentTypesIcon/>,
         label: `${NAMESPACE}:label.accordion`,
         isEnabled: siteKey => siteKey !== 'systemsite',
         requireModuleInstalledOnSite: 'browse-content-types',
