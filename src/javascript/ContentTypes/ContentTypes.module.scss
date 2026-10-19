@@ -819,30 +819,6 @@
 }
 
 /*
- * The side panel, beside the list.
- *
- * The same 600px jContent's own ContentLayout gives it, so the panel is the width a reader of the
- * content list is used to and the tabs inside it lay out the way they were designed to. `.contentArea`
- * is already a flex row with a gap, so this is a sibling of the table's surface rather than anything
- * overlaid on it: the table narrows, nothing is covered, and the row that opened the panel stays
- * where it was.
- *
- * `min-width: 0` because a flex item defaults to its content's width and the preview holds an iframe
- * that would otherwise refuse to shrink, pushing the table off the left of the pane.
- */
-.sidePanel {
-    display: flex;
-    flex: 0 0 600px;
-    min-width: 0;
-    overflow: hidden;
-}
-
-/* Full screen is the panel's own control, and jContent hides its list for it - so does this. */
-.sidePanelFullScreen {
-    flex: 1 1 100%;
-}
-
-/*
  * The row the panel is showing.
  *
  * Marked rather than left looking like any other: the panel is a reply to a click, and a reader

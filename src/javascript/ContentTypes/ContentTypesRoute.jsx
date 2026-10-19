@@ -1,7 +1,7 @@
 import React, {useCallback, useEffect, useState} from 'react';
 import {useQuery} from '@apollo/client';
 import {shallowEqual, useDispatch, useSelector} from 'react-redux';
-import {JContentSidePanelContextProvider, SidePanel, cmCloseSidePanel, cmSetSidePanelSelection} from '@jahia/jcontent';
+import {ContentSidePanel, cmSetSidePanelSelection} from '@jahia/jcontent';
 import {useTranslation} from 'react-i18next';
 import {Chip, CustomDropdown, Header} from '@jahia/moonstone';
 import {ColumnsIcon} from './ColumnsIcon';
@@ -33,15 +33,13 @@ export const ContentTypesRoute = () => {
      * the button read "New Bien immobilier" to an English reader.
      */
     const dispatch = useDispatch();
-    const {site, uilang, path, language, jcontentMode, jcontentSelection, sidePanelSelection, isFullScreen} = useSelector(state => ({
+    const {site, uilang, path, sidePanelSelection, isFullScreen} = useSelector(state => ({
         site: state.site,
         uilang: state.uilang,
         path: state.jcontent.path,
-        // The panel's own, rather than this module's: the content language is what a preview
-        // renders in, and the mode and selection are what its tabs ask about.
-        language: state.language,
-        jcontentMode: state.jcontent.mode,
-        jcontentSelection: state.jcontent.selection,
+        // Only what this screen itself needs. The content language, the mode and the ticked rows
+        // are the PANEL's business and it reads them from the same store - passing them through
+        // here was this module deciding things on its behalf.
         sidePanelSelection: state.jcontent.sidePanelSelection,
         isFullScreen: state.jcontent.previewIsFullScreen
     }), shallowEqual);
@@ -91,25 +89,24 @@ export const ContentTypesRoute = () => {
     /*
      * Whether the panel can be offered at all.
      *
-     * These four arrive from jContent over module federation, and a jContent that does not export
+     * These arrive from jContent over module federation, and a jContent that does not export
      * them yet answers with undefined rather than failing to load - so the check is what keeps this
      * module working against one. The panel is simply not offered there; everything else is
      * unaffected.
      *
      * Read before anything dispatches one of them rather than just before the panel is drawn. An
      * effect runs even on a render that returned early, so a check sitting below these would be
-     * reached only after `cmCloseSidePanel()` had already thrown on the very undefined it exists
-     * to guard against.
+     * reached only after `cmSetSidePanelSelection()` had already thrown on the very undefined it
+     * exists to guard against.
      */
-    const hasSidePanel = Boolean(SidePanel && JContentSidePanelContextProvider &&
-        cmSetSidePanelSelection && cmCloseSidePanel);
+    const hasSidePanel = Boolean(ContentSidePanel && cmSetSidePanelSelection);
 
     // A record of one type has nothing to do with the next, and the rows it was resolved from are
     // gone. Closed through jContent's own action so its store does not keep a path this screen is
     // no longer showing.
     useEffect(() => {
         if (hasSidePanel) {
-            dispatch(cmCloseSidePanel());
+            dispatch(cmSetSidePanelSelection(null));
         }
     }, [contentType, dispatch, hasSidePanel]);
 
@@ -234,19 +231,12 @@ export const ContentTypesRoute = () => {
                     a preview at all. Rendered only with a node, which is what its own contract asks
                     for here.
                 */}
-                {isPanelOpen && (
-                    <div className={isFullScreen ? styles.sidePanelFullScreen : styles.sidePanel} data-sel-role="content-types-side-panel">
-                        <JContentSidePanelContextProvider
-                            sidePanelSelection={previewNode}
-                            selection={jcontentSelection || []}
-                            language={language}
-                            jcontentMode={jcontentMode}
-                            isFullScreen={Boolean(isFullScreen)}
-                        >
-                            <SidePanel/>
-                        </JContentSidePanelContextProvider>
-                    </div>
-                )}
+                {/*
+                    Rendered unconditionally, and with nothing around it: the panel decides whether
+                    there is anything to show, and owns its own container and width. The wrapper and
+                    the two SCSS rules that used to be here were a copy of jContent's own.
+                */}
+                {hasSidePanel && <ContentSidePanel node={previewNode}/>}
             </div>
         </div>
     );
