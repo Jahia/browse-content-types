@@ -13,6 +13,7 @@ import {MIN_SEARCH_LENGTH, sanitiseTokens} from './ContentTypesSearch';
 import {WIDE_COMMON_FIELDS, columnWidthFor, commonColumnWidth} from './ContentTypesColumnWidth';
 import {siteRelativePath} from './ContentTypesPaths';
 import {isBulkSelection} from './ContentTypesSelection';
+import {ContentTypesThumbnailPreview} from './ContentTypesThumbnailPreview';
 import {NAMESPACE} from '../ContentTypes.register';
 import styles from './ContentTypes.module.scss';
 
@@ -561,10 +562,17 @@ const previewFor = node => {
     const query = [stamp, (isWebp || isVideo) ? '' : 't=thumbnail'].filter(Boolean).join('&');
     const url = `${contextPath}/files/default${path}${query ? `?${query}` : ''}`;
 
+    // The same file at the size the hover preview draws it. `thumbnail2` is Jahia's own larger
+    // rendition - the one jContent's media grid uses - and asking for it by name costs nothing
+    // here because the address is built from parts already in hand. Where there is no rendition to
+    // ask for, the original file is already what the cell points at, so the two addresses agree.
+    const largeQuery = [stamp, (isWebp || isVideo) ? '' : 't=thumbnail2'].filter(Boolean).join('&');
+    const largeUrl = `${contextPath}/files/default${path}${largeQuery ? `?${largeQuery}` : ''}`;
+
     // A media fragment naming the very start of the video, which is what gets a frame on screen
     // rather than an empty black box before anybody hovers. `preload="metadata"` is enough for that
     // in Chrome and Firefox; Safari wants to be told which moment to show.
-    return {kind: isVideo ? 'video' : 'image', url: isVideo ? `${url}#t=0.001` : url};
+    return {kind: isVideo ? 'video' : 'image', url: isVideo ? `${url}#t=0.001` : url, largeUrl};
 };
 
 /**
@@ -587,6 +595,85 @@ const previewFor = node => {
  *
  * `alt` carries it too, which is what a reader who cannot see the image gets.
  */
+/**
+ * One thumbnail in a cell, and the larger preview it offers while the pointer is over it.
+ *
+ * A component rather than more JSX inside `renderPreviews`, because where the pointer is has to be
+ * remembered and `renderPreviews` is a plain function called from a cell renderer - there is no
+ * instance there to hold state on.
+ *
+ * **Only a picture gets the floating preview.** A video already answers a hover by playing itself
+ * where it sits, which is the better second look at a moving image and the one the cell is built
+ * around; a second copy floating beside it would be two things happening on one gesture.
+ */
+const ReferenceThumb = ({node, preview}) => {
+    const [previewAt, setPreviewAt] = useState(null);
+    const isVideo = preview?.kind === 'video';
+    const canPreview = Boolean(!isVideo && preview?.largeUrl);
+
+    return (
+        <span
+            className={styles.referenceThumb}
+            title={node.displayName}
+            onMouseMove={canPreview ? (event => setPreviewAt({x: event.clientX, y: event.clientY})) : undefined}
+            onMouseLeave={canPreview ? (() => setPreviewAt(null)) : undefined}
+        >
+            {isVideo ? (
+                /*
+                 * The video itself, showing its first frame and playing while hovered.
+                 *
+                 * An animated portrait is a thing to see moving, and a still frame of one
+                 * says little - but twenty-five of them playing at once in a table is a
+                 * page nobody can read and a decoder doing work nobody asked for. Hovering
+                 * is the gesture that already means "this row, this cell" everywhere else
+                 * here, and it is what the tooltip answers to.
+                 *
+                 * `muted` is what lets it play at all: a browser refuses to start audio
+                 * nobody asked for, and a hover is not the gesture that would permit it.
+                 * `play()` is a promise and rejects where the policy still says no, so the
+                 * rejection is swallowed - a preview that will not start is the still frame,
+                 * which is what was there anyway.
+                 */
+                <video
+                    muted
+                    loop
+                    playsInline
+                    className={styles.referenceVideo}
+                    src={preview.url}
+                    preload="metadata"
+                    aria-label={node.displayName}
+                    onMouseEnter={event => {
+                        const played = event.currentTarget.play();
+                        if (played) {
+                            played.catch(() => {});
+                        }
+                    }}
+                    onMouseLeave={event => {
+                        event.currentTarget.pause();
+                        event.currentTarget.currentTime = 0;
+                    }}
+                />
+            ) : (
+                <Thumbnail
+                    size="small"
+                    variant="preview"
+                    src={preview?.url || undefined}
+                    alt={node.displayName}
+                    imgProps={{loading: 'lazy'}}
+                />
+            )}
+            {canPreview && (
+                <ContentTypesThumbnailPreview src={preview.largeUrl} alt={node.displayName} at={previewAt}/>
+            )}
+        </span>
+    );
+};
+
+ReferenceThumb.propTypes = {
+    node: PropTypes.object.isRequired,
+    preview: PropTypes.shape({kind: PropTypes.string, url: PropTypes.string, largeUrl: PropTypes.string})
+};
+
 const renderPreviews = previews => {
     const shown = previews.slice(0, MAX_CELL_ITEMS);
     const hidden = previews.length - shown.length;
@@ -594,52 +681,7 @@ const renderPreviews = previews => {
     return (
         <span className={styles.referenceCell}>
             {shown.map(({node, preview}) => (
-                <span key={node.uuid || node.path} className={styles.referenceThumb} title={node.displayName}>
-                    {preview?.kind === 'video' ? (
-                        /*
-                         * The video itself, showing its first frame and playing while hovered.
-                         *
-                         * An animated portrait is a thing to see moving, and a still frame of one
-                         * says little - but twenty-five of them playing at once in a table is a
-                         * page nobody can read and a decoder doing work nobody asked for. Hovering
-                         * is the gesture that already means "this row, this cell" everywhere else
-                         * here, and it is what the tooltip answers to.
-                         *
-                         * `muted` is what lets it play at all: a browser refuses to start audio
-                         * nobody asked for, and a hover is not the gesture that would permit it.
-                         * `play()` is a promise and rejects where the policy still says no, so the
-                         * rejection is swallowed - a preview that will not start is the still frame,
-                         * which is what was there anyway.
-                         */
-                        <video
-                            muted
-                            loop
-                            playsInline
-                            className={styles.referenceVideo}
-                            src={preview.url}
-                            preload="metadata"
-                            aria-label={node.displayName}
-                            onMouseEnter={event => {
-                                const played = event.currentTarget.play();
-                                if (played) {
-                                    played.catch(() => {});
-                                }
-                            }}
-                            onMouseLeave={event => {
-                                event.currentTarget.pause();
-                                event.currentTarget.currentTime = 0;
-                            }}
-                        />
-                    ) : (
-                        <Thumbnail
-                            size="small"
-                            variant="preview"
-                            src={preview?.url || undefined}
-                            alt={node.displayName}
-                            imgProps={{loading: 'lazy'}}
-                        />
-                    )}
-                </span>
+                <ReferenceThumb key={node.uuid || node.path} node={node} preview={preview}/>
             ))}
             {hidden > 0 && <span className={styles.referenceMore}>{`+${hidden}`}</span>}
         </span>
