@@ -830,6 +830,22 @@ const renderDynamicField = (field, payload, context) => {
 const toRow = node => ({...node, displayName: node.displayName || node.name});
 
 /**
+ * Whether a record is on its way out, which the Name column draws struck through.
+ *
+ * Marked for deletion is not deleted: the record stays, and stays listed, until the deletion is
+ * published or undone. Striking the name is how jContent's own content list says so - see its
+ * CellName - and a reader moving between the two lists should not have to learn two conventions
+ * for the same state.
+ *
+ * Mirrored rather than imported. jContent does publish this as `jcontentUtils.isMarkedForDeletion`,
+ * but the record query already selects `mixinTypes` for the row menu, so the test is this one line
+ * against data in hand - and the module stays able to run against a jContent whose exports it has
+ * not checked, which is the bargain the rest of this screen already takes. `hasMixin` is the name
+ * the same test has over there.
+ */
+const isMarkedForDeletion = node => (node?.mixinTypes || []).some(mixin => mixin?.name === 'jmix:markedForDeletion');
+
+/**
  * Each word matched two ways at once, as `(word OR word*)`.
  *
  * The index stores analysed, stemmed words, so a bare term matches whole words and their
@@ -1283,7 +1299,14 @@ export const ContentTypesTable = ({
                 // name is in the cell, so hovering it scrolls through the part that does not fit;
                 // the tooltip stays as the quicker way to read it.
                 isScrollable: true,
-                render: ({value}) => <span title={value}>{ellipsize(value)}</span>
+                render: ({value, data: row}) => (
+                    <span
+                        title={value}
+                        className={isMarkedForDeletion(row) ? styles.deletedName : undefined}
+                    >
+                        {ellipsize(value)}
+                    </span>
+                )
             },
             ...fieldColumns,
             {

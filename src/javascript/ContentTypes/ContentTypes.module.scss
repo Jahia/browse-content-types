@@ -303,6 +303,16 @@
     color: var(--color-gray_dark40);
 }
 
+/*
+ * A record on its way out, struck through the way jContent's own list strikes it - see its
+ * Cells.scss `.deleted`. The name only, not the row: the other columns still state what the
+ * record HOLDS, and striking those would say the values were being withdrawn rather than the
+ * record.
+ */
+.deletedName {
+    text-decoration: line-through;
+}
+
 /* Underlined only on hover and focus, so a column of addresses does not read as a wall of rules,
    while still being recognisable as something to click. */
 .link {
