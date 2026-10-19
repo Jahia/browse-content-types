@@ -72,6 +72,28 @@ const COMMON_RECORD_FIELDS = `
             displayName(language: $language)
         }
     }
+    # What jContent's own actions decide their visibility from.
+    #
+    # The right-click menu is handed this record as its node - see openContextMenu - and jContent's
+    # actions then read the node they were given rather than resolving one of their own. The three
+    # dots hand over a PATH instead, so jContent fetches a whole node there, and the two menus were
+    # answering from different data: mark a record for deletion and the row menu offered Delete
+    # permanently and Undelete while the right-click menu still offered Delete.
+    #
+    # hasMixin is the test underneath it - isMarkedForDeletion, isAutoPublished and the rest all go
+    # through it - and on a node with no mixinTypes it answers false rather than failing, so every
+    # mixin-dependent action was quietly deciding against a record that had nothing to read.
+    #
+    # Named after jcontent's own table fragment (BaseQueryHandler.gql-queries) so the two can be
+    # compared at a glance, like the preview fields below.
+    mixinTypes {
+        name
+    }
+    operationsSupport {
+        lock
+        markForDeletion
+        publication
+    }
     # Whether the record is locked, which any node can be. The two fields answer different questions
     # and the column shows both: details is who holds a lock and of what kind, empty when there is
     # none, while lockedAndCannotBeEdited is whether that lock actually stands in an editor's way -
