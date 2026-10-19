@@ -304,8 +304,9 @@ export const useContentTypeColumns = contentType => {
                     propertyName: definition.name,
                     requiredType: definition.requiredType,
                     multiple: definition.multiple,
-                    // `internationalized` is read by the untranslated column, which counts the
-                    // per-language properties a record has not filled in. `mandatory` is read by
+                    // `internationalized` is read twice: by the untranslated column, which counts
+                    // the per-language properties a record has not filled in, and by `sortingFor`,
+                    // which cannot ask the repository to order such a property. `mandatory` is read by
                     // nothing: it was what told the replace-a-value form that a property could not
                     // be cleared, and it is what that form would want back first. See DEFERRED.md.
                     internationalized: definition.internationalized,
@@ -313,9 +314,12 @@ export const useContentTypeColumns = contentType => {
                     isDynamic: true,
                     // Listed in the picker but not tickable - see notSelectableReasonFor.
                     notSelectableReason: notSelectableReasonFor(definition, selectorsByProperty[definition.name]),
-                    // Contributes one of `sortJcrProperty` or `sortProperty`, or neither - which is
-                    // what leaves a multi-valued column without a sort arrow. See sortingFor.
-                    ...sortingFor(definition, key),
+                    // Contributes one of `sortJcrProperty`, `sortProperty` or `sortCollated`, or
+                    // none of them - which is what leaves a multi-valued column without a sort
+                    // arrow. The labels decide between the last two, so they are passed in rather
+                    // than read off the definition: they come from the form, not the type. See
+                    // sortingFor.
+                    ...sortingFor(definition, key, valueLabels),
                     // A filter constrains the property itself, so multi-valued is no obstacle the way
                     // it is for sorting: a constraint on one value matches a node holding it.
                     jcrProperty: definition.name,

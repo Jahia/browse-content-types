@@ -59,6 +59,42 @@ describe('ContentTypesColumnCatalog', () => {
                 .toEqual({sortProperty: 'ct_a.refNode.displayName'});
         });
 
+        // The cell draws a label and the record stores a code - `FR` where the reader sees
+        // `France` - so ordering by the property orders by something nobody can see. The labels
+        // only exist in the browser, which is also the only place that compares letters by
+        // language, so both halves of the answer are here.
+        it('orders a value list in the browser, where its labels are', () => {
+            expect(sortingFor({name: 'country', requiredType: 'STRING'}, 'ct_c', {FR: 'France'}))
+                .toEqual({sortCollated: true});
+        });
+
+        // A value list whose codes are not strings is still a value list.
+        it('orders a value list in the browser whatever type its codes are stored as', () => {
+            expect(sortingFor({name: 'rank', requiredType: 'LONG'}, 'ct_r', {1: 'Gold'}))
+                .toEqual({sortCollated: true});
+        });
+
+        // Neither server-side mechanism compares letters the way a language does: both are
+        // codepoint order, so an accented word sorts after every unaccented one.
+        it('orders text in the browser, so accents land where the language puts them', () => {
+            expect(sortingFor({name: 'luxe:title', requiredType: 'STRING'}, 'ct_t'))
+                .toEqual({sortCollated: true});
+            expect(sortingFor({name: 'luxe:title', requiredType: 'STRING', internationalized: true}, 'ct_t'))
+                .toEqual({sortCollated: true});
+        });
+
+        // Not text and not a value list, so there are no letters to collate - but the value still
+        // is not on the record, which is the one thing `ordering` cannot work around.
+        it('orders an internationalized date by the value the cell draws', () => {
+            expect(sortingFor({name: 'luxe:signedOn', requiredType: 'DATE', internationalized: true}, 'ct_s'))
+                .toEqual({sortProperty: 'ct_s.value'});
+        });
+
+        it('leaves an untranslated date to the repository, which compares it as a date', () => {
+            expect(sortingFor({name: 'luxe:signedOn', requiredType: 'DATE'}, 'ct_s'))
+                .toEqual({sortJcrProperty: 'luxe:signedOn'});
+        });
+
         it('offers no sort for a multi-valued property, which holds a list rather than a value', () => {
             expect(sortingFor({name: 'luxe:tags', requiredType: 'STRING', multiple: true}, 'ct_a')).toEqual({});
         });

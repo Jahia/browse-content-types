@@ -50,12 +50,43 @@ export const isRenderable = definition =>
  * all: `fieldSorter` compares the *text* a GraphQL field returned, so it put a column of prices in
  * the order 1, 11, 12, 2 and there is no numeric mode to ask it for.
  *
- * `sortProperty` names a GraphQL field path for `fieldSorter`, and is kept for the one case ordering
- * cannot serve: a reference, where the repository would order by the stored uuid - nothing anybody
- * can see - and what is wanted is the name of the node it points at, which only exists once GraphQL
- * has resolved it.
+ * `sortProperty` names a GraphQL field path for `fieldSorter`, and is kept for the two cases
+ * ordering cannot serve.
+ *
+ * A reference, where the repository would order by the stored uuid - nothing anybody can see - and
+ * what is wanted is the name of the node it points at, which only exists once GraphQL has resolved
+ * it.
+ *
+ * An internationalized property, whose value is not on the record at all: it lives on the hidden
+ * `j:translation_<lang>` subnode (see ContentTypesTranslations). `ordering` names a property of the
+ * record and the criteria query is built on a bare selector, so the repository is asked to order by
+ * a property the record does not carry and the rows come back in no order at all. Jahia redirects
+ * such a reference onto the translation node only for a query that already JOINs it, and
+ * `nodesByCriteria` has no way to ask for that join. The translated value does reach the field -
+ * the record query reads every property `language: $language` - so `fieldSorter` is the only
+ * mechanism that can see the text the cell actually draws.
+ *
+ * The cost is that an internationalized number or date is then compared as text, which is the
+ * 1, 11, 12, 2 that ordering exists to avoid. It still beats what it replaces: no order at all.
+ *
+ * `sortCollated` is the third mechanism, and it is the only one that can put TEXT in the order a
+ * reader expects. Neither of the other two compares letters the way a language does: the repository
+ * orders by the stored codepoints, and `fieldSorter` is `String.compareToIgnoreCase`, which is the
+ * same comparison with the case folded. So `Etats-Unis` spelled with its accent sorts after every
+ * unaccented word there is - measured against a running Jahia, ordering a French country column
+ * either by the stored code or by the rendered label returns France, Singapour, Etats-Unis, and
+ * there is no argument to either mechanism that asks for anything else.
+ *
+ * Two kinds of column need it. A CHOICELIST, because what the cell draws is a label resolved from
+ * the definition and the stored value is a code - `FR` where the reader sees `France` - so ordering
+ * by the property orders by something nobody can see. And any TEXT column, because that is where
+ * accents and language-specific letter order decide the answer.
+ *
+ * The cost is paid in the table rather than here: the rows have to be in the browser before they
+ * can be compared there, so a collated sort fetches a capped window instead of one page. See
+ * COLLATED_SORT_CAP in ContentTypesTable.
  */
-export const sortingFor = (definition, key) => {
+export const sortingFor = (definition, key, valueLabels) => {
     // Nothing to order a row by: a multi-valued property holds a list, not a value.
     if (definition.multiple) {
         return {};
@@ -63,6 +94,16 @@ export const sortingFor = (definition, key) => {
 
     if (definition.requiredType === 'REFERENCE' || definition.requiredType === 'WEAKREFERENCE') {
         return {sortProperty: `${key}.refNode.displayName`};
+    }
+
+    // A value list means the cell draws a label, whatever type the code behind it is stored as.
+    // Text means letters, which is the other thing neither server-side mechanism orders correctly.
+    if (valueLabels || definition.requiredType === 'STRING') {
+        return {sortCollated: true};
+    }
+
+    if (definition.internationalized) {
+        return {sortProperty: `${key}.value`};
     }
 
     return {sortJcrProperty: definition.name};

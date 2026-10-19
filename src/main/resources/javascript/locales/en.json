@@ -75,7 +75,8 @@
       "locked": "Locked"
     },
     "sort": {
-      "column": "Sort by {{column}}"
+      "column": "Sort by {{column}}",
+      "partial": "Sorted on the first {{count}} of {{total}} records - this column is put in alphabetical order in your browser, which can only order what it has read."
     },
     "create": {
       "failed": "The record could not be created. Try again."

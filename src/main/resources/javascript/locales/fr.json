@@ -75,7 +75,8 @@
       "locked": "Verrouillé"
     },
     "sort": {
-      "column": "Trier par {{column}}"
+      "column": "Trier par {{column}}",
+      "partial": "Tri effectué sur les {{count}} premiers enregistrements sur {{total}} – cette colonne est classée par ordre alphabétique dans votre navigateur, qui ne peut trier que ce qu'il a lu."
     },
     "create": {
       "failed": "La fiche n’a pas pu être créée. Réessayez."

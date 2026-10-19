@@ -262,6 +262,14 @@
     object-fit: cover;
 }
 
+/* A note above the table, in the flow rather than over the rows: it says what the sort covered,
+   which is something to read once and not something to dismiss. */
+.sortNotice {
+    padding: var(--spacing-nano) var(--spacing-small);
+
+    color: var(--color-gray_dark40);
+}
+
 .referenceMore {
     flex: 0 0 auto;
 

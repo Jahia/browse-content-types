@@ -23,6 +23,16 @@ const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50, 100];
 const SEARCH_DEBOUNCE_MS = 300;
 
 /**
+ * How many records a collated sort reads before it stops claiming to have sorted all of them.
+ *
+ * A sort the browser performs needs the rows in the browser, so sorting a text or choicelist column
+ * fetches a window instead of a page - see sortingFor for why neither of those can be ordered on
+ * the server at all. Beyond this many, the table says what it actually sorted rather than quietly
+ * ordering the first two thousand and presenting that as the whole set.
+ */
+const COLLATED_SORT_CAP = 2000;
+
+/**
  * The Name column, which is a fixed width that scrolls rather than a cut that has to be guessed.
  *
  * Every other text column has held its content in a bounded cell and let it scroll on hover; Name was
@@ -931,13 +941,40 @@ export const ContentTypesTable = ({
      * column sortable: `fieldSorter` compares the text a field returned, and put prices in the order
      * 1, 11, 12, 2.
      *
-     * `fieldSorter` is still what serves the two things that are not a stored property: the Name
-     * column, whose displayName is computed, and a reference, which has to be ordered by the name of
-     * what it points at rather than by the uuid it stores.
+     * `fieldSorter` is still what serves the three things that are not a plain property of the
+     * record: the Name column, whose displayName is computed; a reference, which has to be ordered
+     * by the name of what it points at rather than by the uuid it stores; and an internationalized
+     * property, whose value sits on a translation subnode that `ordering` cannot reach. See
+     * sortingFor for why the repository cannot be asked for that last one.
      */
+    /**
+     * The column being sorted, when the comparison has to happen here rather than on the server.
+     *
+     * Null for every other sort, which is what the rest of the table tests: a collated sort changes
+     * both what the query asks for and what is done with the answer, and nothing else does.
+     */
+    const collatedSort = useMemo(() => {
+        const field = sortBy === 'displayName' ? null : visibleFields.find(candidate => candidate.key === sortBy);
+        return field?.sortCollated ? field : null;
+    }, [sortBy, visibleFields]);
+
     const {ordering, fieldSorter} = useMemo(() => {
         const direction = sortDirection === 'descending' ? 'DESC' : 'ASC';
         const field = sortBy === 'displayName' ? null : visibleFields.find(candidate => candidate.key === sortBy);
+
+        /*
+         * A collated sort is performed here, so the server is asked for no order it would get
+         * wrong - but it is still asked for a STABLE one. The window is capped, and which records
+         * fall inside it has to be the same answer twice running, or paging a truncated set would
+         * deal a different two thousand each time. The repository's own ordering on the property
+         * costs nothing and settles that.
+         */
+        if (field?.sortCollated) {
+            return {
+                ordering: field.jcrProperty ? {property: field.jcrProperty, orderType: direction} : null,
+                fieldSorter: null
+            };
+        }
 
         if (field?.sortJcrProperty) {
             return {
@@ -994,8 +1031,10 @@ export const ContentTypesTable = ({
             sitePath: `/sites/${site}`,
             type: contentType,
             language,
-            offset: (currentPage - 1) * itemsPerPage,
-            limit: itemsPerPage,
+            // A collated sort compares in the browser, so it reads a window and pages it here;
+            // every other sort is ordered by the server and reads exactly the page being shown.
+            offset: collatedSort ? 0 : (currentPage - 1) * itemsPerPage,
+            limit: collatedSort ? COLLATED_SORT_CAP : itemsPerPage,
             fieldSorter,
             ordering,
             nodeConstraint
@@ -1181,7 +1220,7 @@ export const ContentTypesTable = ({
             key: field.key,
             // An arrow if the hook found either way of ordering it. What is left without one is a
             // multi-valued property, which has no single value to order a row by.
-            label: headerLabel(field.label, field.key, Boolean(field.sortJcrProperty || field.sortProperty)),
+            label: headerLabel(field.label, field.key, Boolean(field.sortJcrProperty || field.sortProperty || field.sortCollated)),
             width: columnWidthFor(field),
             isScrollable: true,
             render: ({value}) => renderDynamicField(field, value, renderContext)
@@ -1239,8 +1278,60 @@ export const ContentTypesTable = ({
     const fetched = useMemo(() => (connection?.nodes || []).map(toRow), [connection]);
     const serverTotal = connection?.pageInfo?.totalCount || 0;
 
-    const rows = fetched;
+    /**
+     * Letters compared the way the language on screen compares them.
+     *
+     * `sensitivity: 'base'` is what puts an accented word where its unaccented spelling would go,
+     * which is the whole reason this sort exists - and it folds case along with it, matching the
+     * `ignoreCase` every server-side sort in this table already asks for. `numeric` keeps a column
+     * of codes that happen to be numbers out of the 1, 11, 12, 2 order text comparison would give.
+     */
+    const collator = useMemo(
+        () => new Intl.Collator(uilang || language || undefined, {sensitivity: 'base', numeric: true}),
+        [uilang, language]
+    );
+
+    /**
+     * The page, cut from the window after it has been put in order here.
+     *
+     * Only for a collated sort. Every other sort is ordered and paged by the server, so `fetched`
+     * is already the page and slicing it again would be slicing a page out of a page.
+     */
+    const rows = useMemo(() => {
+        if (!collatedSort) {
+            return fetched;
+        }
+
+        const textOf = row => {
+            const label = labelForValue(collatedSort, row?.[collatedSort.key]?.value);
+            return (label === null || label === undefined) ? '' : String(label);
+        };
+
+        const direction = sortDirection === 'descending' ? -1 : 1;
+        const ordered = [...fetched].sort((left, right) => {
+            const a = textOf(left);
+            const b = textOf(right);
+
+            // A record with no value is not the first word alphabetically, it is simply not in the
+            // list - so blanks go last in BOTH directions rather than being promoted to the top the
+            // moment the arrow is turned around.
+            if (!a || !b) {
+                return a === b ? 0 : (a ? -1 : 1);
+            }
+
+            return direction * collator.compare(a, b);
+        });
+
+        const from = (currentPage - 1) * itemsPerPage;
+        return ordered.slice(from, from + itemsPerPage);
+    }, [fetched, collatedSort, sortDirection, collator, currentPage, itemsPerPage]);
+
     const totalItems = serverTotal;
+
+    // Said rather than hidden: past the cap, the rows that were read are in order and the ones
+    // beyond it were never looked at, so the order is honest about part of the set and not about
+    // the whole of it. See COLLATED_SORT_CAP.
+    const sortTruncated = Boolean(collatedSort) && serverTotal > COLLATED_SORT_CAP;
 
     /*
      * Back to the first page when the one being shown is past the end.
@@ -1292,6 +1383,11 @@ export const ContentTypesTable = ({
 
     return (
         <div className={styles.tableArea}>
+            {sortTruncated && (
+                <Typography className={styles.sortNotice} variant="caption" data-sel-role="sort-truncated">
+                    {t('label.sort.partial', {count: COLLATED_SORT_CAP, total: totalItems})}
+                </Typography>
+            )}
             {/*
                 The table's own rows scroll in here; pagination sits outside this box, in its own
                 reserved space below, the way jContent's own content list does - a Table plus a
