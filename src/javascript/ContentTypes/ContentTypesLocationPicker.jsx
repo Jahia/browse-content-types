@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
 import {useApolloClient, useQuery} from '@apollo/client';
 import {Button, Folder, Layers, Loader, Modal, ModalBody, ModalFooter, ModalHeader, TreeView, Typography, toIconComponent} from '@jahia/moonstone';
-import {GET_CHILD_CONTAINERS, GET_CREATABLE_TYPES} from './ContentTypes.gql';
+import {GET_CHILD_CONTAINERS, GET_CREATABLE_TYPES, GET_EXISTING_PATHS} from './ContentTypes.gql';
 import {readCreatableTypeNames} from './ContentTypesCreate';
 import {branchesTo, childrenByParent, creatabilityPath, locationLabel, pickerRootPath} from './ContentTypesLocation';
 import {NAMESPACE} from '../ContentTypes.register';
@@ -98,16 +98,49 @@ export const ContentTypesLocationPicker = ({
         setLoadingPaths(current => [...current, ...wanted]);
 
         try {
-            const {data} = await client.query({
-                query: GET_CHILD_CONTAINERS,
-                variables: {paths: wanted, language: language || uilang || 'en'},
-                fetchPolicy: 'network-only'
+            /*
+             * Which of these are actually there, before anything is asked about their children.
+             *
+             * A branch the tree has never drawn may not exist: the picker opens on the convention
+             * folder, and that folder is created with the first record of its type, so on a site
+             * where none has been created it is a path rather than a place. Asking
+             * nodesByCriteria about a parent that is not there does not answer empty - its
+             * jnt:content arm raises PathNotFoundException, which nulls that arm for EVERY path
+             * in the batch and, thrown, took the whole tree down with it. That is the "locations
+             * could not be read" on a site that simply had nothing of this type yet.
+             *
+             * See GET_EXISTING_PATHS for why this reads the error rather than failing on it.
+             */
+            const {data: existing} = await client.query({
+                query: GET_EXISTING_PATHS,
+                variables: {paths: wanted},
+                fetchPolicy: 'network-only',
+                errorPolicy: 'all'
             });
 
-            const found = childrenByParent(data);
+            const present = new Set(
+                (existing?.jcr?.nodesByPath || []).map(node => node?.path).filter(Boolean)
+            );
+            const askable = wanted.filter(path => present.has(path));
+
+            // Nothing to ask about is not a failure - it is a branch with nothing under it, which
+            // is recorded below exactly as an existing but empty one is.
+            let found = {};
+            if (askable.length > 0) {
+                const {data} = await client.query({
+                    query: GET_CHILD_CONTAINERS,
+                    variables: {paths: askable, language: language || uilang || 'en'},
+                    fetchPolicy: 'network-only'
+                });
+
+                found = childrenByParent(data);
+            }
+
             setChildrenOf(current => {
                 const next = {...current};
-                // Every branch asked about is recorded, answered or not - see above.
+                // Every branch asked about is recorded, answered or not - see above. A branch that
+                // does not exist is recorded too, as empty: it is a leaf, and leaving it out would
+                // have the tree ask about it again on every render.
                 wanted.forEach(path => {
                     next[path] = found[path] || [];
                 });

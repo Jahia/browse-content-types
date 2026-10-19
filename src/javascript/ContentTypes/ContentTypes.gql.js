@@ -392,6 +392,32 @@ export const GET_CHILD_CONTAINERS = gql`
     }
 `;
 
+/**
+ * Which of these paths are actually there.
+ *
+ * Asked before the children are, because a parent that does not exist is not a question
+ * nodesByCriteria answers quietly: its jnt:content arm raises PathNotFoundException and that one
+ * error nulls the whole arm for every path in the batch, not just the absent one. The convention
+ * folder is created with the first record of its type, so on a site where none has been created
+ * the picker was asking about a folder that was not there and reading the answer as the tree
+ * being unreadable.
+ *
+ * nodesByPath raises the same error, but it answers WITH it - the paths that resolved come back
+ * beside the error - so read with errorPolicy 'all' this is a list of what exists.
+ */
+export const GET_EXISTING_PATHS = gql`
+    # [String!]! and not [String]!: nodesByPath declares its argument non-null per element, and a
+    # variable one degree looser is a VALIDATION error, which nulls the whole response rather than
+    # the one field - so the mismatch would read as nothing existing at all.
+    query getExistingPaths($paths: [String!]!) {
+        jcr(workspace: EDIT) {
+            nodesByPath(paths: $paths) {
+                path
+            }
+        }
+    }
+`;
+
 export const GET_CONTENT_FOLDER = gql`
     query getContentFolder($path: String!) {
         jcr(workspace: EDIT) {
