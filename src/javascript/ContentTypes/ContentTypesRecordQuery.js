@@ -26,6 +26,7 @@ import {translationAlias, translationRelPath} from './ContentTypesTranslations';
  */
 const COMMON_RECORD_FIELDS = `
     uuid
+    workspace
     name
     path
     displayName(language: $language)
@@ -69,6 +70,8 @@ const COMMON_RECORD_FIELDS = `
     }
     categories: property(name: "j:defaultCategory", language: $language) {
         refNodes {
+            uuid
+            workspace
             displayName(language: $language)
         }
     }
@@ -161,6 +164,7 @@ const COMMON_RECORD_FIELDS = `
  */
 const REFERENCED_NODE_FIELDS = `
     uuid
+    workspace
     path
     displayName(language: $language)
     hasThumbnail: thumbnailUrl(name: "thumbnail", checkIfExists: true)
@@ -175,6 +179,8 @@ const REFERENCED_NODE_FIELDS = `
         value
     }
     content: descendant(relPath: "jcr:content") {
+        uuid
+        workspace
         mimeType: property(name: "jcr:mimeType") {
             value
         }
@@ -226,6 +232,8 @@ const dynamicFieldSelection = field => {
  */
 const translationFields = languages => ((languages || []).length < 2 ? '' : languages.map(language => `
     ${translationAlias(language)}: descendant(relPath: "${translationRelPath(language)}") {
+        uuid
+        workspace
         properties {
             name
             value
