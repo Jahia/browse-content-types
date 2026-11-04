@@ -43,6 +43,14 @@ jobs:
         env:
           JAHIA_LICENSE: ${{ secrets.JAHIA_LICENSE }}
         run: |
+          # Jahia publishes no Community image, so the suite needs the EE one, and that will not
+          # start without a licence. Checking here turns a ten-minute wait that ends in a timeout
+          # against a container that never came up into an immediate failure that names the cause.
+          if [ -z "$JAHIA_LICENSE" ]; then
+            echo "::error::JAHIA_LICENSE is empty, so Jahia cannot start and no test can run. Grant this repository access to the organisation's JAHIA_LICENSE secret."
+            exit 1
+          fi
+
           docker compose up -d
           timeout 600 bash -c 'until curl -sf http://localhost:8080/cms/login > /dev/null; do sleep 10; done'
 
