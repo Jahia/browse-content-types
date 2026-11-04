@@ -15,7 +15,7 @@
     <groupId>org.jahia.se.modules</groupId>
     <artifactId>browse-content-types</artifactId>
     <name>Browse Content Types</name>
-    <version>1.0.0</version>
+    <version>1.0.1-SNAPSHOT</version>
     <packaging>bundle</packaging>
     <description>Adds a Content Types accordion to jContent</description>
 
