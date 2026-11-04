@@ -38,8 +38,15 @@ const COMMON_FILTERS = {
  *
  * Text only. A number or a date is not something a reader searches by fragment, and both are absent
  * from the full text index anyway - a price of 6560000 finds nothing however it is asked for.
+ *
+ * URI is NOT here, and cannot be. The substring arms are `LIKE '%fragment%'`, and when the operand
+ * is a URI property the repository coerces the pattern to a URI before comparing - where `%` is the
+ * start of a percent-escape, not a wildcard. `%test%` is then a malformed escape pair and the whole
+ * query fails with `ValueFormatException: Malformed escape pair at index 0`, taking the listing
+ * with it rather than that one arm. Reproduced on 8.2.4.0 against a `(uri)` property; it is a
+ * property of the type, so no value and no escaping makes it work. See #7.
  */
-const TEXT_SEARCH_TYPES = new Set(['STRING', 'NAME', 'PATH', 'URI']);
+export const TEXT_SEARCH_TYPES = new Set(['STRING', 'NAME', 'PATH']);
 
 /**
  * The kind of filter form a content type's own property gets, or nothing where it gets none.
@@ -65,6 +72,23 @@ const FILTER_TYPES_BY_REQUIRED_TYPE = {
  * query. `sortProperty` is the GraphQL field path the record query aliases the same property to -
  * see ContentTypesRecordQuery - which is why the two files must agree on these key names.
  */
+/**
+ * Whether a property is part of what the TYPE is about, rather than of what every node carries.
+ *
+ * Not "declared by the selected type itself", which is what this used to ask. A type can declare
+ * nothing of its own and still have fields an editor fills in: `jnt:location` declares zero
+ * properties and gets Street, Zip code, Town, Country, Geocode automatically, Latitude and
+ * Longitude from `jmix:locationAware` and `jmix:geotagged`. Asking for the declaring type left its
+ * columns picker with no type-specific section at all (#8).
+ *
+ * The JCR-standard `jcr:*` properties are what gets excluded instead. They are the ones every node
+ * carries whatever it is - `jcr:title` is already the Name column, and the rest of the metadata is
+ * in COMMON_FIELDS or is protected and filtered by `isRenderable` before reaching here. Checked
+ * against jnt:location, jnt:news, jnt:person, jnt:event and the test type: every one of them keeps
+ * exactly the columns it had, and jnt:location gains the seven it was missing.
+ */
+export const isTypeOwnProperty = definition => !String(definition.name || '').startsWith('jcr:');
+
 export const COMMON_FIELDS = [
     {key: 'type', labelKey: 'label.field.type', sortProperty: 'primaryNodeType.displayName'},
     {key: 'createdBy', labelKey: 'label.field.createdBy', sortProperty: 'createdBy.value'},
@@ -294,7 +318,7 @@ export const useContentTypeColumns = contentType => {
     const contentTypeFields = useMemo(() => {
         const definitions = data?.jcr?.nodeTypeByName?.properties || [];
         return definitions
-            .filter(definition => definition.declaringNodeType?.name === contentType && isRenderable(definition))
+            .filter(definition => isRenderable(definition) && isTypeOwnProperty(definition))
             .map(definition => {
                 const key = columnKeyFor(definition.name);
                 const valueLabels = labelsByProperty[definition.name];
@@ -331,7 +355,7 @@ export const useContentTypeColumns = contentType => {
                     valueOptions: optionsByProperty[definition.name]
                 };
             });
-    }, [data, contentType, labelsByProperty, optionsByProperty, selectorsByProperty]);
+    }, [data, labelsByProperty, optionsByProperty, selectorsByProperty]);
 
     /**
      * The Name column as a field in its own right.

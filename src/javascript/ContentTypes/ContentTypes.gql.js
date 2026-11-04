@@ -167,6 +167,7 @@ export const GET_LISTED_TYPES = gql`
         jcr(workspace: EDIT) {
             nodeByPath(path: $sitePath) {
                 uuid
+                workspace
                 listedTypes: property(name: "ct:listedTypes") {
                     values
                 }
@@ -206,7 +207,11 @@ export const GET_SITE_LANGUAGES = gql`
     query getSiteLanguages($sitePath: String!) {
         jcr {
             nodeByPath(path: $sitePath) {
+                uuid
+                workspace
                 site {
+                    uuid
+                    workspace
                     defaultLanguage
                     languages {
                         language
@@ -280,7 +285,11 @@ export const GET_TYPE_PARENTS = gql`
         jcr(workspace: EDIT) {
             nodesByCriteria(criteria: {language: $language, nodeType: $type, paths: [$sitePath]}, offset: 0, limit: 50) {
                 nodes {
+                    uuid
+                    workspace
                     parent {
+                        uuid
+                        workspace
                         primaryNodeType {
                             name
                         }
@@ -311,6 +320,8 @@ export const GET_NODES_OF_TYPES = gql`
         jcr(workspace: EDIT) {
             nodesByCriteria(criteria: {language: $language, nodeType: $type, paths: [$sitePath]}, offset: 0, limit: 200) {
                 nodes {
+                    uuid
+                    workspace
                     name
                     path
                     displayName(language: $language)
@@ -330,6 +341,7 @@ export const GET_NODES_OF_TYPES = gql`
  */
 const CONTAINER_NODE_FIELDS = `
     uuid
+    workspace
     name
     path
     displayName(language: $language)
@@ -338,6 +350,8 @@ const CONTAINER_NODE_FIELDS = `
         icon
     }
     parent {
+        uuid
+        workspace
         path
     }
 `;
@@ -412,6 +426,8 @@ export const GET_EXISTING_PATHS = gql`
     query getExistingPaths($paths: [String!]!) {
         jcr(workspace: EDIT) {
             nodesByPath(paths: $paths) {
+                uuid
+                workspace
                 path
             }
         }
@@ -423,6 +439,7 @@ export const GET_CONTENT_FOLDER = gql`
         jcr(workspace: EDIT) {
             nodeByPath(path: $path) {
                 uuid
+                workspace
             }
         }
     }

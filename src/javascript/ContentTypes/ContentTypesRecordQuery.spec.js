@@ -1,4 +1,4 @@
-import {print} from 'graphql';
+import {print, visit} from 'graphql';
 import {buildRecordQuery} from './ContentTypesRecordQuery';
 
 /**
@@ -68,6 +68,55 @@ describe('buildRecordQuery', () => {
             expect(occurrences(text([own()]))).toBe(baseline);
             expect(occurrences(text([own({requiredType: 'WEAKREFERENCE'})]))).toBeGreaterThan(baseline);
             expect(occurrences(text([own({requiredType: 'REFERENCE', multiple: true})]))).toBeGreaterThan(baseline);
+        });
+    });
+
+    /**
+     * Apollo keys a JCR node in its cache by `uuid` AND `workspace`. A selection that returns a node
+     * without both cannot be normalised: Apollo keeps it inline under its parent and logs
+     * `Missing fields uuid,workspace while extracting key from GenericJCRNode` for every one, on
+     * every render. Twenty-two of those is what a page of records used to put in the console.
+     *
+     * Checked over the AST rather than the printed text so that a field added years from now is
+     * covered without anybody remembering this rule.
+     */
+    describe('every node it selects can be cached', () => {
+        // Fields of this document that resolve to a JCR node, so they carry the cache key.
+        const NODE_FIELDS = ['descendant', 'refNode', 'refNodes', 'displayableNode', 'ancestors', 'parent'];
+
+        const nodeSelectionsMissingKey = document => {
+            const missing = [];
+            visit(document, {
+                Field(node) {
+                    if (!NODE_FIELDS.includes(node.name.value) || !node.selectionSet) {
+                        return;
+                    }
+
+                    const selected = node.selectionSet.selections
+                        .filter(selection => selection.kind === 'Field')
+                        .map(selection => selection.name.value);
+                    if (!selected.includes('uuid') || !selected.includes('workspace')) {
+                        missing.push(node.alias?.value || node.name.value);
+                    }
+                }
+            });
+            return missing;
+        };
+
+        it('asks for uuid and workspace on every node, with every column shape', () => {
+            expect(nodeSelectionsMissingKey(buildRecordQuery([], []))).toEqual([]);
+            expect(nodeSelectionsMissingKey(buildRecordQuery([own()], ['en', 'fr']))).toEqual([]);
+            expect(nodeSelectionsMissingKey(buildRecordQuery([own({requiredType: 'REFERENCE'})], ['en', 'fr']))).toEqual([]);
+            expect(nodeSelectionsMissingKey(
+                buildRecordQuery([own({requiredType: 'WEAKREFERENCE', multiple: true})], ['en', 'fr'])
+            )).toEqual([]);
+        });
+
+        // The record itself is the node the table is built from; it is keyed like any other.
+        it('asks for them on the record itself', () => {
+            const query = text();
+            expect(query).toContain('uuid');
+            expect(query).toContain('workspace');
         });
     });
 
