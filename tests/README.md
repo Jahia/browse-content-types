@@ -83,7 +83,7 @@ Two things are known and are **not** module defects:
   loading against a site created seconds earlier; when the first load lands before the registry,
   the site's module list and jContent's start-up agree, the screen stays empty with no error to
   retry against. `openAccordion` reloads up to twice before giving up, which covers most of it. A
-  dedicated instance per run - what the CI workflow does - is the real answer.
+  dedicated instance per run is the real answer.
 
 ### Environment traps this suite already pays for
 
