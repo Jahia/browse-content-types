@@ -3,3 +3,5 @@ results
 screenshots
 videos
 cypress/downloads
+# Written by env.run.sh from .env.example, and in CI it holds the licence.
+.env
