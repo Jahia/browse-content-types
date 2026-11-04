@@ -1,3 +1,5 @@
+import {Menu} from '@jahia/cypress';
+
 /**
  * Driving the Content Types accordion.
  *
@@ -66,12 +68,22 @@ export const openAccordion = (siteKey: string, typeName?: string) => {
  * Moonstone draws each accordion as a section whose header is keyed by the registry key, so this is
  * what `requiredSitePermission` actually governs - jContent filters the ENTRY out, it does not
  * refuse the route. A permission test has to look here rather than at the route.
+ *
+ * Keyed on `aria-controls` alone. The header used to be found by `section.moonstone-accordionItem`
+ * as well, and Moonstone does not publish its class names as a contract - a release is free to
+ * rename one, and the test would then fail only on whichever Jahia carried the new Moonstone, with
+ * nothing to point at the cause (#9). The ARIA attribute is the accordion's own, and it carries the
+ * registry key that makes this entry THIS entry.
  */
-export const accordionEntry = () =>
-    cy.get('section.moonstone-accordionItem header[aria-controls="contentTypes"]');
+export const accordionEntry = () => cy.get('header[aria-controls="contentTypes"]');
 
-/** Any accordion at all, as proof that jContent itself drew - see the negative permission test. */
-export const anyAccordionEntry = () => cy.get('section.moonstone-accordionItem');
+/**
+ * Any accordion at all, as proof that jContent itself drew - see the negative permission test.
+ *
+ * Every accordion header controls a panel, so `aria-controls` with no value is the "any of them"
+ * form of the selector above, and needs no Moonstone class either.
+ */
+export const anyAccordionEntry = () => cy.get('header[aria-controls]');
 
 /**
  * Leaves jContent before the site it is showing is deleted.
@@ -130,18 +142,20 @@ export const closeColumnsPicker = () => {
     /*
      * Dismissed through Moonstone's own overlay, not with Escape.
      *
-     * The dropdown lays a full-screen `menu_overlay` over the page while it is open, and Escape
-     * does not take it down. It stays, invisible, covering the very button that opens the picker -
+     * The dropdown lays a full-screen overlay over the page while it is open, and Escape does not
+     * take it down. The overlay is reached through `Menu.overlaySelector` rather than by writing the
+     * class here: no ARIA hook exists for it yet (Jahia/moonstone#1629), so the class has to live
+     * somewhere - and @jahia/cypress is where it is already maintained (#9). It stays, invisible, covering the very button that opens the picker -
      * so the NEXT attempt to open it fails with "covered by another element", pointing at the
      * toolbar button and saying nothing about the overlay that is actually in the way.
      */
     cy.get('body').then($body => {
-        if ($body.find('.moonstone-menu_overlay').length > 0) {
-            cy.get('.moonstone-menu_overlay').first().click({force: true});
+        if ($body.find(Menu.overlaySelector).length > 0) {
+            cy.get(Menu.overlaySelector).first().click({force: true});
         }
     });
 
-    return cy.get('.moonstone-menu_overlay').should('not.exist');
+    return cy.get(Menu.overlaySelector).should('not.exist');
 };
 
 export const columnEntry = (key: string) => cy.get(`[data-sel-column="${key}"]`);
