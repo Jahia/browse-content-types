@@ -36,3 +36,7 @@
  */
 [bctnt:supplier] > jnt:content, jmix:editorialContent, jmix:droppableContent, mix:title
  - bctnt:country (string)
+ // A URI property, which nothing Jahia ships declares. The search builds one `LIKE` arm per text
+ // property of the type, and it used to count URI as text - which made the whole listing fail on
+ // any type that had one (#7). Here so that the case is covered by something that runs.
+ - bctnt:homepage (uri)
