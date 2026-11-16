@@ -12,7 +12,7 @@ import {isLanguageField, labelForValue, languageCodeFor} from './ContentTypesFie
 import {MIN_SEARCH_LENGTH, sanitiseTokens} from './ContentTypesSearch';
 import {WIDE_COMMON_FIELDS, columnWidthFor, commonColumnWidth} from './ContentTypesColumnWidth';
 import {siteRelativePath} from './ContentTypesPaths';
-import {isBulkSelection} from './ContentTypesSelection';
+import {hidesRowActions} from './ContentTypesSelection';
 import {ContentTypesThumbnailPreview} from './ContentTypesThumbnailPreview';
 import {NAMESPACE} from '../ContentTypes.register';
 import styles from './ContentTypes.module.scss';
@@ -1194,7 +1194,7 @@ export const ContentTypesTable = ({
     // Whether what is ticked is a set rather than a record - see ContentTypesSelection, which the
     // toolbar reads too. A boolean rather than the count, so ticking a third row does not rebuild
     // the columns.
-    const isBulk = isBulkSelection(selection);
+    const isBulk = hidesRowActions(selection);
 
     /*
      * The right-click menus, and why there are three of them.
@@ -1215,9 +1215,9 @@ export const ContentTypesTable = ({
         const isSelected = selectedPaths.includes(row.path);
 
         /*
-         * Whether this row is being acted on as part of a set, which takes both: a set to belong to,
-         * and this row belonging to it. Being ticked is not enough on its own - one ticked row is
-         * still one row, and the menu it opens is its own.
+         * Whether this row is being acted on as part of the selection, which takes both: a set
+         * to belong to, and this row belonging to it. One ticked row is still one row, and the
+         * menu it opens is its own - see ROW_ACTIONS_HIDDEN_FROM.
          *
          * The context follows the same answer. A row acted on by itself is given its path; one
          * standing for the selection hands over the whole selection instead, and its own path would
@@ -1319,9 +1319,8 @@ export const ContentTypesTable = ({
                 width: '60px',
                 // Without this, clicking the menu also toggles the row's checkbox.
                 cellProps: {onClick: event => event.stopPropagation()},
-                // Kept while a single row is ticked: that is still one row, and the actions it
-                // offers are its own. It goes only once there is a set, where what applies is a
-                // bulk action on the selection rather than an action on any one of them.
+                // Kept while a single row is ticked: that is still one row. It goes once there is a
+                // set, where what applies is an action on the selection rather than on any one row.
                 render: ({data: row}) => (isBulk ? null : (
                     <DisplayAction
                         actionKey="contentItemActionsMenu"

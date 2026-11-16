@@ -149,6 +149,7 @@ export const ContentTypesRoute = () => {
                         contentType={contentType}
                         contentTypeLabel={typeLabel}
                         selection={selection}
+                        visibleFields={columns.visibleFields}
                         onSearchChange={setSearch}
                         onClearSelection={clearSelection}
                     />

@@ -1,4 +1,4 @@
-import {BULK_SELECTION_FROM, isBulkSelection} from './ContentTypesSelection';
+import {BULK_SELECTION_FROM, hidesRowActions, isBulkSelection} from './ContentTypesSelection';
 
 /** Rows as the table holds them: whole records, not just their paths. */
 const rows = count => Array.from({length: count}, (_, index) => ({path: `/sites/luxe/contents/${index}`}));
@@ -8,15 +8,9 @@ describe('isBulkSelection', () => {
         expect(isBulkSelection([])).toBe(false);
     });
 
-    /*
-     * The whole point of the threshold. One ticked row leaves the toolbar alone and leaves the row
-     * its own three-dot menu: picking a single record out is not a change of mode.
-     */
-    it('is false with one row ticked', () => {
-        expect(isBulkSelection(rows(1))).toBe(false);
-    });
-
-    it('is true from two rows up', () => {
+    // As in jContent's own list: a single ticked row is already a selection.
+    it('is true from one row up', () => {
+        expect(isBulkSelection(rows(1))).toBe(true);
         expect(isBulkSelection(rows(2))).toBe(true);
         expect(isBulkSelection(rows(25))).toBe(true);
     });
@@ -33,5 +27,16 @@ describe('isBulkSelection', () => {
     it('reads the threshold from the constant, so the two cannot disagree', () => {
         expect(isBulkSelection(rows(BULK_SELECTION_FROM))).toBe(true);
         expect(isBulkSelection(rows(BULK_SELECTION_FROM - 1))).toBe(false);
+    });
+});
+
+describe('hidesRowActions', () => {
+    it('keeps the row menus while nothing or one row is ticked', () => {
+        expect(hidesRowActions([])).toBe(false);
+        expect(hidesRowActions(rows(1))).toBe(false);
+    });
+
+    it('hides them from two rows up', () => {
+        expect(hidesRowActions(rows(2))).toBe(true);
     });
 });

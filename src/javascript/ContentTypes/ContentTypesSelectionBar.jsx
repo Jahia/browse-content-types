@@ -3,9 +3,10 @@ import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
 import {Button, ButtonGroup, Cancel, ChevronDown, Separator, Typography} from '@jahia/moonstone';
 import {DisplayAction, DisplayActions} from '@jahia/ui-extender';
-import {ButtonRenderer, ButtonRendererNoLabel, ButtonRendererShortLabel} from '@jahia/jcontent';
+import {BulkActionsMenu, ButtonRenderer, ButtonRendererNoLabel, ButtonRendererShortLabel} from '@jahia/jcontent';
 import {NAMESPACE} from '../ContentTypes.register';
 import styles from './ContentTypes.module.scss';
+import {exportColumnsFor} from './ContentTypesExportColumns';
 
 /**
  * Whether the selection publishes as it stands, or has to take its subtree with it.
@@ -31,11 +32,20 @@ const publishActionFor = nodes => (
  *
  * Each of jContent's actions goes and fetches whatever it needs to know about the nodes itself,
  * given nothing but the paths below - which is why the selection needs to carry nothing on their
- * account, and why this bar now hands out nothing else. It used to: this module's own menu was
- * given the rows as the table was showing them, because exporting the table meant exporting it as
- * displayed. Nothing asks for that any more.
+ * account.
+ *
+ * The Bulk menu is jContent's too: its `BulkActionsMenu`, filled from the `bulkActions` registry
+ * target any module can register into. Its entries are handed more than the paths, because
+ * re-reading the rows from their paths would be a second query whose answer could differ from what
+ * the reader is looking at:
+ *
+ *   nodes        the selected rows, in the shape ContentTypesRecordQuery fetched them
+ *   contentType  the type being listed
+ *
+ * jContent draws the menu's button only while an entry applies to the selection, and a jContent
+ * that does not export the menu yet leaves this bar without one.
  */
-export const ContentTypesSelectionBar = ({nodes, onClear}) => {
+export const ContentTypesSelectionBar = ({nodes, contentType, visibleFields, onClear}) => {
     const {t} = useTranslation(NAMESPACE);
 
     // Every action branches on which of these two it was handed: a single `path` for one row, or
@@ -47,6 +57,7 @@ export const ContentTypesSelectionBar = ({nodes, onClear}) => {
     // action back to work each time anything above this re-rendered. jContent gets that for free:
     // its selection is an array held in redux, not one derived per render.
     const paths = useMemo(() => nodes.map(node => node.path), [nodes]);
+    const exportColumns = useMemo(() => exportColumnsFor(visibleFields), [visibleFields]);
     const context = useMemo(
         () => (paths.length === 1 ? {path: paths[0]} : {paths}),
         [paths]
@@ -79,9 +90,8 @@ export const ContentTypesSelectionBar = ({nodes, onClear}) => {
                 onClick={onClear}
             />
 
-            {/* Everything that acts on the selection without publishing it. All of it is
-                jContent's own now: this module contributes no bulk operation of its own, and the
-                menu it used to gather them behind went with the last of them. */}
+            {/* Everything that acts on the selection without publishing it: jContent's own
+                actions as loose buttons, then its Bulk menu. */}
             <div className={styles.selectionActions}>
                 <Separator variant="vertical"/>
                 <DisplayActions
@@ -90,10 +100,27 @@ export const ContentTypesSelectionBar = ({nodes, onClear}) => {
                     // Publishing and permanent deletion are laid out on their own below, where they
                     // read as the decisions they are rather than as two more buttons in the row.
                     // Without this they would each render twice.
-                    filter={action => action.key !== 'deletePermanently' && !action.key.includes('publish')}
+                    filter={action => action.key !== 'deletePermanently' && action.key !== 'export' && !action.key.includes('publish')}
                     buttonProps={{size: 'default', variant: 'ghost'}}
                     render={ButtonRenderer}
                 />
+                {/* jContent's export, started from the columns the table shows. Rendered on its own
+                    so that only the export receives these props. */}
+                <DisplayAction
+                    actionKey="export"
+                    {...context}
+                    contentType={contentType}
+                    exportColumns={exportColumns}
+                    buttonProps={{size: 'default', variant: 'ghost'}}
+                    render={ButtonRenderer}
+                />
+                {BulkActionsMenu && (
+                    <BulkActionsMenu
+                        paths={paths}
+                        nodes={nodes}
+                        contentType={contentType}
+                    />
+                )}
             </div>
 
             <Separator variant="vertical"/>
@@ -122,6 +149,10 @@ ContentTypesSelectionBar.propTypes = {
     /** The rows currently ticked, in the shape the table fetched them. Never empty: the bar is not
      *  rendered without a selection, and the publish choice below has no answer for no rows. */
     nodes: PropTypes.array.isRequired,
+    /** The type being listed, for the entries of the Bulk menu and the export file name. */
+    contentType: PropTypes.string.isRequired,
+    /** The columns the table shows, in the reader's order. */
+    visibleFields: PropTypes.array,
     onClear: PropTypes.func.isRequired
 };
 

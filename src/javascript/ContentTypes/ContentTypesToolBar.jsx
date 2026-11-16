@@ -17,13 +17,10 @@ import styles from './ContentTypes.module.scss';
  * where jContent puts its own view and sort selectors - it is about how the table reads rather
  * than about what is in it, so it is the one control that never changes with the selection.
  *
- * Ticking SEVERAL rows replaces all of that with what can be done to them, in the same place: while
- * a set is being acted on, the controls for finding content are not what is being asked for, and a
- * search or a sort clears the selection anyway.
- *
- * One ticked row leaves this line alone, which is a departure from jContent - its own list switches
- * at one. Picking a single record out is not a change of mode, and having the toolbar answer it by
- * replacing itself read as one. See ContentTypesSelection, where the threshold and its cost live.
+ * Ticking a row replaces all of that with what can be done to the selection, in the same place:
+ * while a selection is being acted on, the controls for finding content are not what is being asked
+ * for, and a search or a sort clears the selection anyway. One ticked row is enough, as in
+ * jContent's own list - see ContentTypesSelection, where the threshold lives.
  *
  * Choosing which types the accordion lists is deliberately not offered here: it is a site wide
  * setting and lives in Administration > site > Settings, where an administrator looks for it,
@@ -35,6 +32,7 @@ export const ContentTypesToolBar = ({
     contentType,
     contentTypeLabel,
     selection,
+    visibleFields,
     onClearSelection
 }) => {
     const {t} = useTranslation(NAMESPACE);
@@ -42,7 +40,7 @@ export const ContentTypesToolBar = ({
     return (
         <div className={styles.toolBar} data-sel-role="content-types-toolbar">
             {isBulkSelection(selection) ? (
-                <ContentTypesSelectionBar nodes={selection} onClear={onClearSelection}/>
+                <ContentTypesSelectionBar nodes={selection} contentType={contentType} visibleFields={visibleFields} onClear={onClearSelection}/>
             ) : (
                 <>
                     {/* First on the line, and only while nothing is ticked: creating a record is
@@ -87,6 +85,8 @@ ContentTypesToolBar.propTypes = {
     onSearchChange: PropTypes.func.isRequired,
     /** The ticked rows. Empty means nothing is selected, and the browse controls hold the line. */
     selection: PropTypes.array.isRequired,
+    /** The columns the table shows, in the reader's order. The export starts from them. */
+    visibleFields: PropTypes.array,
     onClearSelection: PropTypes.func.isRequired
 };
 
