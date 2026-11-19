@@ -6,8 +6,6 @@ import {isActiveFilter} from './filterConstraint';
 const STANDARD_COLUMNS = {
     'std:created': 'createdDate',
     'std:createdBy': 'createdBy',
-    'std:lastModified': 'lastModified',
-    'std:lastModifiedBy': 'lastModifiedBy',
     'std:lastPublished': 'publishedOn',
     'std:lastPublishedBy': 'publishedBy',
     'std:tags': 'tags',

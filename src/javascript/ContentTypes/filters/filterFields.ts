@@ -10,12 +10,13 @@ const SYSTEM_PREFIXES = ['j:', 'mix:', 'nt:', 'rep:'];
 
 type StandardField = Omit<FilterField, 'label'> & {labelKey: string};
 
-/** The fields of every list: every item has these properties. */
+/**
+ * The fields of every list: every item has these properties.
+ * Last modified and Modified by are not offered: a query matches them on the translations too, where the table cannot show them.
+ */
 export const STANDARD_FILTER_FIELDS: readonly StandardField[] = Object.freeze([
     {key: 'std:created', labelKey: `${LABEL_PREFIX}.created`, property: 'jcr:created', kind: 'date'},
     {key: 'std:createdBy', labelKey: `${LABEL_PREFIX}.createdBy`, property: 'jcr:createdBy', kind: 'text'},
-    {key: 'std:lastModified', labelKey: `${LABEL_PREFIX}.lastModified`, property: 'jcr:lastModified', kind: 'date'},
-    {key: 'std:lastModifiedBy', labelKey: `${LABEL_PREFIX}.lastModifiedBy`, property: 'jcr:lastModifiedBy', kind: 'text'},
     {key: 'std:lastPublished', labelKey: `${LABEL_PREFIX}.lastPublished`, property: 'j:lastPublished', kind: 'date'},
     {key: 'std:lastPublishedBy', labelKey: `${LABEL_PREFIX}.lastPublishedBy`, property: 'j:lastPublishedBy', kind: 'text'},
     {key: 'std:tags', labelKey: `${LABEL_PREFIX}.tags`, property: 'j:tagList', kind: 'text', multiple: true},

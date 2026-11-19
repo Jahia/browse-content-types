@@ -34,16 +34,15 @@ const form: FormField[] = [
 ];
 
 describe('the standard fields', () => {
-    it('lists 8 fields with the std: prefix', () => {
+    it('lists 6 fields with the std: prefix', () => {
         expect(STANDARD_FILTER_FIELDS.map(field => field.key)).toEqual([
-            'std:created', 'std:createdBy', 'std:lastModified', 'std:lastModifiedBy', 'std:lastPublished',
-            'std:lastPublishedBy', 'std:tags', 'std:systemName'
+            'std:created', 'std:createdBy', 'std:lastPublished', 'std:lastPublishedBy', 'std:tags', 'std:systemName'
         ]);
     });
 
     it('gives the standard fields only before the properties of the type are read', () => {
         const fields = buildFilterFields({t});
-        expect(fields).toHaveLength(8);
+        expect(fields).toHaveLength(6);
         expect(fields[0]).toEqual({key: 'std:created', label: 't(created)', property: 'jcr:created', kind: 'date'});
         expect(fields.find(field => field.key === 'std:systemName')).toMatchObject({property: 'j:nodename', looseSeparators: true});
         expect(fields.find(field => field.key === 'std:tags')).toMatchObject({property: 'j:tagList', multiple: true});
@@ -97,7 +96,7 @@ describe('the fields of a content type', () => {
 
     it('gives no second field for a property that a standard field covers', () => {
         const fields = buildFilterFields({t, definitions: [{name: 'j:tagList', requiredType: 'STRING', multiple: true}, {name: 'jcr:createdBy', requiredType: 'STRING'}]});
-        expect(fields).toHaveLength(8);
+        expect(fields).toHaveLength(6);
     });
 });
 
