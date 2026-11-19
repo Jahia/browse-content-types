@@ -887,6 +887,15 @@ const useSearchTerm = search => {
     }, [debounced]);
 };
 
+/** Why the table is empty: the search, the filters, or a type with no content on the site. */
+const emptyMessage = (t, {isSearching, typed, isFiltered}) => {
+    if (isFiltered) {
+        return t('label.noFilterResults');
+    }
+
+    return isSearching ? t('label.noSearchResults', {terms: typed}) : t('label.noContent');
+};
+
 export const ContentTypesTable = ({
     contentType,
     search,
@@ -895,6 +904,8 @@ export const ContentTypesTable = ({
     searchableTextProperties,
     languages,
     selection,
+    filters,
+    toNodeConstraint,
     previewedPath,
     onSelectionChange,
     onRowClick
@@ -926,13 +937,15 @@ export const ContentTypesTable = ({
     }, [sortBy]);
 
     const {isSearching, terms, nameTerms, typed} = useSearchTerm(search);
+    // The filters change the result set as the search does: back to page 1, and the selection is cleared
+    const filtersKey = JSON.stringify(filters);
 
     // Page numbers do not carry across types, and no more across a change of search: page 4 of one
     // result set is very likely past the end of the next, which would show an empty table for a
     // type that has content.
     useEffect(() => {
         setCurrentPage(1);
-    }, [contentType, terms]);
+    }, [contentType, terms, filtersKey]);
 
     // The selection only ever holds rows that are on screen.
     //
@@ -948,7 +961,7 @@ export const ContentTypesTable = ({
     // this table is entitled to.
     useEffect(() => {
         onSelectionChange([]);
-    }, [site, contentType, terms, currentPage, itemsPerPage, sortBy, sortDirection, onSelectionChange]);
+    }, [site, contentType, terms, filtersKey, currentPage, itemsPerPage, sortBy, sortDirection, onSelectionChange]);
 
     // Reset the sort whenever the chosen column disappears - hiding a column that the table was
     // sorted by would otherwise keep silently requesting a sort the picker no longer offers.
@@ -1058,7 +1071,7 @@ export const ContentTypesTable = ({
      * substring - are an `any`, so a search widens across the three rather than narrowing through
      * them.
      */
-    const nodeConstraint = useMemo(() => (isSearching ? {
+    const searchConstraint = useMemo(() => (isSearching ? {
         any: [
             {contains: terms},
             {contains: terms, property: 'j:tagList'},
@@ -1078,6 +1091,9 @@ export const ContentTypesTable = ({
         ]
         // eslint-disable-next-line react-hooks/exhaustive-deps
     } : null), [isSearching, terms, nameTerms, searchablePropertiesKey]);
+
+    // The filters narrow the search: the search is the first member of the same `all`
+    const nodeConstraint = useMemo(() => toNodeConstraint(searchConstraint), [searchConstraint, toNodeConstraint]);
 
     // `language` earns its place alongside the other two because the document declares it
     // `String!`: issued a render early, the operation is rejected outright rather than answering
@@ -1441,7 +1457,7 @@ export const ContentTypesTable = ({
     if (totalItems === 0) {
         return (
             <Typography className={styles.message} variant="body" data-sel-role="content-empty">
-                {isSearching ? t('label.noSearchResults', {terms: typed}) : t('label.noContent')}
+                {emptyMessage(t, {isSearching, typed, isFiltered: nodeConstraint !== searchConstraint})}
             </Typography>
         );
     }
@@ -1535,6 +1551,9 @@ ContentTypesTable.propTypes = {
     languages: PropTypes.array,
     /** The type's text properties, each given a substring arm so a search matches inside a word. */
     searchableTextProperties: PropTypes.array,
+    /** The filters of the list, and the function that turns them and a search constraint into one constraint. */
+    filters: PropTypes.array,
+    toNodeConstraint: PropTypes.func,
     /** The ticked rows, held above so the toolbar can act on them. Whole rows rather than paths,
      *  because the bar names them and reads their node type flags. */
     selection: PropTypes.array.isRequired,
@@ -1547,6 +1566,8 @@ ContentTypesTable.defaultProps = {
     translatableFields: [],
     languages: [],
     searchableTextProperties: [],
+    filters: [],
+    toNodeConstraint: searchConstraint => searchConstraint,
     // Called on every row click, so it has a default rather than a guard at the call site.
     onRowClick: () => {}
 };

@@ -17,7 +17,7 @@ module.exports = (env, argv) => {
         },
         resolve: {
             mainFields: ['module', 'main'],
-            extensions: ['.mjs', '.js', '.jsx', '.json']
+            extensions: ['.mjs', '.js', '.jsx', '.ts', '.tsx', '.json']
         },
         module: {
             rules: [
@@ -26,14 +26,15 @@ module.exports = (env, argv) => {
                     type: 'javascript/auto'
                 },
                 {
-                    test: /\.jsx?$/,
+                    test: /\.[jt]sx?$/,
                     include: [path.join(__dirname, 'src')],
                     use: {
                         loader: 'babel-loader',
                         options: {
                             presets: [
                                 ['@babel/preset-env', {modules: false}],
-                                '@babel/preset-react'
+                                '@babel/preset-react',
+                                '@babel/preset-typescript'
                             ],
                             plugins: ['@babel/plugin-syntax-dynamic-import']
                         }

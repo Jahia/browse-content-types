@@ -529,6 +529,9 @@ export const useContentTypeColumns = contentType => {
     return {
         availableFields,
         nameField,
+        // The definitions and the form this hook already reads, which the filter fields are built from
+        definitions: data?.jcr?.nodeTypeByName?.properties,
+        form: formData?.forms?.createForm,
         visibleFields,
         visibleKeys,
         translatableFields,

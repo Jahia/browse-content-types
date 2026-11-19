@@ -18,7 +18,7 @@ they hang off returns with them:
 | Export | yes |
 | Replace a value | yes |
 | Tag and Categorize | yes |
-| column filtering | yes |
+| column filtering | **replaced** in 1.1 by the filter bar |
 | Undo | yes |
 | inline cell editing | **no** |
 | Assign to | **no** |
@@ -204,6 +204,8 @@ which is correct and is a column of extra data on every row of every page. Bulk 
 the same question from the field catalog alone.
 
 ## Column filtering — `20cfc07d80ee78384ffdc05413d0143844d02e3a`
+
+**Replaced in 1.1.** The filter bar above the table, built on Moonstone CollectionBar with the filter logic of jContent, does this job. Do not merge `feature/column-filtering` for it. The section below describes the old code only.
 
 **Branch:** `feature/column-filtering` — also carries Tag and Categorize, Replace a value, Export
 and the bulk menu.

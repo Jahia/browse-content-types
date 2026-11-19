@@ -10,6 +10,8 @@ import {GET_SITE_CONTENT_TYPES} from './ContentTypes.gql';
 import {ContentTypesTable} from './ContentTypesTable';
 import {ContentTypesToolBar} from './ContentTypesToolBar';
 import {useContentTypeColumns} from './useContentTypeColumns';
+import {FilterBar} from './filters/FilterBar/FilterBar';
+import {DEFAULT_FILTER_FIELDS, useContentTypeFilters} from './filters/useContentTypeFilters';
 import {NAMESPACE} from '../ContentTypes.register';
 import styles from './ContentTypes.module.scss';
 
@@ -65,6 +67,9 @@ export const ContentTypesRoute = () => {
     // it.
     const columns = useContentTypeColumns(contentType);
     const [selection, setSelection] = useState([]);
+
+    // Kept in the jContent URL, so a filtered list is a link and the back button removes the last change
+    const filters = useContentTypeFilters(columns);
 
     /*
      * The record the side panel is showing.
@@ -190,6 +195,14 @@ export const ContentTypesRoute = () => {
                 */}
                 {!(isPanelOpen && isFullScreen) && (
                     <div className={styles.tablePaper}>
+                        {/* The row above the items that Moonstone gives to filters: below the toolbar of the Header, on the surface of the table */}
+                        <FilterBar
+                            fields={filters.fields}
+                            filters={filters.filters}
+                            defaultFields={DEFAULT_FILTER_FIELDS}
+                            data-sel-role="content-types-filter-bar"
+                            onChange={filters.setFilters}
+                        />
                         <ContentTypesTable
                             contentType={contentType}
                             search={search}
@@ -199,6 +212,8 @@ export const ContentTypesRoute = () => {
                             translatableFields={columns.translatableFields}
                             languages={columns.languages}
                             searchableTextProperties={columns.searchableTextProperties}
+                            filters={filters.filters}
+                            toNodeConstraint={filters.toNodeConstraint}
                             previewedPath={isPanelOpen ? previewNode.path : undefined}
                             onSelectionChange={setSelection}
                             onRowClick={node => {

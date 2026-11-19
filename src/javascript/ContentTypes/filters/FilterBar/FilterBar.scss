@@ -1,0 +1,9 @@
+// The row above the table, inset as the cells of the table are
+.filterBar {
+    flex: none;
+    padding: var(--spacing-small) var(--spacing-medium);
+}
+
+.selectorControl {
+    min-width: 220px;
+}
