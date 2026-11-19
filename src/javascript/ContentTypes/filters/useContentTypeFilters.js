@@ -26,6 +26,15 @@ export const nameFilterField = nameField => ({
 });
 
 /**
+ * The fields grouped as in the column picker: the Name column and the properties of the type, then the standard fields
+ * that every item has. Each field holds the title of its group, for the Add filter menu.
+ */
+export const groupFields = (fields, typeLabel, commonLabel) => [
+    ...fields.filter(field => !field.key.startsWith('std:') || field.key === NAME_FIELD_KEY).map(field => ({...field, group: typeLabel})),
+    ...fields.filter(field => field.key.startsWith('std:') && field.key !== NAME_FIELD_KEY).map(field => ({...field, group: commonLabel}))
+];
+
+/**
  * The Name column first, then the fields. The Name column replaces the field of the property it shows:
  * `jcr:title`, or the system name for a type with no primary item.
  */
@@ -54,7 +63,11 @@ export const useContentTypeFilters = ({definitions, form, nameField}) => {
     const params = useSelector(state => state.jcontent?.params);
 
     const fields = useMemo(
-        () => withNameField(buildFilterFields({t, definitions: definitions || [], formFields: formFieldsOf(form)}), nameField),
+        () => groupFields(
+            withNameField(buildFilterFields({t, definitions: definitions || [], formFields: formFieldsOf(form)}), nameField),
+            t('label.columns.availableType'),
+            t('label.columns.availableCommon')
+        ),
         [t, definitions, form, nameField]
     );
 

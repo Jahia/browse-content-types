@@ -64,6 +64,7 @@ export const FilterBar = ({fields, filters = [], onChange, defaultFields = [], i
         return {
             key: field.key,
             label: field.label,
+            group: field.group,
             valueLabel: filterToConstraint(field, filter) ? filterValueLabel(t, field, filter) : '',
             isDisplayedByDefault: defaultFields.includes(field.key),
             selector: ({close}) => (
@@ -118,7 +119,9 @@ FilterBar.propTypes = {
         property: PropTypes.string.isRequired,
         multiple: PropTypes.bool,
         options: PropTypes.arrayOf(PropTypes.shape({value: PropTypes.string, label: PropTypes.string})),
-        looseSeparators: PropTypes.bool
+        looseSeparators: PropTypes.bool,
+        // The title of the group of the field in the Add filter menu
+        group: PropTypes.string
     })).isRequired,
     filters: PropTypes.arrayOf(PropTypes.shape({
         field: PropTypes.string.isRequired,

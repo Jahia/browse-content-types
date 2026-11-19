@@ -7,3 +7,43 @@
 .selectorControl {
     min-width: 220px;
 }
+
+// The condition and the value, laid out by the body of the selector around them
+.selectorFields {
+    display: contents;
+}
+
+// The values of a choice: a long list scrolls inside the selector, so its footer stays in view
+.choiceList {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-small);
+    width: 100%;
+}
+
+.choiceOptions {
+    max-height: 240px;
+    overflow-y: auto;
+}
+
+// The group titles of the Add filter menu, marked as the sections of the column picker are: a rule above each group,
+// a band behind its title, and the title in capitals. The menu opens in a portal, outside this module's elements
+:global(.moonstone-collectionBar_addFilterMenu .moonstone-menuItem.moonstone-title) {
+    margin-top: var(--spacing-nano);
+    padding-top: var(--spacing-small);
+    padding-bottom: var(--spacing-small);
+
+    color: var(--color-gray_dark);
+    font-size: 0.8125rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+
+    border-top: 1px solid var(--color-gray40);
+    background-color: var(--color-gray_light40);
+}
+
+:global(.moonstone-collectionBar_addFilterMenu .moonstone-menuItem.moonstone-title:first-child) {
+    margin-top: 0;
+
+    border-top: none;
+}

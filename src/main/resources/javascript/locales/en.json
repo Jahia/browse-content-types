@@ -147,7 +147,8 @@
       "cancel": "Cancel",
       "apply": "Filter",
       "operatorField": "Condition",
-      "valueField": "Value"
+      "valueField": "Value",
+      "searchValues": "Find a value"
     },
     "noFilterResults": "No content of this type matches the filters."
   }

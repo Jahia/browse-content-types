@@ -65,12 +65,44 @@ describe('FilterBar', () => {
         expect(menu).not.toHaveTextContent('Last modified');
     });
 
+    it('shows the group of each field as a title in the Add filter menu', () => {
+        const grouped = fields.map(field => ({...field, group: field.key.startsWith('prop:') ? 'Type-specific' : 'Common'}));
+        render(<FilterBar fields={grouped} filters={[]} defaultFields={[]} onChange={jest.fn()}/>);
+        fireEvent.click(screen.getByRole('button', {name: /addFilter/}));
+        const items = [...document.querySelectorAll('.moonstone-collectionBar_addFilterMenu li')].map(item => item.textContent);
+        expect(items).toEqual(['Common', 'Name', 'Last modified', 'Created by', 'Type-specific', 'Price']);
+    });
+
     it('applies the value with the Filter button', () => {
         const onChange = renderBar({filters: []});
         fireEvent.click(screen.getByRole('button', {name: /Created by/}));
         fireEvent.change(screen.getByRole('textbox', {name: 'valueField'}), {target: {value: 'anne'}});
         fireEvent.click(screen.getByRole('button', {name: 'apply'}));
         expect(onChange).toHaveBeenCalledWith([{field: 'std:createdBy', operator: 'contains', value: 'anne'}]);
+    });
+
+    it('ticks the values of a choice in the selector, and applies them with the Filter button', () => {
+        const type = {key: 'prop:type', label: 'Type', kind: 'choice', property: 'type', options: [
+            {value: 'house', label: 'House'}, {value: 'apartment', label: 'Apartment'}, {value: 'building', label: 'Building'}
+        ]};
+        const onChange = jest.fn();
+        render(<FilterBar fields={[type]} filters={[]} defaultFields={['prop:type']} onChange={onChange}/>);
+        fireEvent.click(screen.getByRole('button', {name: /Type/}));
+        fireEvent.click(screen.getByRole('checkbox', {name: 'Apartment'}));
+        fireEvent.click(screen.getByRole('checkbox', {name: 'Building'}));
+        // The footer stays usable: no popup list covers it
+        fireEvent.click(screen.getByRole('button', {name: 'apply'}));
+        expect(onChange).toHaveBeenCalledWith([{field: 'prop:type', operator: 'is', value: ['apartment', 'building']}]);
+    });
+
+    it('searches the values of a long choice', () => {
+        const options = Array.from({length: 15}, (_, index) => ({value: `v${index}`, label: `Value ${index}`}));
+        render(<FilterBar fields={[{key: 'prop:c', label: 'Country', kind: 'choice', property: 'c', options}]} filters={[]} defaultFields={['prop:c']} onChange={jest.fn()}/>);
+        fireEvent.click(screen.getByRole('button', {name: /Country/}));
+        expect(screen.getAllByRole('checkbox')).toHaveLength(15);
+        fireEvent.change(screen.getByLabelText('searchValues'), {target: {value: 'Value 1'}});
+        // Value 1, and Value 10 to Value 14
+        expect(screen.getAllByRole('checkbox')).toHaveLength(6);
     });
 
     it('discards the value with Cancel', () => {

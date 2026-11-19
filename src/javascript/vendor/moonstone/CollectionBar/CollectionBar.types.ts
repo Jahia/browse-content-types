@@ -48,6 +48,11 @@ export type CollectionBarFilter = {
     iconStart?: React.ReactElement;
 
     /**
+     * Title of the group of the filter in the Add filter menu. A title starts each run of filters with the same group
+     */
+    group?: string;
+
+    /**
      * Whether the chip is always in the bar. When false, the user adds the chip with Add filter,
      * and the chip stays in the bar while it has a value or while its selector is open
      * @default false

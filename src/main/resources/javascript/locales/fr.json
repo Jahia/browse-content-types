@@ -147,7 +147,8 @@
       "cancel": "Annuler",
       "apply": "Filtrer",
       "operatorField": "Condition",
-      "valueField": "Valeur"
+      "valueField": "Valeur",
+      "searchValues": "Rechercher une valeur"
     },
     "noFilterResults": "Aucun contenu de ce type ne correspond aux filtres."
   }

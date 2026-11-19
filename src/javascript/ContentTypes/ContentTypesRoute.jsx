@@ -12,6 +12,7 @@ import {ContentTypesToolBar} from './ContentTypesToolBar';
 import {useContentTypeColumns} from './useContentTypeColumns';
 import {FilterBar} from './filters/FilterBar/FilterBar';
 import {DEFAULT_FILTER_FIELDS, useContentTypeFilters} from './filters/useContentTypeFilters';
+import {useRevealFilteredColumns} from './filters/useRevealFilteredColumns';
 import {NAMESPACE} from '../ContentTypes.register';
 import styles from './ContentTypes.module.scss';
 
@@ -70,6 +71,8 @@ export const ContentTypesRoute = () => {
 
     // Kept in the jContent URL, so a filtered list is a link and the back button removes the last change
     const filters = useContentTypeFilters(columns);
+    // A filter that starts to apply shows its column right after the Name column
+    useRevealFilteredColumns(filters.filters, filters.fields, columns);
 
     /*
      * The record the side panel is showing.

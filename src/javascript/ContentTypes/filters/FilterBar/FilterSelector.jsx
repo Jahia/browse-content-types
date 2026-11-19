@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useState} from 'react';
 import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
 import * as moonstone from '@jahia/moonstone';
@@ -7,7 +7,7 @@ import {FILTER_OPERATORS, MULTI_VALUE_OPERATORS, VALUELESS_OPERATORS, valuesOf} 
 import {operatorLabel} from './filterLabels';
 import styles from './FilterBar.scss';
 
-const {Dropdown, Input} = moonstone;
+const {CheckboxGroup, CheckboxItem, Dropdown, Input} = moonstone;
 // DateTimeInput comes with Moonstone 2.21. Before it, a date filter takes the date input of the browser
 const {DateTimeInput} = moonstone;
 
@@ -15,6 +15,78 @@ const LABELS = 'label.filters';
 const SEARCH_FROM = 12;
 
 const dayOf = value => (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null);
+
+/**
+ * Escape with the list of the condition open closes that list only. The Menu of Moonstone 2.21 has no Escape of its own,
+ * so the key would reach the selector and close it, losing what was typed. The Menu closes on a click on its overlay.
+ * A handled key is marked, and the selector leaves a marked key alone.
+ */
+const closeOpenMenuOnEscape = event => {
+    if (event.key !== 'Escape' || event.defaultPrevented) {
+        return;
+    }
+
+    const overlay = document.querySelector('.moonstone-menu_overlay');
+    if (overlay) {
+        event.preventDefault();
+        overlay.click();
+    }
+};
+
+/**
+ * The values of a choice as checkboxes in the selector, with a search above a long list.
+ * Not a Dropdown: its list opens over the footer of the selector, so a click meant for the Filter button ticks an option,
+ * and the Escape that closes the list also closes the selector.
+ */
+const ChoiceList = ({field, values, label, searchLabel, onChange}) => {
+    const [term, setTerm] = useState('');
+    const options = field.options || [];
+    const hasSearch = options.length >= SEARCH_FROM;
+    const shown = term ? options.filter(option => option.label.toLowerCase().includes(term.toLowerCase())) : options;
+
+    return (
+        <div className={styles.choiceList}>
+            {hasSearch && (
+                <Input
+                    aria-label={searchLabel}
+                    className={styles.selectorControl}
+                    variant="search"
+                    value={term}
+                    placeholder={searchLabel}
+                    onChange={event => setTerm(event.target.value)}
+                    onClear={() => setTerm('')}
+                />
+            )}
+            <div className={styles.choiceOptions} role="group" aria-label={label}>
+                <CheckboxGroup
+                    name={field.key}
+                    onChange={(event, value, checked) => onChange(checked ? [...values, value] : values.filter(candidate => candidate !== value))}
+                >
+                    {shown.map(option => (
+                        <CheckboxItem
+                            key={option.value}
+                            id={`${field.key}-${option.value}`}
+                            value={option.value}
+                            label={option.label}
+                            checked={values.includes(option.value)}
+                        />
+                    ))}
+                </CheckboxGroup>
+            </div>
+        </div>
+    );
+};
+
+ChoiceList.propTypes = {
+    field: PropTypes.shape({
+        key: PropTypes.string.isRequired,
+        options: PropTypes.arrayOf(PropTypes.shape({value: PropTypes.string, label: PropTypes.string}))
+    }).isRequired,
+    values: PropTypes.arrayOf(PropTypes.string).isRequired,
+    label: PropTypes.string.isRequired,
+    searchLabel: PropTypes.string.isRequired,
+    onChange: PropTypes.func.isRequired
+};
 
 /**
  * The controls of one filter: the operator, and the value control of the kind of the field.
@@ -44,19 +116,13 @@ export const FilterSelector = ({field, draft, onDraftChange, onApply}) => {
     if (VALUELESS_OPERATORS.has(operator)) {
         valueControl = null;
     } else if (field.kind === 'choice') {
-        const options = field.options || [];
         valueControl = (
-            <Dropdown
-                aria-label={valueLabel}
-                className={styles.selectorControl}
-                data={options.map(option => ({label: option.label, value: option.value}))}
+            <ChoiceList
+                field={field}
                 values={valuesOf(draft.value)}
-                hasSearch={options.length >= SEARCH_FROM}
-                placeholder={valueLabel}
-                onChange={(event, item) => {
-                    const values = valuesOf(draft.value);
-                    setValue(values.includes(item.value) ? values.filter(value => value !== item.value) : [...values, item.value]);
-                }}
+                label={valueLabel}
+                searchLabel={t(`${LABELS}.searchValues`)}
+                onChange={setValue}
             />
         );
     } else if (field.kind === 'date' && operator !== 'lastDays' && DateTimeInput) {
@@ -98,7 +164,7 @@ export const FilterSelector = ({field, draft, onDraftChange, onApply}) => {
     }
 
     return (
-        <>
+        <div className={styles.selectorFields} onKeyDown={closeOpenMenuOnEscape}>
             <Dropdown
                 aria-label={t(`${LABELS}.operatorField`)}
                 className={styles.selectorControl}
@@ -107,7 +173,7 @@ export const FilterSelector = ({field, draft, onDraftChange, onApply}) => {
                 onChange={(event, item) => setOperator(item.value)}
             />
             {valueControl}
-        </>
+        </div>
     );
 };
 

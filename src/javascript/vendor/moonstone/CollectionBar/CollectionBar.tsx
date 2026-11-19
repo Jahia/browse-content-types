@@ -439,15 +439,19 @@ export const CollectionBar: React.FC<CollectionBarProps> = ({
                     maxHeight={MENU_MAX_HEIGHT}
                     onClose={() => setIsAddMenuOpen(false)}
                 >
-                    {filtersToAdd.map(filter => (
+                    {filtersToAdd.flatMap((filter, index) => [
+                        // The prefixes keep a title and a filter apart, whatever the key of the filter
+                        ...(filter.group && filter.group !== filtersToAdd[index - 1]?.group
+                            ? [<MenuItem key={`group:${filter.group}`} label={filter.group} variant="title"/>]
+                            : []),
                         <MenuItem
                             data-filter={filter.key}
                             iconStart={filter.iconStart}
-                            key={filter.key}
+                            key={`filter:${filter.key}`}
                             label={filter.label}
                             onClick={() => addFilter(filter)}
-                        />
-                    ))}
+                        />,
+                    ])}
                 </Menu>
             )}
             {isColumnMenuOpen && columnItems.length > 0 && (
