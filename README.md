@@ -12,7 +12,7 @@ as an OSGi bundle built by Maven.
 
 - **A table per content type**, with the columns you choose — the type's own properties alongside
   the common metadata every node carries, remembered per site and per type in your browser.
-- **Search and filter** across a record, or on one named property, composing with each other.
+- **Search** across a record, and **filters** on its properties and metadata, in a filter bar above the table that follows the Moonstone guidelines. The filters run on the server and are kept in the URL, so a filtered list is a link.
 - **Sorting the repository performs**, so a column of numbers sorts as numbers rather than as text.
 - **A missing-translations column** that counts, per active language, what a record has not filled
   in — folded into the table's own query, so it costs no extra request.

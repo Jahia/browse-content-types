@@ -508,6 +508,18 @@ export const useContentTypeColumns = contentType => {
     };
 
     /**
+     * Shows hidden fields first, right after the Name column, in the order given, and remembers the choice.
+     * A field already shown stays where it is, and a field that may not be chosen is left out.
+     */
+    const showFieldsFirst = keys => {
+        const shown = keys.filter(key => !visibleKeys.includes(key) &&
+            availableFields.some(field => field.key === key && !field.notSelectableReason));
+        if (shown.length > 0) {
+            apply([...shown, ...visibleKeys]);
+        }
+    };
+
+    /**
      * Back to the columns this table starts with.
      *
      * Clears the stored choice rather than storing the current defaults, so a later version of this
@@ -529,6 +541,9 @@ export const useContentTypeColumns = contentType => {
     return {
         availableFields,
         nameField,
+        // The definitions and the form this hook already reads, which the filter fields are built from
+        definitions: data?.jcr?.nodeTypeByName?.properties,
+        form: formData?.forms?.createForm,
         visibleFields,
         visibleKeys,
         translatableFields,
@@ -536,6 +551,7 @@ export const useContentTypeColumns = contentType => {
         languages,
         toggleField,
         moveField,
+        showFieldsFirst,
         resetToDefaults,
         loading,
         // Published so the screen can say a definition could not be read, rather than drawing a
