@@ -70,6 +70,21 @@ describe('the fields of a content type', () => {
         });
     });
 
+    it('gives no choice for the range of a number or the pattern of a text', () => {
+        expect(propertyToFilterField({name: 'rooms', requiredType: 'LONG'}, {name: 'rooms', selectorType: 'Text', valueConstraints: [{value: {string: '(0,)'}}]}))
+            .toMatchObject({kind: 'number'});
+        expect(propertyToFilterField({name: 'code', requiredType: 'STRING'}, {name: 'code', selectorType: 'Tag', valueConstraints: [{value: {string: '.{0,255}'}}]}))
+            .toMatchObject({kind: 'text'});
+    });
+
+    it('gives a choice for a list of numbers and for a list of checkboxes', () => {
+        const values = [{value: {string: '1'}, displayValue: 'One'}, {value: {string: '2'}, displayValue: 'Two'}];
+        expect(propertyToFilterField({name: 'size', requiredType: 'LONG'}, {name: 'size', selectorType: 'Choicelist', valueConstraints: values}))
+            .toMatchObject({kind: 'choice', options: [{value: '1', label: 'One'}, {value: '2', label: 'Two'}]});
+        expect(propertyToFilterField({name: 'langs', requiredType: 'STRING', multiple: true}, {name: 'langs', selectorType: 'CheckboxesToMultiLeftRight', valueConstraints: values}))
+            .toMatchObject({kind: 'choice', multiple: true});
+    });
+
     it('maps each JCR type to its kind', () => {
         const kinds = Object.fromEntries(buildFilterFields({t, definitions: news, formFields: form})
             .filter(field => field.key.startsWith('prop:'))
