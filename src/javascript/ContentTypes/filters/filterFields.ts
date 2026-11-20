@@ -65,7 +65,11 @@ export const isMediaReference = (definition: PropertyDefinition): boolean => REF
         return MEDIA_CONSTRAINT_PARTS.some(part => name.includes(part));
     });
 
-const valueOptions = (formField: FormField | undefined): FilterFieldOption[] => (formField?.valueConstraints || [])
+// The selectors that pick from the values of the form. A text or number field gives its range or pattern as a value
+// constraint too, such as `(0,)` or `.{0,255}`, which is no value to pick
+const LIST_SELECTOR = /choicelist|multipleleftright|checkboxes/i;
+
+const valueOptions = (formField: FormField | undefined): FilterFieldOption[] => (LIST_SELECTOR.test(formField?.selectorType || '') ? formField?.valueConstraints || [] : [])
     .map(constraint => ({value: constraint.value?.string ?? '', label: constraint.displayValue || constraint.value?.string || ''}))
     .filter(option => option.value !== '');
 
